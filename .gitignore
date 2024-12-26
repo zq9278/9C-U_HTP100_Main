@@ -1,0 +1,23 @@
+# 忽略 build 文件夹
+build/
+
+# 忽略 cmake 文件夹
+cmake/
+
+# 忽略 Drivers 文件夹
+Drivers/
+
+# 忽略 Middlewares 文件夹
+Middlewares/
+
+# 忽略 .mxproject 文件
+*.mxproject
+
+# 忽略 CMakePresets.json 文件
+CMakePresets.json
+
+# 忽略 startup_stm32g070xx.s 文件
+startup_stm32g070xx.s
+
+# 忽略 STM32G070CBTx_FLASH.ld 文件
+STM32G070CBTx_FLASH.ld
