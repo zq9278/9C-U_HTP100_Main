@@ -1,0 +1,48 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "cmake", //cmake的编译命令//路径需要换
+            "group": "build",
+            "args": [
+                "--build",
+                "build/Debug",
+                "--target",
+                "all"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "flash",
+            "type": "shell",
+            "command": "openocd",
+            "group": "build",
+            "args": [
+                "-f",
+                "board/stm32g070cbt6.cfg",
+                "-c",
+                 "program ./build/Debug/Air_Pulsation.elf verify reset exit"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "kill-debug-tasks",//关闭当前调试任务
+            "type": "shell",
+            "command": "${workspaceFolder}/kill_debug_tasks.bat",
+            "problemMatcher": []
+        },
+        {
+            "label": "ALL_IN_ONE",
+            "type": "shell",
+            "group": "build",
+            "dependsOn": [//先编译后下载"type": "shell",
+                "kill-debug-tasks",
+                "build"
+            ],
+            "dependsOrder": "sequence", //依次执行
+            "problemMatcher": []
+        }
+    ]
+}

@@ -22,7 +22,7 @@
                 "enabled": true,
                 "samplesPerSecond": 1
             },
-           // "preLaunchTask": "ALL IN ONE"
+            "preLaunchTask": "ALL_IN_ONE"
            // "preLaunchTask": "build"
         }
     ]

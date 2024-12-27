@@ -31,7 +31,11 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "FreeRTOS.h"
+#include "task.h"
+#include "cmsis_os.h"
+#include "queue.h"
+#include "uart_freertos.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

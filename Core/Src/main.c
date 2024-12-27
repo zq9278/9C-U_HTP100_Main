@@ -72,7 +72,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -100,11 +99,10 @@ int main(void)
   MX_TIM14_Init();
   MX_TIM16_Init();
   MX_TIM17_Init();
-  MX_TIM7_Init();
   MX_SPI2_Init();
   MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
   /* USER CODE END 2 */
 
   /* Init scheduler */
