@@ -35,7 +35,9 @@ extern "C" {
 #include "task.h"
 #include "cmsis_os.h"
 #include "queue.h"
+#include "semphr.h"  // 与信号量相关的 API
 #include "uart_freertos.h"
+#include "Button.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

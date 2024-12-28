@@ -251,5 +251,16 @@ void USART2_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+extern osSemaphoreId_t BUTTON_SEMAPHOREHandle; // 按键信号量句柄
+void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
+{
+   if (GPIO_Pin == SW_CNT_Pin) {  // 检查是否是目标按键
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        // 在中断中释放信号量，通知任务按键按下
+        xSemaphoreGiveFromISR(BUTTON_SEMAPHOREHandle, &xHigherPriorityTaskWoken);
+        // 如果需要切换上下文，则调用此函数
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);//是否跳出中断isr立即执行更高优先级的任务
+    }
+}
 
 /* USER CODE END 1 */
