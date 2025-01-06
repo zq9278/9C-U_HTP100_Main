@@ -101,7 +101,7 @@ int main(void)
   MX_TIM17_Init();
   MX_SPI2_Init();
   MX_USART2_UART_Init();
-  MX_USART1_UART_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
   /* USER CODE END 2 */
 
@@ -171,7 +171,9 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+volatile uint8_t flag_5ms = 0;  // 5ms 标志位
+volatile uint8_t flag_10ms = 0; // 10ms 标志位
+volatile uint16_t counter_ms = 0; // 毫秒计数器
 /* USER CODE END 4 */
 
 /**
@@ -191,7 +193,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+if (htim == &htim17) {
+        counter_ms++; // 毫秒计数器递增
 
+        // 每 5ms 设置一次标志位
+        if (counter_ms % 6 == 0) {
+            flag_5ms = 1;
+            
+        }
+        // 每 10ms 设置一次标志位
+        if (counter_ms % 10 == 0) {
+            flag_10ms = 1;
+           
+        }
+
+        // // 防止计数器溢出（在 1s 后归零）
+        // if (counter_ms >= 1000) {
+        //     counter_ms = 0;
+        // }
+    }
+    
   /* USER CODE END Callback 1 */
 }
 

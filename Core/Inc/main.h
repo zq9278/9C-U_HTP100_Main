@@ -31,6 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "cmsis_os.h"
@@ -38,6 +39,18 @@ extern "C" {
 #include "semphr.h"  // 与信号量相关的 API
 #include "uart_freertos.h"
 #include "Button.h"
+#include "pid.h"
+#include "delay.h"
+#include "iic.h"
+#include "bq25895.h"
+#include "bq27441.h"
+#include "tmp112.h"
+#include "24cxx.h"
+#include "tmc5130.h"
+#include "heat.h"
+#include "ws2812b.h"
+#include "app_sys.h"
+#include "ads1220.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -110,8 +123,10 @@ void Error_Handler(void);
 #define TMC_SCK_GPIO_Port GPIOB
 #define CHG_STAT_Pin GPIO_PIN_4
 #define CHG_STAT_GPIO_Port GPIOB
+#define CHG_STAT_EXTI_IRQn EXTI4_15_IRQn
 #define CHG_INT_Pin GPIO_PIN_5
 #define CHG_INT_GPIO_Port GPIOB
+#define CHG_INT_EXTI_IRQn EXTI4_15_IRQn
 #define CHG_SCL_Pin GPIO_PIN_8
 #define CHG_SCL_GPIO_Port GPIOB
 #define CHG_SDA_Pin GPIO_PIN_9

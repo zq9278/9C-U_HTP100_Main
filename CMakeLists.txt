@@ -145,3 +145,5 @@ add_custom_command(
     COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
     COMMENT "显示代码大小"
 )
+# 为目标添加编译选项，包括浮点支持
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -u _printf_float")
