@@ -486,7 +486,6 @@ void Uart_send_task(void *argument)
       if (Flag_400ms) {
         ScreenUpdateSOC(battery);
       }
-      ScreenUpdateSOC(battery);
     }
     Flag_400ms = 0; // 串口发送标志位
   }

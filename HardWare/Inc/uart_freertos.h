@@ -8,7 +8,7 @@
 #ifndef USRT_FREERTOS_H
 #define USRT_FREERTOS_H
 #include "stm32g0xx_hal.h"
-#define UART_REC_LEN 30 
+#define UART_REC_LEN 40 
 typedef struct
 {
     uint8_t buffer[UART_REC_LEN]; // the lengh of received array
@@ -29,11 +29,9 @@ typedef struct {
 //recept_data_p结构体指针类型，表示一个指向recept_data结构体对象的指针。用 -> 访问成员
 
 //调试结构体
-typedef struct {
+typedef struct __attribute__((packed)){
     uint8_t cmd_head_high; // 
     uint8_t cmd_head_low;  // 
-    uint8_t cmd_type_high; // 
-    uint8_t cmd_type_low;  // 
     float p;
     float i;
     float d;

@@ -117,21 +117,34 @@ void StepMinMax(int32_t *Step, int32_t MinValue, int32_t MaxValue) {
     *Step = MaxValue;
   }
 }
-
+#define TIMEOUT_LIMIT 5000  // 超时限制，单位为系统节拍（tick），假设系统节拍是1ms
 uint8_t MotorChecking() {
   uint8_t ReadData[4];
 
   TMC_ENN(0); // 
   TMC5130_Write(0xa7, 0x10000);
   VelocityModeMove(Positive);
+  uint32_t start_time = xTaskGetTickCount();  // 获取当前tick计数值
+    uint32_t timeout_ticks = pdMS_TO_TICKS(TIMEOUT_LIMIT);  // 转换超时时间为tick
+
     while (1) {
         // 读取电机状态寄存器
         TMC5130_Read(0x04, ReadData);
+        
         // 检查目标状态（假设目标状态为状态字第3字节的 bit1 为 1）
         if ((ReadData[3] & 0x02) == 0x02) {
             // 状态满足，退出循环
             break;
-        }}
+        }
+
+        // 检查超时
+        if ((xTaskGetTickCount() - start_time) >= timeout_ticks) {
+            // 超时处理
+            break;
+        }
+        vTaskDelay(100);
+        }
+
   MotorSetHome();
   TMC5130_Write(0xa0, 0x00000000); // 浣嶉敓鏂ゆ嫹妯″紡
   TMC_ENN(1);
