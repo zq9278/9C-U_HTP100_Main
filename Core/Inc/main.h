@@ -82,6 +82,7 @@ void Error_Handler(void);
 #define WS2812_PW_GPIO_Port GPIOA
 #define PWR_SENSE_Pin GPIO_PIN_4
 #define PWR_SENSE_GPIO_Port GPIOA
+#define PWR_SENSE_EXTI_IRQn EXTI4_15_IRQn
 #define WS2812B_Pin GPIO_PIN_6
 #define WS2812B_GPIO_Port GPIOA
 #define HEAT_CTRL_Pin GPIO_PIN_1
@@ -107,6 +108,8 @@ void Error_Handler(void);
 #define EE_SCL_GPIO_Port GPIOA
 #define LED0_Pin GPIO_PIN_6
 #define LED0_GPIO_Port GPIOC
+#define ADS1220_DRDY_Pin GPIO_PIN_7
+#define ADS1220_DRDY_GPIO_Port GPIOC
 #define LCD_PW_Pin GPIO_PIN_10
 #define LCD_PW_GPIO_Port GPIOA
 #define TMC_SDO_Pin GPIO_PIN_11
@@ -121,9 +124,6 @@ void Error_Handler(void);
 #define CHG_CE_GPIO_Port GPIOD
 #define TMC_SCK_Pin GPIO_PIN_3
 #define TMC_SCK_GPIO_Port GPIOB
-#define CHG_STAT_Pin GPIO_PIN_4
-#define CHG_STAT_GPIO_Port GPIOB
-#define CHG_STAT_EXTI_IRQn EXTI4_15_IRQn
 #define CHG_INT_Pin GPIO_PIN_5
 #define CHG_INT_GPIO_Port GPIOB
 #define CHG_INT_EXTI_IRQn EXTI4_15_IRQn

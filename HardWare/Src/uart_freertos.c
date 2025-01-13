@@ -124,15 +124,16 @@ void UART1_CMDHandler(recept_data_p msg) {
   case 0x1041:
     currentState = STATE_PRE_HEAT; // 切换到预加热状态
     HeatPWM(1);                    // 启动加热PWM
-    HeatPID.setpoint = 37.5;
+    //HeatPID.setpoint = 37.5;
+    HeatPID.setpoint = 37.5+temperature_compensation;
     xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将数据发送到队列
     osEventFlagsSet(HEAT_ONHandle, (1 << 0)); // 设置第0位 // 启动加热任务
     break;
   /* 屏幕加热停止 */
   case 0x1030:
     if (currentState == STATE_HEAT || STATE_PRE_HEAT) {
-      currentState = STATE_OFF; // 从加热停止回到关闭状态
-      HeatPWM(0);               // 启动加热PWM
+
+      HeatPWM(0); // 启动加热PWM
       osEventFlagsClear(HEAT_ONHandle,
                         (1 << 0)); // 清除第0位// 通知停止加热任务
       if ((heat_finish == 0) &&
@@ -141,7 +142,10 @@ void UART1_CMDHandler(recept_data_p msg) {
         emergency_stop =
             true; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
       }
+     
     }
+     currentState = STATE_OFF; // 从加热停止回到关闭状态
+
     break;
   /* 屏幕挤压开始 */
   case 0x1005:
@@ -154,23 +158,25 @@ void UART1_CMDHandler(recept_data_p msg) {
     break;
   /* 屏幕挤压停止 */
   case 0x1034:
-    if (currentState == STATE_PRESS || STATE_PRE_PRESS) {
-      currentState = STATE_OFF; // 从挤压停止回到关闭状态
-      if ((press_finish == 0) &&
-          (currentState ==
-           STATE_PRESS)) { // 如果挤压任务未完成，且工作在正式模式下（非预热阶段）则设置紧急停止标志
+    if (currentState == STATE_PRESS) {
+
+      if (press_finish ==
+          0) { // 如果挤压任务未完成，且工作在正式模式下（非预热阶段）则设置紧急停止标志
         emergency_stop =
             true; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
       }
       osEventFlagsClear(PRESS_ONHandle,
                         (1 << 0)); // 清除第0位// 通知停止挤压任务
     }
+    currentState = STATE_OFF; // 从挤压停止回到关闭状态
+
     break;
   /* 屏幕自动模式开始 */
   case 0x1037:
     currentState = STATE_PRE_AUTO; // 切换到预自动模式
     HeatPWM(1);                    // 启动加热PWM
-    HeatPID.setpoint = 37.5;
+     //HeatPID.setpoint = 37.5;
+    HeatPID.setpoint = 37.5+temperature_compensation;
     xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将数据发送到队列
     MotorPID.setpoint = data;
     weight0 = ADS1220_ReadPressure();           // 读取初始压力值
@@ -179,21 +185,43 @@ void UART1_CMDHandler(recept_data_p msg) {
     break;
   /* 屏幕自动模式停止 */
   case 0x1038:
-    if (currentState == STATE_AUTO || STATE_PRE_AUTO) {
-      currentState = STATE_OFF; // 从自动模式回到关闭状态
-      if ((auto_finish == 0) &&
-          (currentState ==
-           STATE_AUTO)) { // 如果自动任务未完成，且工作在正式模式下（非自动阶段）则设置紧急停止标志
-        emergency_stop =
-            true; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
-      }
+    // if (currentState == STATE_AUTO || STATE_PRE_AUTO) {
 
+    //   if ((auto_finish == 0) &&
+    //       (currentState ==
+    //        STATE_AUTO)) { //
+    //        如果自动任务未完成，且工作在正式模式下（非自动阶段）则设置紧急停止标志
+    //     emergency_stop =
+    //         true; // 设置紧急停止标志(1 << 0)); // 清除第0位//
+    //         通知停止加热任务
+    //   }
+
+    //   HeatPWM(0); // 启动加热PWM
+    //   osEventFlagsClear(HEAT_ONHandle,
+    //                     (1 << 0)); // 清除第0位// 通知停止加热任务
+    //   osEventFlagsClear(PRESS_ONHandle,
+    //                     (1 << 0)); // 清除第0位// 通知停止加热任务
+    //   currentState = STATE_OFF;    // 从自动模式回到关闭状态
+    // }
+
+    if (currentState == STATE_PRE_AUTO) {
+      HeatPWM(0); // 启动加热PWM
+      osEventFlagsClear(HEAT_ONHandle,
+                        (1 << 0)); // 清除第0位// 通知停止加热任务
+    }
+    if (currentState == STATE_AUTO) {
       HeatPWM(0); // 启动加热PWM
       osEventFlagsClear(HEAT_ONHandle,
                         (1 << 0)); // 清除第0位// 通知停止加热任务
       osEventFlagsClear(PRESS_ONHandle,
                         (1 << 0)); // 清除第0位// 通知停止加热任务
+      if (auto_finish ==0) { // 如果自动任务未完成，且工作在正式模式下（非自动阶段）则设置紧急停止标志
+        emergency_stop =
+            true; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
+      }
     }
+
+    currentState = STATE_OFF; // 从自动模式回到关闭状态
     break;
 
   /* 其他未知命令 */
@@ -223,7 +251,7 @@ void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
         (recept_data_debug *)received_data->buffer; // 解析数据
     xQueueSend(PRESS_DATAHandle, &MotorPID, 0);     // 将数据发送到队列
     PID_Init(&MotorPID, press_pid_data->p, press_pid_data->i, press_pid_data->d,
-             100, -100, 50000, -50000, press_pid_data->setpoint);
+             5000, -5000, 50000, -50000, press_pid_data->setpoint);
 
     break;
   }
@@ -231,10 +259,8 @@ void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
   case 0x9aa9: { // 命令类型 0x0400 - 更新 PID 参数（加热控制）
     recept_data_debug_p heat_pid_data =
         (recept_data_debug *)(received_data->buffer); // 解析数据
-    recept_data_debug_p heat_pid_data1 =
-        (recept_data_debug_p)received_data->buffer; // 强制转换，解析数据
     PID_Init(&HeatPID, heat_pid_data->p, heat_pid_data->i, heat_pid_data->d,
-             100, -100, 255, 0, heat_pid_data->setpoint);
+             500, 0, 255, 0, heat_pid_data->setpoint);
     xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将数据发送到队列
   } break;
 

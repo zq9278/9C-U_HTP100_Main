@@ -24,7 +24,8 @@ void Button_detection(void) {
   case STATE_PRE_HEAT:
     currentState = STATE_HEAT; // 从预热进入加热
     heat_finish=0;
-    HeatPID.setpoint = 42.5;
+    // HeatPID.setpoint = 42.5;
+    HeatPID.setpoint = 42.5+temperature_compensation;
     xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将加热数据发送到队列
     osEventFlagsSet(HEAT_ONHandle, (1 << 0)); // 设置第0位 // 启动加热任务
     ScreenTimerStart();
@@ -36,7 +37,7 @@ void Button_detection(void) {
     if (heat_finish==0) {//完成之后按钮不起作用
     ScreenWorkModeQuit();
     }
-    
+    HeatPWM(0); // 关闭加热PWM
     osEventFlagsClear(HEAT_ONHandle, (1 << 0)); // 清除第0位// 通知停止加热任务
     break;
 
@@ -60,7 +61,8 @@ void Button_detection(void) {
   case STATE_PRE_AUTO:
     currentState = STATE_AUTO; // 从预自动进入自动模式
      auto_finish= 0;
-    HeatPID.setpoint = 42.5;
+    // HeatPID.setpoint = 42.5;
+    HeatPID.setpoint = 42.5+temperature_compensation;
     xQueueSend(HEAT_DATAHandle, &HeatPID, 0);  // 将加热数据发送到队列
     TMC_ENN(0);                                // 启动电机
     osEventFlagsSet(PRESS_ONHandle, (1 << 0)); // 设置第0位
@@ -73,6 +75,7 @@ void Button_detection(void) {
      if (auto_finish==0) {
     ScreenWorkModeQuit();
     }
+    HeatPWM(0); // 关闭加热PWM
     osEventFlagsClear(HEAT_ONHandle, (1 << 0));  // 清除第0位// 通知停止加热任务
     osEventFlagsClear(PRESS_ONHandle, (1 << 0)); // 清除第0位// 通知停止挤压任务
     break;

@@ -138,7 +138,7 @@ void EXTI4_15_IRQHandler(void)
   /* USER CODE BEGIN EXTI4_15_IRQn 0 */
 
   /* USER CODE END EXTI4_15_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(CHG_STAT_Pin);
+  HAL_GPIO_EXTI_IRQHandler(PWR_SENSE_Pin);
   HAL_GPIO_EXTI_IRQHandler(CHG_INT_Pin);
   /* USER CODE BEGIN EXTI4_15_IRQn 1 */
 
@@ -340,16 +340,63 @@ void USART2_IRQHandler(void)
 
 /* USER CODE BEGIN 1 */
 extern osSemaphoreId_t BUTTON_SEMAPHOREHandle; // 按键信号量句柄
+// void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
+// {
+//    if (GPIO_Pin == SW_CNT_Pin) {  // 检查是否是目标按键
+//         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+//         // 在中断中释放信号量，通知任务按键按下
+//         xSemaphoreGiveFromISR(BUTTON_SEMAPHOREHandle, &xHigherPriorityTaskWoken);
+//         // 如果需要切换上下文，则调用此函数
+//         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);//是否跳出中断isr立即执行更高优先级的任务
+//     }
+// }
+#define DEBOUNCE_DELAY_MS 100  // 按键消抖时间（毫秒）
+volatile uint32_t last_button_press_time = 0; // 记录上次按键按下的时间戳
+
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
 {
-   if (GPIO_Pin == SW_CNT_Pin) {  // 检查是否是目标按键
+    if (GPIO_Pin == SW_CNT_Pin) {  // 检查是否是目标按键
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        // 在中断中释放信号量，通知任务按键按下
-        xSemaphoreGiveFromISR(BUTTON_SEMAPHOREHandle, &xHigherPriorityTaskWoken);
-        // 如果需要切换上下文，则调用此函数
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);//是否跳出中断isr立即执行更高优先级的任务
+
+        // 获取当前时间
+        uint32_t current_time = xTaskGetTickCountFromISR();
+
+        // 按键消抖：检查两次按键间隔是否大于设定的消抖时间
+        if ((current_time - last_button_press_time) >= pdMS_TO_TICKS(DEBOUNCE_DELAY_MS)) {
+            last_button_press_time = current_time; // 更新上次按键时间
+
+            // 在中断中释放信号量，通知任务按键按下
+            xSemaphoreGiveFromISR(BUTTON_SEMAPHOREHandle, &xHigherPriorityTaskWoken);
+
+            // 如果需要切换上下文，则调用此函数
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }
     }
 }
+volatile uint32_t last_button_press_time_PWR = 0; // 记录上次按键按下的时间戳
+extern uint8_t reset;
+void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin)
+{
+   
+    if (GPIO_Pin == PWR_SENSE_Pin) {  // 检查是否是目标按键
+       
+        // BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+        // // 获取当前时间
+        // uint32_t current_time = xTaskGetTickCountFromISR();
+
+        // // 按键消抖：检查两次按键间隔是否大于设定的消抖时间
+        // if ((current_time - last_button_press_time) >= pdMS_TO_TICKS(2)) {
+        //     last_button_press_time = current_time; // 更新上次按键时间
+
+           reset=1;
+
+    //         // 如果需要切换上下文，则调用此函数
+    //         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    //     }
+     }
+}
+
 
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)//ws2812鐏?鐝燚MA鏁版嵁浼犺緭瀹屾垚
 {

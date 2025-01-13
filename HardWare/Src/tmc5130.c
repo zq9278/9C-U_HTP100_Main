@@ -13,9 +13,11 @@ void TMC5130_Init(void) {
   TMC5130_Write(0x81, 0x00000001); // reset
   TMC5130_Write(0xec, 0x000300c3); // CHOPCONF: vsense=1,TOFF=3, HSTRT=4,
                                    // HEND=1, TBL=2, CHM=0 (spreadCycle)
-  TMC5130_Write(
-      0x90,
-      0x00001000); // IHOLD_IRUN: IHOLD=10, IRUN=31 (max. current), IHOLDDELAY=6
+  // TMC5130_Write(
+  //     0x90,
+  //     0x00001000); // IHOLD_IRUN: IHOLD=10, IRUN=31 (max. current), IHOLDDELAY=6
+  TMC5130_Write( 0x90, 0x00000300 // IHOLD=0, IRUN=1, IHOLDDELAY=0
+);
   TMC5130_Write(
       0x91,
       0x0000000a); // TPOWERDOWN=10: Delay before power down in stand still
@@ -38,7 +40,7 @@ void TMC5130_Init(void) {
   // TMC5130_Write(0xac, 0x00000000);
   // TMC5130_Write(0xb4, 0x0000075f);
   TMC5130_Write(0xa0, 0x00000000); // 浣嶉敓鏂ゆ嫹妯″紡
-  PID_Init(&MotorPID, 75, 2, 5, 1000, -1000, (float)(50000), (float)(-50000),
+  PID_Init(&MotorPID, 100, 2, 5, 5000, -5000, (float)(50000), (float)(-50000),
            0); // 0.03,0.05//0.02, 0.01, 0.02,
 }
 
@@ -117,7 +119,7 @@ void StepMinMax(int32_t *Step, int32_t MinValue, int32_t MaxValue) {
     *Step = MaxValue;
   }
 }
-#define TIMEOUT_LIMIT 5000  // 超时限制，单位为系统节拍（tick），假设系统节拍是1ms
+#define TIMEOUT_LIMIT 3000  // 超时限制，单位为系统节拍（tick），假设系统节拍是1ms
 uint8_t MotorChecking() {
   uint8_t ReadData[4];
 
@@ -142,9 +144,9 @@ uint8_t MotorChecking() {
             // 超时处理
             break;
         }
-        vTaskDelay(100);
+        vTaskDelay(200);
         }
-
+        
   MotorSetHome();
   TMC5130_Write(0xa0, 0x00000000); // 浣嶉敓鏂ゆ嫹妯″紡
   TMC_ENN(1);
@@ -212,7 +214,8 @@ void PressureControl(void) {
   weight = ADS1220_ReadPressure();
   weight = weight - weight0;
   Limit(weight, 0, weight);
-  float hhmg = (weight/1000.0)*9.8*88.4;
+  float hhmg = (weight/1000.0)*9.8*78;
+  //float hhmg =weight;
 xQueueSend(PressureHandle, &hhmg,0); // 将数据发送到队列
   switch (PressureModeStart) {
   case 1: // 最开始的前进阶段
@@ -225,7 +228,7 @@ xQueueSend(PressureHandle, &hhmg,0); // 将数据发送到队列
       control_output_speed = 0;
       SetMotorSpeed((int)control_output_speed);
       Flag_3s = 0;
-      osTimerStart(motor_grab3sHandle, 3000); // 启动3秒定时器
+      osTimerStart(motor_grab3sHandle, 1000); // 启动3秒定时器
     }
     break;
   case 2:
@@ -238,11 +241,11 @@ xQueueSend(PressureHandle, &hhmg,0); // 将数据发送到队列
     if (Flag_3s == 1) {
       PressureModeStart = 4; // 切换到回退阶段
       Flag_1s = 0;
-      osTimerStart(motor_back_1sHandle, 1000); // 启动1秒定时器
+      osTimerStart(motor_back_1sHandle, 500); // 启动1秒定时器
     }
     break;
   case 4: // 回退阶段
-    control_output_speed = -10000;
+    control_output_speed = -20000;
     SetMotorSpeed((int)control_output_speed);
 
     if (Flag_1s == 1) {

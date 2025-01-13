@@ -37,7 +37,7 @@ void MX_USART2_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART2_Init 0 */
-HAL_Delay(500);
+  HAL_Delay(500);
   /* USER CODE END USART2_Init 0 */
 
   /* USER CODE BEGIN USART2_Init 1 */
@@ -181,6 +181,33 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
     uart2_data.length = Size;
     xQueueSendFromISR(UART_DMA_IDLE_RECEPT_QUEUEHandle, &uart2_data,
                       &xTaskWoken); // ½«Êý¾Ý·¢ËÍµ½¶ÓÁÐ
+    HAL_UARTEx_ReceiveToIdle_DMA(
+        &huart2, &uart2_data.buffer,
+        sizeof(uart2_data.buffer)); // ÖØÐÂÆô¶¯ DMA ½ÓÊÕ
+    __HAL_DMA_DISABLE_IT(&hdma_usart2_rx,
+                         DMA_IT_TC | DMA_IT_HT); // ½ûÓÃ DMA ÖÐ¶ÏºÍ°ë»º³åÖÐ¶Ï
+  }
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+  if (huart->Instance == USART2) {
+    uint32_t error = HAL_UART_GetError(huart);
+
+    if (error & HAL_UART_ERROR_ORE) {
+      // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿??
+    } else if (error & HAL_UART_ERROR_FE) {
+      // ï¿½ï¿½ï¿½ï¿½Ö¡ï¿½ï¿½ï¿½ï¿½
+      // int a=1;
+    } else if (error & HAL_UART_ERROR_NE) {
+      // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+      // int a=1;
+    } else if (error & HAL_UART_ERROR_DMA) {
+      // ï¿½ï¿½ï¿½ï¿½DMAï¿½ï¿½ï¿½ï¿½
+      // int a=1;
+    }
+
+    // ï¿½ï¿½ï¿½ï¿½ UARTï¿½ï¿½×¼ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Î½ï¿½ï¿½Õ£ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½
+    HAL_UART_Abort(huart);
     HAL_UARTEx_ReceiveToIdle_DMA(
         &huart2, &uart2_data.buffer,
         sizeof(uart2_data.buffer)); // ÖØÐÂÆô¶¯ DMA ½ÓÊÕ

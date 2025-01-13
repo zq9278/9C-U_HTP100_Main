@@ -12,6 +12,7 @@
 
 
 #include "main.h"
+float p,i,d;
 void PID_Init(PID_TypeDef *pid, float Kp, float Ki, float Kd, float integral_max, float integral_min, float output_max, float output_min, float setpoint) {
     pid->Kp = Kp;
     pid->Ki = Ki;
@@ -40,7 +41,9 @@ float derivative = error - pid->previous_error;
 
 pid->previous_error = error; 
 // 保存当前误差值，供下一次计算微分项时使用
-
+p=pid->Kp * error;
+i=pid->Ki * pid->integral;
+d=pid->Kd * derivative;
 float output = pid->Kp * error + pid->Ki * pid->integral + pid->Kd * derivative; 
 // 计算PID输出：比例项（Kp）、积分项（Ki）、微分项（Kd）的加权和
 

@@ -52,6 +52,8 @@ uint8_t Flag_400ms = 1;        // 串口发送标志位
 volatile extern int Flag_3s, Flag_1s;
 extern ChargeState_t ChargeState; // 当前状态
 extern bool charging, working, low_battery, fully_charged, emergency_stop;
+PID_TypeDef pid_heat;
+float Heat_PWM; // 用于存储加热器的PWM占空比
 /* USER CODE END Variables */
 /* Definitions for UART_RECEPT */
 osThreadId_t UART_RECEPTHandle;
@@ -86,7 +88,7 @@ osThreadId_t APPHandle;
 const osThreadAttr_t APP_attributes = {
   .name = "APP",
   .priority = (osPriority_t) osPriorityHigh,
-  .stack_size = 256 * 4
+  .stack_size = 512 * 4
 };
 /* Definitions for Uart_send */
 osThreadId_t Uart_sendHandle;
@@ -332,9 +334,9 @@ void Heat_Task(void *argument)
   /* USER CODE BEGIN Heat_Task */
   /* Infinite loop */
   HeatInit();
-  PID_TypeDef pid_heat;
+  
   float EyeTmp;   // 用于存储从TMP112读取的温度值
-  float Heat_PWM; // 用于存储加热器的PWM占空比
+  
   for (;;) {
     // 等待 HEAT_ON 标志被设置，且不清除标志位
     osEventFlagsWait(HEAT_ONHandle, (1 << 0), osFlagsWaitAny | osFlagsNoClear,
@@ -350,6 +352,7 @@ void Heat_Task(void *argument)
       xQueueSend(TemperatureHandle, &EyeTmp, 0); // 将数据发送到队列
       Heat_PWM = PID_Compute(&pid_heat, EyeTmp);
       HeatPWMSet((uint8_t)Heat_PWM);
+       osDelay(100);
       // printf("Heat Task Running: EyeTmp=%.2f, HeatPWM=%.2f\n",
       // EyeTmp,HeatPWM);
     }
@@ -437,12 +440,13 @@ void APP_task(void *argument)
   BQ25895_Init();
   PWM_WS2812B_Init();
   for (;;) {
-    osDelay(50);
+    osDelay(10);
     LEDUpdate();
     UpdateChargeState_bq25895();
     battery_status_update_bq27441();
     UpdateState(emergency_stop, charging, low_battery, fully_charged, working);
     UpdateLightState(ChargeState);
+    STATE_POWER_5V_Update();
   }
   /* USER CODE END APP_task */
 }
@@ -470,20 +474,23 @@ void Uart_send_task(void *argument)
     //  strlen(pcStatsBuffer),
     if (xQueueReceive(PressureHandle, &pressure, 0) == pdPASS) {
       // printf(" pressure: %.2f\n ", pressure);
-      if (Flag_400ms) {
+       if (Flag_400ms) {
+      //if (1) {
         ScreenUpdateForce(pressure);
       }
     }
     osDelay(10);
     if (xQueueReceive(TemperatureHandle, &tempture, 0) == pdPASS) {
       // printf("tempture%.2f\n ", tempture);
-      if (Flag_400ms) {
-        ScreenUpdateTemperature(tempture);
+       if (Flag_400ms) {
+      //if (1) {
+        ScreenUpdateTemperature((float)(tempture-temperature_compensation));
       }
     }
     if (xQueueReceive(Battery_DATAHandle, &battery, 0) == pdPASS) {
       // printf("battery: %.2f\n ",battery);
-      if (Flag_400ms) {
+       if (Flag_400ms) {
+      //if (1) {
         ScreenUpdateSOC(battery);
       }
     }
