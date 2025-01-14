@@ -10,7 +10,8 @@ void STATE_POWER_5V_Update(void) {
   // MX_USART2_UART_Init();
   // ADS1220_Init();
   // TMC5130_Init();
-  //MotorChecking();
+  // MotorChecking();
+  NVIC_SystemReset();
   reset=0;
   //  }
 

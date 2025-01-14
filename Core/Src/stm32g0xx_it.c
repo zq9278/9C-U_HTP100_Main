@@ -378,22 +378,9 @@ extern uint8_t reset;
 void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin)
 {
    
-    if (GPIO_Pin == PWR_SENSE_Pin) {  // 检查是否是目标按键
-       
-        // BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-
-        // // 获取当前时间
-        // uint32_t current_time = xTaskGetTickCountFromISR();
-
-        // // 按键消抖：检查两次按键间隔是否大于设定的消抖时间
-        // if ((current_time - last_button_press_time) >= pdMS_TO_TICKS(2)) {
-        //     last_button_press_time = current_time; // 更新上次按键时间
-
+    if (GPIO_Pin == PWR_SENSE_Pin) {  
            reset=1;
-
-    //         // 如果需要切换上下文，则调用此函数
-    //         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-    //     }
+           
      }
 }
 

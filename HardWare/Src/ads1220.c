@@ -37,8 +37,7 @@ void ADS1220_Init(void) {
   ADS1220_WriteRegister(ADS1220_REG_CONFIG1, 0x94); // 配置寄存器1
   ADS1220_WriteRegister(ADS1220_REG_CONFIG2, 0x98); // 配置寄存器2
   ADS1220_WriteRegister(ADS1220_REG_CONFIG3, 0x00); // 配置寄存器3
-  // 启动转换
-  ADS1220_StartConversion();
+ 
 }
 
 void ADS1220_StartConversion(void) {
@@ -97,4 +96,11 @@ float ADS1220_ReadPressure(void) {
       V_load / (SENSITIVITY / 1000.0 *
                 EXCITATION_VOLTAGE); // 注意灵敏度单位为 mV/V，需转换为 V/V
   return weight * 1000; // 返回压力值
+}
+void ADS1220_StopConversion(void) {
+  // 停止连续转换模式
+  ADS1220_CS_LOW();
+  uint8_t stop_cmd = ADS1220_CMD_POWERDOWN; // 使用掉电命令停止转换
+  HAL_SPI_Transmit_IT(&hspi2, &stop_cmd, 1); // 使用中断发送命令
+  ADS1220_CS_HIGH();
 }
