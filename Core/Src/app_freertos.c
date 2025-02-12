@@ -65,7 +65,7 @@ osThreadId_t UART_RECEPTHandle;
 const osThreadAttr_t UART_RECEPT_attributes = {
   .name = "UART_RECEPT",
   .priority = (osPriority_t) osPriorityHigh1,
-  .stack_size = 256 * 4
+  .stack_size = 512 * 4
 };
 /* Definitions for Heat */
 osThreadId_t HeatHandle;
@@ -350,17 +350,48 @@ void UART_RECEPT_Task(void *argument)
 {
   /* USER CODE BEGIN UART_RECEPT_Task */
   uart_data recept_data;
+      uart_data *frameData; // 定义数据指针
   // extern UART_HandleTypeDef huart2;
   /* Infinite loop */
   for (;;) {
-    osDelay(10);
-    if (xQueueReceive(UART_DMA_IDLE_RECEPT_QUEUEHandle, &recept_data,
-                      portMAX_DELAY) == pdPASS) { // 从队列中接收数据
-      command_parsing((uint8_t *)&recept_data);   // 处理接收到的数据
-      // HAL_UART_Transmit(&huart2, (uint8_t*)&recept_data.buffer,
-      // recept_data.length, 10);
-    }
-  }
+//    osDelay(10);
+//    if (xQueueReceive(UART_DMA_IDLE_RECEPT_QUEUEHandle, &recept_data,
+//                      portMAX_DELAY) == pdPASS) { // 从队列中接收数据
+//      command_parsing((uint8_t *)&recept_data);   // 处理接收到的数据
+//      // HAL_UART_Transmit(&huart2, (uint8_t*)&recept_data.buffer,
+//      // recept_data.length, 10);
+//    }
+      if (osMessageQueueGet(UART_DMA_IDLE_RECEPT_QUEUEHandle, &frameData, NULL, osWaitForever) == osOK) { // 从消息队列中获取数据
+          if (frameData == NULL) {
+              printf("Error: Received NULL frameData pointer\n");
+              continue;
+          }
+          for (uint16_t i = 0; i < frameData->length - 1; i++) { // 遍历缓冲区
+              if (frameData->buffer[i] == FRAME_HEADER_BYTE1 && i + 1 < frameData->length && frameData->buffer[i + 1] == FRAME_HEADER_BYTE2) { // 检测帧头
+                  for (uint16_t j = i + 2; j < frameData->length - 1; j++) { // 继续查找帧尾
+                      if (frameData->buffer[j] == FRAME_TAIL_BYTE1 && j + 1 < frameData->length && frameData->buffer[j + 1] == FRAME_TAIL_BYTE2) { // 检测帧尾
+                          uint16_t frame_size = j - i + 2; // 计算完整帧大小
+                          if (frame_size > UART_RX_BUFFER_SIZE) {
+                              printf("Error: Frame size exceeds buffer limit\n");
+                              break;
+                          }
+                          // 解析完整帧
+                          command_parsing(&frameData->buffer[i]);
+                          // 跳过已解析的帧数据，避免重复解析
+                          i = j + 1;
+                          break; // 结束当前帧尾查找
+                      }
+                  }
+              }
+          }
+
+
+      } else {
+          printf("Error: Failed to get data from queue\n");
+      }
+
+      }
+
   /* USER CODE END UART_RECEPT_Task */
 }
 

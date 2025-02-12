@@ -8,7 +8,15 @@
 #ifndef USRT_FREERTOS_H
 #define USRT_FREERTOS_H
 #include "stm32g0xx_hal.h"
-#define UART_REC_LEN 40 
+#define UART_REC_LEN 40
+
+
+#define UART_RX_BUFFER_SIZE  128 // 串口接收缓冲区大小
+#define UART_BUFFER_QUANTITY 3   // 使用双缓冲
+#define FRAME_HEADER_BYTE1   0x5A // 帧头第一个字节
+#define FRAME_HEADER_BYTE2   0xA5 // 帧头第二个字节
+#define FRAME_TAIL_BYTE1     0xFF // 帧尾第一个字节
+#define FRAME_TAIL_BYTE2     0xFF // 帧尾第二个字节
 typedef struct
 {
     uint8_t buffer[UART_REC_LEN]; // the lengh of received array
@@ -16,7 +24,7 @@ typedef struct
 } uart_data;
 
 
-typedef struct {
+typedef struct __attribute__((packed)) {
     uint8_t cmd_head_high; // 
     uint8_t cmd_head_low;  // 
     uint8_t cmd_type_high; // 

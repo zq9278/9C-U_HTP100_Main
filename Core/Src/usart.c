@@ -26,6 +26,10 @@
 
 uart_data uart2_data; // DMA接收缓冲区，用于存放接收到的数据
 extern osMessageQueueId_t UART_DMA_IDLE_RECEPT_QUEUEHandle; // 接收完成消息队列
+
+
+uart_data uart_rx_data_t[UART_BUFFER_QUANTITY]; // 双缓冲数据存储
+volatile uint8_t uart_buff_ctrl = 0; // 缓冲区索引
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart1;
@@ -116,9 +120,10 @@ void MX_USART2_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART2_Init 2 */
-  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, &uart2_data.buffer,sizeof(uart2_data.buffer)); // 重新启动 DMA 接收
-  printf("重新启动 DMA 接收成功\n");
-  __HAL_DMA_DISABLE_IT(&hdma_usart2_rx,DMA_IT_TC | DMA_IT_HT); // 禁用 DMA 中断和半缓冲中断
+//  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, &uart2_data.buffer,sizeof(uart2_data.buffer)); // 重新启动 DMA 接收
+//  printf("重新启动 DMA 接收成功\n");
+//  __HAL_DMA_DISABLE_IT(&hdma_usart2_rx,DMA_IT_TC | DMA_IT_HT); // 禁用 DMA 中断和半缓冲中断
+    HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_rx_data_t[uart_buff_ctrl].buffer, UART_RX_BUFFER_SIZE);
   /* USER CODE END USART2_Init 2 */
 
 }
@@ -273,22 +278,40 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 }
 
 /* USER CODE BEGIN 1 */
+
 // 串口空闲中断回调函数
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
-  BaseType_t xTaskWoken = pdFALSE; // 初始化为 false
-  if (huart->Instance == USART2) {
-    // HAL_UART_DMAStop(&huart2); // 停止 DMA 接收
-    // if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE)) { // 检查是否为空闲中断
-    //   __HAL_UART_CLEAR_IDLEFLAG(&huart2);               // 清除空闲标志
-    // }
-    uart2_data.length = Size;
-    xQueueSendFromISR(UART_DMA_IDLE_RECEPT_QUEUEHandle, &uart2_data,
-                      &xTaskWoken); // 将数据发送到队列
-    HAL_UARTEx_ReceiveToIdle_DMA(
-        &huart2, &uart2_data.buffer,
-        sizeof(uart2_data.buffer)); // 重新启动 DMA 接收
-    __HAL_DMA_DISABLE_IT(&hdma_usart2_rx,DMA_IT_TC | DMA_IT_HT); // 禁用 DMA 中断和半缓冲中断
-  }
+//  BaseType_t xTaskWoken = pdFALSE; // 初始化为 false
+//  if (huart->Instance == USART2) {
+//    // HAL_UART_DMAStop(&huart2); // 停止 DMA 接收
+//    // if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE)) { // 检查是否为空闲中断
+//    //   __HAL_UART_CLEAR_IDLEFLAG(&huart2);               // 清除空闲标志
+//    // }
+//    uart2_data.length = Size;
+//    xQueueSendFromISR(UART_DMA_IDLE_RECEPT_QUEUEHandle, &uart2_data,
+//                      &xTaskWoken); // 将数据发送到队列
+//    HAL_UARTEx_ReceiveToIdle_DMA(
+//        &huart2, &uart2_data.buffer,
+//        sizeof(uart2_data.buffer)); // 重新启动 DMA 接收
+//    __HAL_DMA_DISABLE_IT(&hdma_usart2_rx,DMA_IT_TC | DMA_IT_HT); // 禁用 DMA 中断和半缓冲中断
+//  }
+
+
+    if (huart->Instance == USART2) {
+        uart_data *pUartData = &uart_rx_data_t[uart_buff_ctrl];
+        pUartData->length = Size;
+
+        // 发送接收数据到队列
+        xQueueSendFromISR(UART_DMA_IDLE_RECEPT_QUEUEHandle, &pUartData, NULL);
+
+        // 切换缓冲区索引
+        uart_buff_ctrl++;
+        uart_buff_ctrl %= UART_BUFFER_QUANTITY;
+
+        // 重新启动DMA接收
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_rx_data_t[uart_buff_ctrl].buffer, UART_RX_BUFFER_SIZE);
+    }
+
 }
 //void UART_Restart(UART_HandleTypeDef *huart) {
 //  // 停止 UART 外设

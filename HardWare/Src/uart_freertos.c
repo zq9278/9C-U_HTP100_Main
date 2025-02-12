@@ -18,6 +18,11 @@ extern osSemaphoreId_t BUTTON_SEMAPHOREHandle; // 按键信号量句柄
 extern uint8_t soft_button;
 uint16_t save_prepare,set_prepare;
 void UART1_CMDHandler(recept_data_p msg) {
+    if (msg == NULL) {
+        printf("Error: msg is NULL!\n");
+        return;
+    }
+
   uint16_t hot_count,crimp_count,auto_count;
   // 提取命令类型
   uint16_t cmd_type = ((msg->cmd_type_high) << 8) | (msg->cmd_type_low);
@@ -314,8 +319,8 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
   }
 }
 void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
-    a++;
-    printf("a=%u\n",a);
+//    a++;
+//    printf("a=%u\n",a);
   // 确认帧尾是否合法
   // if (received_data->buffer[received_data->length - 2] != 0xFF ||
   //     received_data->buffer[received_data->length - 1] != 0xFF) {
