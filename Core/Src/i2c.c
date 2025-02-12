@@ -319,4 +319,84 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
 
 /* USER CODE BEGIN 1 */
 
+void I2C1_HardwareReset(void) {
+  __HAL_RCC_I2C1_CLK_DISABLE();// 关闭 I2C 时钟
+  //osDelay(10);// 短暂延时
+  __HAL_RCC_I2C1_CLK_ENABLE(); // 重新使能 I2C 时钟
+  HAL_I2C_DeInit(&hi2c1);// 重新初始化 I2C 外设
+  HAL_I2C_Init(&hi2c1);
+}
+void I2C2_HardwareReset(void) {
+  __HAL_RCC_I2C2_CLK_DISABLE();// 关闭 I2C 时钟
+  //osDelay(10);// 短暂延时
+  __HAL_RCC_I2C2_CLK_ENABLE(); // 重新使能 I2C 时钟
+  HAL_I2C_DeInit(&hi2c2);// 重新初始化 I2C 外设
+  HAL_I2C_Init(&hi2c2);
+}
+
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
+  if (hi2c->Instance == hi2c1.Instance) {
+    uint32_t errorCode = HAL_I2C_GetError(hi2c);
+
+//    if (errorCode & HAL_I2C_ERROR_BERR) {
+//      // 总线错误处理
+//      printf("I2C总线错误\n");
+//    }
+//    if (errorCode & HAL_I2C_ERROR_ARLO) {
+//      // 仲裁丢失错误处理
+//      printf("I2C仲裁丢失错误\n");
+//    }
+//    if (errorCode & HAL_I2C_ERROR_AF) {
+//      // 未应答错误处理
+//      printf("I2C未应答错误\n");
+//    }
+//    if (errorCode & HAL_I2C_ERROR_OVR) {
+//      // 数据溢出错误处理
+//      printf("I2C数据溢出错误\n");
+//    }
+//    if (errorCode & HAL_I2C_ERROR_DMA) {
+//      // DMA传输错误
+//      printf("I2C DMA传输错误\n");
+//    }
+//    if (errorCode & HAL_I2C_ERROR_TIMEOUT) {
+//      // 超时错误
+//      printf("I2C超时错误\n");
+//    }
+
+    // 总线复位
+    I2C1_HardwareReset();
+  }
+  if (hi2c->Instance == hi2c2.Instance) {
+    uint32_t errorCode = HAL_I2C_GetError(hi2c);
+
+    //    if (errorCode & HAL_I2C_ERROR_BERR) {
+    //      // 总线错误处理
+    //      printf("I2C总线错误\n");
+    //    }
+    //    if (errorCode & HAL_I2C_ERROR_ARLO) {
+    //      // 仲裁丢失错误处理
+    //      printf("I2C仲裁丢失错误\n");
+    //    }
+    //    if (errorCode & HAL_I2C_ERROR_AF) {
+    //      // 未应答错误处理
+    //      printf("I2C未应答错误\n");
+    //    }
+    //    if (errorCode & HAL_I2C_ERROR_OVR) {
+    //      // 数据溢出错误处理
+    //      printf("I2C数据溢出错误\n");
+    //    }
+    //    if (errorCode & HAL_I2C_ERROR_DMA) {
+    //      // DMA传输错误
+    //      printf("I2C DMA传输错误\n");
+    //    }
+    //    if (errorCode & HAL_I2C_ERROR_TIMEOUT) {
+    //      // 超时错误
+    //      printf("I2C超时错误\n");
+    //    }
+
+    // 总线复位
+    I2C2_HardwareReset();
+  }
+}
+
 /* USER CODE END 1 */

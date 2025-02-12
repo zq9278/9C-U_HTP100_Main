@@ -5,10 +5,15 @@ uint16_t Single_LED_Buffer[DATA_SIZE * LED_NUM + 200];
 extern TIM_HandleTypeDef htim16;
 extern DMA_HandleTypeDef hdma_tim16_ch1;
 extern TIM_HandleTypeDef htim17;
-extern bool charging, working, fully_charged, emergency_stop;
+extern uint8_t charging, working, fully_charged, emergency_stop,low_battery;
 extern osTimerId_t ws2812_white_delayHandle;
 extern osTimerId_t ws2812_yellow_delayHandle;
 void PWM_WS2812B_Init(void) {
+  charging=0;
+  working=0;
+  fully_charged=0;
+  low_battery=0;
+  emergency_stop=0;
   //	__HAL_TIM_DISABLE(&htim16);
   __HAL_TIM_ENABLE_DMA(&htim16, TIM_DMA_CC1);
   HAL_TIM_Base_Start_IT(&htim17);
@@ -64,62 +69,32 @@ void PWM_WS2812B(uint16_t num, uint32_t RGB_data) {
 extern ChargeState_t ChargeState; // 当前状态
 extern uint8_t STATE_POWER_5V;
 void LEDUpdate(void) {
-
-  // if (PWR_STATE == 1) // 开关开
-  // {
-  //   if (STATE_POWER_5V == 1) // 充电
-  //   {
-  //     charging = true;
-  //   } else // if(LastSTATE_POWER_5V!=STATE_POWER_5V)
-  //   {
-  //     working = true;
-  //     charging = false;
-  //   }
-  // } else // 开关关
-  // {
-  //   if (STATE_POWER_5V == 1) // 充电
-  //   {
-  //     charging = true;
-  //   } else // if(LastSTATE_POWER_5V!=STATE_POWER_5V)
-  //   {
-
-  //     working = true;
-  //     charging = false;
-  //   }
-  // }
-  // LastSTATE_POWER_5V = STATE_POWER_5V;
 }
-void UpdateState(bool emergency_stop, bool charging, bool low_battery,
-                 bool fully_charged, bool working) {
+void UpdateState(uint8_t emergency_stop, uint8_t charging, uint8_t low_battery,
+                 uint8_t fully_charged, uint8_t working) {
   if (emergency_stop) {
     ChargeState = STATE_EMERGENCY_STOP; // 急停优先级最高
-  } else if (charging) {
-    ChargeState = STATE_CHARGING; // 充电优先级高于低电量
-  } else if (low_battery) {
-    ChargeState = STATE_LOW_BATTERY; // 电量不足
   } else if (fully_charged) {
-    ChargeState = STATE_CHARGED; // 充满状态
+    ChargeState = STATE_CHARGED; // 充满状态优先级第二
+  } else if (charging) {
+    ChargeState = STATE_CHARGING; // 充电优先级第三
+  } else if (low_battery) {
+    ChargeState = STATE_LOW_BATTERY; // 低电量优先级第四
   } else if (working) {
-    ChargeState = STATE_WORKING; // 工作
+    ChargeState = STATE_WORKING; // 工作优先级第五
   } else {
     ChargeState = STATE_POWER_ON; // 默认开机状态
   }
 }
-
 
 extern osTimerId_t breath_delayHandle;
 uint8_t white_delay = 0;    // 状态变量（同时作为标志位和灯珠状态）
 uint8_t yellow_delay = 0;    // 状态变量（同时作为标志位和灯珠状态）
 uint8_t breathing_flag = 0; // 标志位，用于控制呼吸灯的开关
 uint32_t GRB_DATA;
-
-
  static uint8_t RGB_DATA = 0;
     static uint8_t LEDDir = 0;
-
 void UpdateBreathingLight(void) {
-  //HAL_Delay(100);
-   
     if (LEDDir == 0) {
       RGB_DATA += 2;
       if (RGB_DATA >= 100) {
@@ -135,8 +110,6 @@ void UpdateBreathingLight(void) {
 PWM_WS2812B_Write_24Bits(LED_NUM, GRB_DATA);
  //
 }
-
-
 void UpdateLightState(ChargeState_t state) {
 
   switch (state) {

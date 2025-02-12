@@ -8,16 +8,18 @@ extern SPI_HandleTypeDef hspi1;
 
 PID_TypeDef MotorPID;
 void TMC5130_Init(void) {
-  //	TMC_ENN(0);//閿熸枻鎷烽敓缁炵櫢鎷烽敓?
+  //	TMC_ENN(0);//???ゆ?烽??缁??告?烽???
              //HAL_Delay(20);
   TMC5130_Write(0x81, 0x00000001); // reset
   TMC5130_Write(0xec, 0x000300c3); // CHOPCONF: vsense=1,TOFF=3, HSTRT=4,
                                    // HEND=1, TBL=2, CHM=0 (spreadCycle)
-  // TMC5130_Write(
-  //     0x90,
-  //     0x00001000); // IHOLD_IRUN: IHOLD=10, IRUN=31 (max. current), IHOLDDELAY=6
-  TMC5130_Write( 0x90, 0x00000300 // IHOLD=0, IRUN=1, IHOLDDELAY=0
-);
+
+  TMC5130_Write(0x90, 0x00001006); // IHOLD=6, IRUN=16, IHOLDDELAY=6
+  /*
+   *IHOLD 空闲电流
+   * IRUN   运行电流
+   * IHOLDDELAY 越大越平滑，越小越突变
+   * */
   TMC5130_Write(
       0x91,
       0x0000000a); // TPOWERDOWN=10: Delay before power down in stand still
@@ -39,7 +41,7 @@ void TMC5130_Init(void) {
   TMC5130_Write(0xab, 0x0000000a); // VSTOP = 10 Stop velocity (Near to zero)
   // TMC5130_Write(0xac, 0x00000000);
   // TMC5130_Write(0xb4, 0x0000075f);
-  TMC5130_Write(0xa0, 0x00000000); // 浣嶉敓鏂ゆ嫹妯″紡
+  TMC5130_Write(0xa0, 0x00000000); // 浣????ゆ?锋ā寮?
   PID_Init(&MotorPID, 100, 2, 5, 5000, -5000, (float)(50000), (float)(-50000),
            0); // 0.03,0.05//0.02, 0.01, 0.02,
 }
@@ -148,7 +150,7 @@ uint8_t MotorChecking() {
         }
         
   MotorSetHome();
-  TMC5130_Write(0xa0, 0x00000000); // 浣嶉敓鏂ゆ嫹妯″紡
+  TMC5130_Write(0xa0, 0x00000000); // 浣????ゆ?锋ā寮?
   TMC_ENN(1);
 
   return 1;
@@ -157,12 +159,12 @@ uint8_t MotorChecking() {
 uint8_t MotorCompare(int32_t SetData, int32_t CompareData) {
   int32_t SubData;
   SubData = CompareData - SetData;
-  if (SubData > 0) // ForceSen  鐡掑懍绨?
+  if (SubData > 0) // ForceSen  ????绨?
   {
     TMC5130_Write(0xa7, 0x6000);
     TMC5130_Write(0xa0, 2);
     return 2;
-  } else if (SubData < 0) // 鐏忔垳绨?
+  } else if (SubData < 0) // ????绨?
   {
     TMC5130_Write(0xa7, 0x4000);
     TMC5130_Write(0xa0, 1);
@@ -174,15 +176,15 @@ uint8_t MotorCompare(int32_t SetData, int32_t CompareData) {
   }
 }
 
-// TMC_ENN(0); // 浣胯兘鐢垫満
-// TMC5130_Write(0xad, 115000); // 缁濆?逛綅缃?
-/*pid鎺у埗浣嶇疆*/
+// TMC_ENN(0); // 浣胯?界?垫??
+// TMC5130_Write(0xad, 115000); // 缁???逛?缃?
+/*pid?у?朵?缃?*/
 void SetMotorposition(int position) {
   TMC5130_Write(0xa7, 1000);
   TMC5130_Write(0xa0, 0);
   TMC5130_Write(0xad, (uint32_t)position);
 }
-/*pid鎺у埗閫熷害*/
+/*pid?у?堕??搴?*/
 void SetMotorSpeed(int speed) {
   if (speed < 0) {
     TMC5130_Write(0xa0, 1);
@@ -193,6 +195,7 @@ void SetMotorSpeed(int speed) {
   }
 }
 
+float weight1;
 float weight;
 float MotorPWM;       // 用于存储加热器的PWM占空比
 extern float weight0; // test_variable
@@ -211,8 +214,8 @@ void PressureControl(void) {
     // 队列中有数据，更新 last_data
   }
 
-  weight = ADS1220_ReadPressure();
-  weight = weight - weight0;
+  weight1 = ADS1220_ReadPressure();
+  weight = weight1 - weight0;
   Limit(weight, 0, weight);
   float hhmg = (weight/1000.0)*9.8*78;
   //float hhmg =weight;

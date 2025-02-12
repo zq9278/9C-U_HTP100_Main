@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file    stm32g0xx_it.c
-  * @brief   Interrupt Service Routines.
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file    stm32g0xx_it.c
+ * @brief   Interrupt Service Routines.
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2024 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
@@ -88,8 +88,7 @@ void NMI_Handler(void)
 
   /* USER CODE END NonMaskableInt_IRQn 0 */
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
-   while (1)
-  {
+  while (1) {
   }
   /* USER CODE END NonMaskableInt_IRQn 1 */
 }
@@ -340,86 +339,63 @@ void USART2_IRQHandler(void)
 
 /* USER CODE BEGIN 1 */
 extern osSemaphoreId_t BUTTON_SEMAPHOREHandle; // 按键信号量句柄
-// void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
-// {
-//    if (GPIO_Pin == SW_CNT_Pin) {  // 检查是否是目标按键
-//         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-//         // 在中断中释放信号量，通知任务按键按下
-//         xSemaphoreGiveFromISR(BUTTON_SEMAPHOREHandle, &xHigherPriorityTaskWoken);
-//         // 如果需要切换上下文，则调用此函数
-//         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);//是否跳出中断isr立即执行更高优先级的任务
-//     }
-// }
-#define DEBOUNCE_DELAY_MS 100  // 按键消抖时间（毫秒）
-volatile uint32_t last_button_press_time = 0; // 记录上次按键按下的时间戳
-
-void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
-{
+ void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
+ {
     if (GPIO_Pin == SW_CNT_Pin) {  // 检查是否是目标按键
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+         // 在中断中释放信号量，通知任务按键按下
+         xSemaphoreGiveFromISR(BUTTON_SEMAPHOREHandle,&xHigherPriorityTaskWoken);
+         // 如果需要切换上下文，则调用此函数
+         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);//是否跳出中断isr立即执行更高优先级的任务
+     }
+ }
 
-        // 获取当前时间
-        uint32_t current_time = xTaskGetTickCountFromISR();
+//extern osTimerId_t butttonHandle;
+//void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
+//  if (GPIO_Pin == SW_CNT_Pin) {
+//    // 尝试停止定时器（如果已运行）
+//    //osTimerStop(butttonHandle);
+//    // 启动定时器
+//    osTimerStart(butttonHandle, 5);
+//    xTimerStartFromISR
+//  }
+//}
 
-        // 按键消抖：检查两次按键间隔是否大于设定的消抖时间
-        if ((current_time - last_button_press_time) >= pdMS_TO_TICKS(DEBOUNCE_DELAY_MS)) {
-            last_button_press_time = current_time; // 更新上次按键时间
-
-            // 在中断中释放信号量，通知任务按键按下
-            xSemaphoreGiveFromISR(BUTTON_SEMAPHOREHandle, &xHigherPriorityTaskWoken);
-
-            // 如果需要切换上下文，则调用此函数
-            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        }
-    }
-}
 volatile uint32_t last_button_press_time_PWR = 0; // 记录上次按键按下的时间戳
 extern uint8_t reset;
-void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin)
-{
-   
-    if (GPIO_Pin == PWR_SENSE_Pin) {  
-           reset=1;
-           
-     }
+void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
+
+  if (GPIO_Pin == PWR_SENSE_Pin) {
+    reset = 1;
+  }
 }
-
-
-void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)//ws2812鐏?鐝燚MA鏁版嵁浼犺緭瀹屾垚
-{
-    if (htim->Instance == TIM16)
-    {
-        // DMA 瀹屾垚澶勭悊
-        hdma_tim16_ch1.State = HAL_DMA_STATE_READY;
-    }
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
+  if (htim->Instance == TIM16) {
+    hdma_tim16_ch1.State = HAL_DMA_STATE_READY;
+  }
 }
-
 extern volatile uint8_t data_ready; // 标志位
 extern volatile uint8_t SPI_RxComplete;
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
-   if (hspi == &hspi2) {
+  if (hspi == &hspi2) {
     data_ready = 1; // 数据接收完成，设置标志位
   }
   if (hspi->Instance == SPI1) {
-        SPI_RxComplete = 1; // 设置接收完成标志
-    }
+    SPI_RxComplete = 1; // 设置接收完成标志
+  }
 }
 extern uint8_t usart1_tx;
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart->Instance == USART2)
-    {
-        // 浼犺緭瀹屾垚鍚庣殑澶勭悊
-        usart1_tx=1;
-    }
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+  if (huart->Instance == USART2) {
+    usart1_tx = 1;
+  }
 }
 // 全局变量，用于标记 DMA 传输状态
 volatile bool dma_transfer_complete = false;
 // DMA 回调函数
-void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
-{
-    if (hi2c->Instance == hi2c1.Instance) {
-        dma_transfer_complete = true; // 标记 DMA 传输完成
-    }
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+  if (hi2c->Instance == hi2c1.Instance) {
+    dma_transfer_complete = true; // 标记 DMA 传输完成
+  }
 }
 /* USER CODE END 1 */

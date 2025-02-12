@@ -17,7 +17,7 @@ void TMP112_Init(void)
 
 void TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer)   
  { 	while (hdma_i2c2_rx.State != HAL_DMA_STATE_READY)
-    ; // 绛夊緟DMA瀹屾垚
+    ; // 绛?寰?DMA瀹???
 	
    // 使用 HAL_I2C_Mem_Read_DMA 进行读操作
    HAL_I2C_Mem_Read_DMA(&hi2c2, 0x91, ReadAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, 2) ;

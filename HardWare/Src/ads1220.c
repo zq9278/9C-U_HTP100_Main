@@ -30,8 +30,13 @@ void ADS1220_Init(void) {
   ADS1220_CS_LOW();
   uint8_t reset_cmd = ADS1220_CMD_RESET;
   HAL_SPI_Transmit_IT(&hspi2, &reset_cmd, 1);
-  ADS1220_CS_HIGH();
+    ADS1220_CS_HIGH();
+    osDelay(50); // 等待复位完成
 
+    uint8_t selfcal = selfcal_cmd;
+    HAL_SPI_Transmit_IT(&hspi2, &selfcal, 1);
+  ADS1220_CS_HIGH();
+    osDelay(50);// 等待自校准完成
   // 配置ADS1220寄存器
   ADS1220_WriteRegister(ADS1220_REG_CONFIG0, 0x3e); // 配置寄存器0
   ADS1220_WriteRegister(ADS1220_REG_CONFIG1, 0x94); // 配置寄存器1
@@ -53,11 +58,26 @@ uint8_t response[3] = {0xFF, 0xFF, 0xFF}; // 假设死机时的返回值
 int32_t ADS1220_ReadData(void) {
   uint8_t read_cmd = ADS1220_CMD_RDATA;
   if (HAL_GPIO_ReadPin(ADS1220_DRDY_GPIO_Port, ADS1220_DRDY_Pin) == GPIO_PIN_RESET) // 检查是否死机
+//      if (1) // 检查是否死机
   {
-    ADS1220_CS_LOW();
-    HAL_SPI_Transmit_IT(&hspi2, &read_cmd, 1);    // 发送读取数据命令
-    HAL_SPI_Receive_IT(&hspi2, spi_rx_buffer, 3); // 接收3字节数据
-    ADS1220_CS_HIGH();
+//    ADS1220_CS_LOW();
+//    HAL_SPI_Transmit_IT(&hspi2, &read_cmd, 1);    // 发送读取数据命令
+//    HAL_SPI_Receive_IT(&hspi2, spi_rx_buffer, 3); // 接收3字节数据
+//    ADS1220_CS_HIGH();
+
+ADS1220_CS_LOW();
+// 发送读取命令
+if (HAL_SPI_Transmit(&hspi2, &read_cmd, 1, HAL_MAX_DELAY) != HAL_OK) {
+  ADS1220_CS_HIGH();
+  printf("SPI 发送失败\n");
+}
+// 接收3字节数据
+if (HAL_SPI_Receive(&hspi2, spi_rx_buffer, 3, HAL_MAX_DELAY) != HAL_OK) {
+  ADS1220_CS_HIGH();
+  printf("SPI 接收失败\n");
+}
+ADS1220_CS_HIGH(); // 传输完成后拉高 CS
+
     //  // 手动逐字节检查数据是否与假设的死机值一致
     //   if (spi_rx_buffer[0] == 0xFF &&
     //       spi_rx_buffer[1] == 0xFF &&
@@ -65,12 +85,15 @@ int32_t ADS1220_ReadData(void) {
     //       ADS1220_Init(); // 如果检测到死机，复位ADS1220
     //   }
     // 等待中断完成
-    while (!data_ready) {
-      // 这里可以加入超时机制，防止无限循环
-    }
-    data_ready = 0; // 清除标志位
-                    // 解析数据
+//    while (!data_ready) {
+//      // 这里可以加入超时机制，防止无限循环
+//    }
+//    data_ready = 0; // 清除标志位
+//                    // 解析数据
   }
+//  else{
+//    ADS1220_Init(); // 如果检测到死机，复位ADS1220
+//  }
   int32_t result = ((int32_t)spi_rx_buffer[0] << 16) |
                    ((int32_t)spi_rx_buffer[1] << 8) | spi_rx_buffer[2];
   if (result & 0x800000) {
@@ -103,4 +126,10 @@ void ADS1220_StopConversion(void) {
   uint8_t stop_cmd = ADS1220_CMD_POWERDOWN; // 使用掉电命令停止转换
   HAL_SPI_Transmit_IT(&hspi2, &stop_cmd, 1); // 使用中断发送命令
   ADS1220_CS_HIGH();
+}
+void Discard_dirty_data(void) {
+    for (int i = 0; i < 5; i++) {
+        float weight1 = ADS1220_ReadPressure() ; // 丢弃前几次读取结果
+        HAL_Delay(10);
+    }
 }

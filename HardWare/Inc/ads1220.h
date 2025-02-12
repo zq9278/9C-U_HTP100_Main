@@ -9,6 +9,7 @@
 #include "stm32g0xx_hal.h"
 // 定义ADS1220的SPI命令
 #define ADS1220_CMD_RESET 0x06      // 重置命令
+#define selfcal_cmd 0xF0      // 重置命令
 #define ADS1220_CMD_START_SYNC 0x08 // 开始/同步命令
 #define ADS1220_CMD_RDATA 0x10      // 读取数据命令
 #define ADS1220_CMD_POWERDOWN 0x02  // 低功耗模式命令
@@ -40,5 +41,6 @@ void ADS1220_StartConversion(void);
 void ADS1220_StopConversion(void);
 int32_t ADS1220_ReadData(void);
 float ADS1220_ReadPressure(void);
+void Discard_dirty_data(void);
 #endif /* __ADS1220_H */
 

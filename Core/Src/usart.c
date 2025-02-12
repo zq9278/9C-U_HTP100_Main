@@ -28,16 +28,61 @@ uart_data uart2_data; // DMA接收缓冲区，用于存放接收到的数据
 extern osMessageQueueId_t UART_DMA_IDLE_RECEPT_QUEUEHandle; // 接收完成消息队列
 /* USER CODE END 0 */
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
 
+/* USART1 init function */
+
+void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
 /* USART2 init function */
 
 void MX_USART2_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART2_Init 0 */
-  HAL_Delay(500);
+  //HAL_Delay(500);
   /* USER CODE END USART2_Init 0 */
 
   /* USER CODE BEGIN USART2_Init 1 */
@@ -71,10 +116,9 @@ void MX_USART2_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART2_Init 2 */
-  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, &uart2_data.buffer,
-                               sizeof(uart2_data.buffer)); // 重新启动 DMA 接收
-  __HAL_DMA_DISABLE_IT(&hdma_usart2_rx,
-                       DMA_IT_TC | DMA_IT_HT); // 禁用 DMA 中断和半缓冲中断
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, &uart2_data.buffer,sizeof(uart2_data.buffer)); // 重新启动 DMA 接收
+  printf("重新启动 DMA 接收成功\n");
+  __HAL_DMA_DISABLE_IT(&hdma_usart2_rx,DMA_IT_TC | DMA_IT_HT); // 禁用 DMA 中断和半缓冲中断
   /* USER CODE END USART2_Init 2 */
 
 }
@@ -84,7 +128,41 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
-  if(uartHandle->Instance==USART2)
+  if(uartHandle->Instance==USART1)
+  {
+  /* USER CODE BEGIN USART1_MspInit 0 */
+
+  /* USER CODE END USART1_MspInit 0 */
+
+  /** Initializes the peripherals clocks
+  */
+    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1;
+    PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK1;
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    /* USART1 clock enable */
+    __HAL_RCC_USART1_CLK_ENABLE();
+
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    /**USART1 GPIO Configuration
+    PB6     ------> USART1_TX
+    PB7     ------> USART1_RX
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF0_USART1;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN USART1_MspInit 1 */
+
+  /* USER CODE END USART1_MspInit 1 */
+  }
+  else if(uartHandle->Instance==USART2)
   {
   /* USER CODE BEGIN USART2_MspInit 0 */
 
@@ -107,9 +185,16 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     PA2     ------> USART2_TX
     PA3     ------> USART2_RX
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
+    GPIO_InitStruct.Pin = GPIO_PIN_2;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF1_USART2;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_3;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF1_USART2;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -144,7 +229,25 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 {
 
-  if(uartHandle->Instance==USART2)
+  if(uartHandle->Instance==USART1)
+  {
+  /* USER CODE BEGIN USART1_MspDeInit 0 */
+
+  /* USER CODE END USART1_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_USART1_CLK_DISABLE();
+
+    /**USART1 GPIO Configuration
+    PB6     ------> USART1_TX
+    PB7     ------> USART1_RX
+    */
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_6|GPIO_PIN_7);
+
+  /* USER CODE BEGIN USART1_MspDeInit 1 */
+
+  /* USER CODE END USART1_MspDeInit 1 */
+  }
+  else if(uartHandle->Instance==USART2)
   {
   /* USER CODE BEGIN USART2_MspDeInit 0 */
 
@@ -184,35 +287,68 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
     HAL_UARTEx_ReceiveToIdle_DMA(
         &huart2, &uart2_data.buffer,
         sizeof(uart2_data.buffer)); // 重新启动 DMA 接收
-    __HAL_DMA_DISABLE_IT(&hdma_usart2_rx,
-                         DMA_IT_TC | DMA_IT_HT); // 禁用 DMA 中断和半缓冲中断
+    __HAL_DMA_DISABLE_IT(&hdma_usart2_rx,DMA_IT_TC | DMA_IT_HT); // 禁用 DMA 中断和半缓冲中断
   }
 }
+//void UART_Restart(UART_HandleTypeDef *huart) {
+//  // 停止 UART 外设
+//  HAL_UART_Abort(huart);
+//  // 关闭 UART 时钟（确保完全复位）
+//  if (huart->Instance == USART2) {
+//    __HAL_RCC_USART2_CLK_DISABLE();
+//  }
+//  // 短暂延时，确保硬件复位稳定
+//  //HAL_Delay(10);
+//  // 重新使能 UART 时钟
+//  if (huart->Instance == USART2) {
+//    __HAL_RCC_USART2_CLK_ENABLE();
+//  }
+//  // 重新初始化 UART
+//  HAL_UART_DeInit(huart);
+//  if (HAL_UART_Init(huart) != HAL_OK) {
+//    printf("UART 重启失败\n");
+//    return;
+//  }
+//  // 重新启动 DMA 接收（如果需要）
+//  if (HAL_UARTEx_ReceiveToIdle_DMA(huart, uart2_data.buffer, sizeof(uart2_data.buffer)) == HAL_OK) {
+//    printf("UART 重启成功，DMA 接收已重新启动\n");
+//  } else {
+//    printf("UART 重启成功，但 DMA 接收启动失败\n");
+//  }
+//}
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART2) {
     uint32_t error = HAL_UART_GetError(huart);
-
+    // 根据错误类型处理
     if (error & HAL_UART_ERROR_ORE) {
-      // 锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟??
-    } else if (error & HAL_UART_ERROR_FE) {
-      // 锟斤拷锟斤拷帧锟斤拷锟斤拷
-      // int a=1;
-    } else if (error & HAL_UART_ERROR_NE) {
-      // 锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷
-      // int a=1;
-    } else if (error & HAL_UART_ERROR_DMA) {
-      // 锟斤拷锟斤拷DMA锟斤拷锟斤拷
-      // int a=1;
+      printf("UART 溢出错误\n");
+      __HAL_UART_CLEAR_OREFLAG(huart); // 清除溢出标志
+      while (__HAL_UART_GET_FLAG(huart, UART_FLAG_RXNE)) {
+        (huart->Instance->RDR & 0xFF); // 读取接收寄存器以清空缓冲区
+      }
     }
-
-    // 锟斤拷锟斤拷 UART锟斤拷准锟斤拷锟斤拷一锟轿斤拷锟秸ｏ拷锟斤拷选锟斤拷
-    HAL_UART_Abort(huart);
-    HAL_UARTEx_ReceiveToIdle_DMA(
-        &huart2, &uart2_data.buffer,
-        sizeof(uart2_data.buffer)); // 重新启动 DMA 接收
-    __HAL_DMA_DISABLE_IT(&hdma_usart2_rx,
-                         DMA_IT_TC | DMA_IT_HT); // 禁用 DMA 中断和半缓冲中断
+    if (error & HAL_UART_ERROR_FE) {
+      printf("UART 帧错误\n");
+      __HAL_UART_CLEAR_FEFLAG(huart); // 清除帧错误标志
+    }
+    if (error & HAL_UART_ERROR_NE) {
+      printf("UART 噪声错误\n");
+      __HAL_UART_CLEAR_NEFLAG(huart); // 清除噪声错误标志
+    }
+    if (error & HAL_UART_ERROR_DMA) {
+      printf("UART DMA 错误\n");
+      HAL_DMA_Abort(huart->hdmarx); // 停止 DMA
+    }
+    // 重置 UART 外设状态
+   // MX_USART2_UART_Init();
+    // 尝试重新启动 DMA 接收
+    if (HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart2_data.buffer, sizeof(uart2_data.buffer)) == HAL_OK) {
+      printf("重新启动 DMA 接收成功\n");
+    } else {
+      printf("重新启动 DMA 接收失败\n");
+    }
   }
 }
+
 /* USER CODE END 1 */

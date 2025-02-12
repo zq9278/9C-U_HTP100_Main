@@ -12,8 +12,8 @@ extern osMessageQueueId_t HEAT_DATAHandle;
 extern osMessageQueueId_t PRESS_DATAHandle;
 volatile SystemState_t currentState = STATE_OFF;
 extern uint8_t heat_finish,press_finish,auto_finish;
-extern PID_TypeDef HeatPID;
-extern bool emergency_stop;
+extern PID_TypeDef HeatPID, pid_heat;;
+extern uint8_t emergency_stop;
 void Button_detection(void) {
   // 根据当前状态切换到下一个状态
   switch (currentState) {
@@ -25,17 +25,23 @@ void Button_detection(void) {
     currentState = STATE_HEAT; // 从预热进入加热
     heat_finish=0;
     // HeatPID.setpoint = 42.5;
+//          HeatPID.previous_error = pid_heat.previous_error;
+//          HeatPID.integral = pid_heat.integral;
     HeatPID.setpoint = 42.5+temperature_compensation;
-    xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将加热数据发送到队列
-    osEventFlagsSet(HEAT_ONHandle, (1 << 0)); // 设置第0位 // 启动加热任务
+    //xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将加热数据发送到队列
+    //osEventFlagsSet(HEAT_ONHandle, (1 << 0)); // 设置第0位 // 启动加热任务
+          
     ScreenTimerStart();
+          
     break;
 
   case STATE_HEAT:
     currentState = STATE_OFF;                   // 从加热进入关闭
-    emergency_stop = true;                      // 设置紧急停止标志
+    emergency_stop = 1;                      // 设置紧急停止标志
     if (heat_finish==0) {//完成之后按钮不起作用
+        
     ScreenWorkModeQuit();
+        
     }
     HeatPWM(0); // 关闭加热PWM
     osEventFlagsClear(HEAT_ONHandle, (1 << 0)); // 清除第0位// 通知停止加热任务
@@ -46,14 +52,18 @@ void Button_detection(void) {
    press_finish=0;
     TMC_ENN(0);                                // 启动电机
     osEventFlagsSet(PRESS_ONHandle, (1 << 0)); // 设置第0位
+          
     ScreenTimerStart();
+          
     break;
 
   case STATE_PRESS:
     currentState = STATE_OFF;                    // 从挤压进入关闭
-    emergency_stop = true;                       // 设置紧急停止标志
+    emergency_stop = 1;                       // 设置紧急停止标志
     if (press_finish==0) {
+        
     ScreenWorkModeQuit();
+        
     }
     osEventFlagsClear(PRESS_ONHandle, (1 << 0)); // 清除第0位// 通知停止挤压任务
     break;
@@ -62,18 +72,23 @@ void Button_detection(void) {
     currentState = STATE_AUTO; // 从预自动进入自动模式
      auto_finish= 0;
     // HeatPID.setpoint = 42.5;
+//
     HeatPID.setpoint = 42.5+temperature_compensation;
-    xQueueSend(HEAT_DATAHandle, &HeatPID, 0);  // 将加热数据发送到队列
+    //xQueueSend(HEAT_DATAHandle, &HeatPID, 0);  // 将加热数据发送到队列
     TMC_ENN(0);                                // 启动电机
     osEventFlagsSet(PRESS_ONHandle, (1 << 0)); // 设置第0位
+          
     ScreenTimerStart();
+          
     break;
 
   case STATE_AUTO:
     currentState = STATE_OFF; // 从自动返回关闭
-    emergency_stop =true; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
+    emergency_stop =1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
      if (auto_finish==0) {
+         
     ScreenWorkModeQuit();
+         
     }
     HeatPWM(0); // 关闭加热PWM
     osEventFlagsClear(HEAT_ONHandle, (1 << 0));  // 清除第0位// 通知停止加热任务

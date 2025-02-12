@@ -18,7 +18,7 @@ typedef unsigned char bool;
 #define T0H 16					
 #define T1H 52		
 
-#define LED_NUM  14	
+#define LED_NUM  15
 #define DATA_SIZE  24 	    
 
 void PWM_WS2812B_Init(void);
@@ -30,8 +30,7 @@ void PWM_WS2812B_Green(uint16_t num);
 void PWM_WS2812B_Blue(uint16_t num);
 void PWM_WS2812B(uint16_t num,uint32_t RGB_data);
 void LEDUpdate(void);
-void UpdateState(bool emergency_stop, bool charging, bool low_battery, bool fully_charged, bool working);
+void UpdateState(uint8_t emergency_stop, uint8_t charging, uint8_t low_battery, uint8_t fully_charged, uint8_t working);
 void UpdateLightState(ChargeState_t state);
 void UpdateBreathingLight(void);
 #endif
-

@@ -10,100 +10,15 @@ extern osEventFlagsId_t HEAT_ONHandle;
 extern volatile SystemState_t currentState;
 extern PID_TypeDef HeatPID;
 extern PID_TypeDef MotorPID;
-extern bool emergency_stop;
+extern uint8_t emergency_stop;
 uint8_t heat_finish = 0, press_finish = 0, auto_finish = 0;
-float weight0 = 0; // test_variable
-//  void UART1_CMDHandler(recept_data_p msg) { // 屏幕发出命令以后的动作
-//   uint16_t cmd_type = ((msg->cmd_type_high) << 8) | (msg->cmd_type_low);
-//   float data = (float)msg->data;
-//   switch (cmd_type) {
-//   /*收到屏幕加热开始*/
-//   case 0x1041:
-//     break;
-//   /*收到屏幕加热停止*/
-//   case 0x1030:
-//     break;
-//   /*收到屏幕脉动开始*/
-//   case 0x1005:
-//     //HX711_Init();
-//     // ForceRawSet = data * 1.0;
-//     // switch ((int)data) {
-//     // case 150:
-//     //   MotorPID_speed.Kp = 100;
-//     //   MotorPID_speed.Ki = 0.5;
-//     //   break;
-//     // case 250:
-//     //   MotorPID_speed.Kp = 120;
-//     //   MotorPID_speed.Ki = 0.5;
-//     //   break;
-//     // case 350:
-//     //   MotorPID_speed.Kp = 120;
-//     //   MotorPID_speed.Ki = 0.5;
-//     //   break;
-//     // case 450:
-//     //   MotorPID_speed.Kp = 120;
-//     //   MotorPID_speed.Ki = 0.4;
-//     //   break;
-//     // case 550:
-//     //   MotorPID_speed.Kp = 70;
-//     //   MotorPID_speed.Ki = 0.5;
-//     //   break;
-//     // default:
-//     //   break;
-//     // }
-//     break;
-//   /*收到屏幕脉动停止*/
-//   case 0x1034:
-//     break;
-//   /*收到屏幕自动开始*/
-//   case 0x1037:
-//   /*收到屏幕自动停止*/
-//   case 0x1038:
-//     break;
-//   case 0x8900:
-//     // switch (currentState) {
-//     // case 0x01:
-//     //   AT24CXX_Read(0x20, &heat_counttem, 2);
-//     //   heat_count = (heat_counttem[0] << 8) | heat_counttem[1];
-//     //   if (heat_count == 65535) {
-//     //     heat_count = 0;
-//     //   }
-//     //   heat_count += 1;
-//     //   heat_counttem[0] = (heat_count >> 8) & 0xFF; // 高字节
-//     //   heat_counttem[1] = heat_count & 0xFF;        // 低字节
-//     //   AT24CXX_Write(0x20, &heat_counttem, 2);
-//     //   ScreencurrentState_count((float)heat_count);
-//     //   break;
-//     // case 0x02:
-//     //   AT24CXX_Read(0x22, &pulsation_counttem, 2);
-//     //   pulsation_count = (pulsation_counttem[0] << 8) |
-//     pulsation_counttem[1];
-//     //   if (heat_count == 65535) {
-//     //     pulsation_count = 0;
-//     //   }
-//     //   pulsation_count += 1;
-//     //   pulsation_counttem[0] = (pulsation_count >> 8) & 0xFF; // 高字节
-//     //   pulsation_counttem[1] = pulsation_count & 0xFF;        // 低字节
-//     //   AT24CXX_Write(0x22, &pulsation_counttem, 2);
-//     //   ScreencurrentState_count((float)pulsation_count);
-//     //   break;
-//     // case 0x03:
-//     //   AT24CXX_Read(0x24, &auto_counttem, 2);
-//     //   auto_count = (auto_counttem[0] << 8) | auto_counttem[1];
-//     //   if (auto_count == 65535) {
-//     //     auto_count = 0;
-//     //   }
-//     //   auto_count += 1;
-//     //   auto_counttem[0] = (auto_count >> 8) & 0xFF; // 高字节
-//     //   auto_counttem[1] = auto_count & 0xFF;        // 低字节
-//     //   AT24CXX_Write(0x24, &auto_counttem, 2);
-//     //   ScreencurrentState_count((float)auto_count);
-//     //}
-//   default:
-//     break;
-//   }
-//  }
+extern prepare_data my_prepare_data;
+extern osMessageQueueId_t prepare_dataHandle;
+extern osSemaphoreId_t BUTTON_SEMAPHOREHandle; // 按键信号量句柄
+extern uint8_t soft_button;
+uint16_t save_prepare,set_prepare;
 void UART1_CMDHandler(recept_data_p msg) {
+  uint16_t hot_count,crimp_count,auto_count;
   // 提取命令类型
   uint16_t cmd_type = ((msg->cmd_type_high) << 8) | (msg->cmd_type_low);
   float data = (float)msg->data;
@@ -112,17 +27,33 @@ void UART1_CMDHandler(recept_data_p msg) {
   case 0x8900:
     if (currentState == STATE_HEAT) {
       heat_finish = 1;
+      hot_count = AT24CXX_ReadOrWriteZero(0x00);
+      AT24CXX_WriteUInt16(0x00,hot_count+1);
+      my_prepare_data.cmd_type_low = 0xA0;
+      my_prepare_data.value = hot_count+1;
+      xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
     }
     if (currentState == STATE_PRESS) {
       press_finish = 1;
+      crimp_count = AT24CXX_ReadOrWriteZero(0x02);
+      AT24CXX_WriteUInt16(0x02,crimp_count+1);
+      my_prepare_data.cmd_type_low = 0xA1;
+      my_prepare_data.value = crimp_count+1;
+      xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
     }
     if (currentState == STATE_AUTO) {
       auto_finish = 1;
+      auto_count = AT24CXX_ReadOrWriteZero(0x04);
+      AT24CXX_WriteUInt16(0x04,auto_count+1);
+      my_prepare_data.cmd_type_low = 0xA2;
+      my_prepare_data.value = auto_count+1;
+      xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
     }
     break;
   /* 屏幕加热开始 */
   case 0x1041:
     currentState = STATE_PRE_HEAT; // 切换到预加热状态
+    emergency_stop=0;
     HeatPWM(1);                    // 启动加热PWM
     //HeatPID.setpoint = 37.5;
     HeatPID.setpoint = 37.5+temperature_compensation;
@@ -139,8 +70,7 @@ void UART1_CMDHandler(recept_data_p msg) {
       if ((heat_finish == 0) &&
           (currentState ==
            STATE_HEAT)) { // 如果加热任务未完成，且工作在正式模式下（非预热阶段）则设置紧急停止标志
-        emergency_stop =
-            true; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
+        emergency_stop =1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
       }
      
     }
@@ -150,10 +80,10 @@ void UART1_CMDHandler(recept_data_p msg) {
   /* 屏幕挤压开始 */
   case 0x1005:
     currentState = STATE_PRE_PRESS; // 切换到预挤压状态
+    emergency_stop=0;
     // data=((data * 1.0 / 88.4) / 9.8)*1000;
     MotorPID.setpoint = data;
 
-    weight0 = ADS1220_ReadPressure();           // 读取初始压力值
     xQueueSend(PRESS_DATAHandle, &MotorPID, 0); // 将数据发送到队列
     break;
   /* 屏幕挤压停止 */
@@ -162,8 +92,7 @@ void UART1_CMDHandler(recept_data_p msg) {
 
       if (press_finish ==
           0) { // 如果挤压任务未完成，且工作在正式模式下（非预热阶段）则设置紧急停止标志
-        emergency_stop =
-            true; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
+        emergency_stop =1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
       }
       osEventFlagsClear(PRESS_ONHandle,
                         (1 << 0)); // 清除第0位// 通知停止挤压任务
@@ -173,13 +102,15 @@ void UART1_CMDHandler(recept_data_p msg) {
     break;
   /* 屏幕自动模式开始 */
   case 0x1037:
+    //printf("1\n");
     currentState = STATE_PRE_AUTO; // 切换到预自动模式
+    emergency_stop=0;
     HeatPWM(1);                    // 启动加热PWM
      //HeatPID.setpoint = 37.5;
     HeatPID.setpoint = 37.5+temperature_compensation;
     xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将数据发送到队列
     MotorPID.setpoint = data;
-    weight0 = ADS1220_ReadPressure();           // 读取初始压力值
+
     xQueueSend(PRESS_DATAHandle, &MotorPID, 0); // 将数据发送到队列
     osEventFlagsSet(HEAT_ONHandle, (1 << 0));   // 设置第0位 // 启动加热任务
     break;
@@ -216,12 +147,24 @@ void UART1_CMDHandler(recept_data_p msg) {
       osEventFlagsClear(PRESS_ONHandle,
                         (1 << 0)); // 清除第0位// 通知停止加热任务
       if (auto_finish ==0) { // 如果自动任务未完成，且工作在正式模式下（非自动阶段）则设置紧急停止标志
-        emergency_stop =
-            true; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
+        emergency_stop =1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
       }
     }
 
     currentState = STATE_OFF; // 从自动模式回到关闭状态
+    break;
+  case 0x1040:
+    soft_button=1;
+    xSemaphoreGive(BUTTON_SEMAPHOREHandle); // 通知按键任务;
+
+    break;
+  case 0x1006:
+    soft_button=1;
+    xSemaphoreGive(BUTTON_SEMAPHOREHandle); // 通知按键任务;
+    break;
+  case 0x1036:
+    soft_button=1;
+    xSemaphoreGive(BUTTON_SEMAPHOREHandle); // 通知按键任务;
     break;
 
   /* 其他未知命令 */
@@ -229,8 +172,150 @@ void UART1_CMDHandler(recept_data_p msg) {
     break;
   }
 }
+uint32_t a;
+void UART1_CMDHandler_prepare(prepare_data_p msg) {
+    /*test
+     *
+     * */
 
+  uint16_t hot_count,crimp_count,auto_count;
+  uint16_t prepare_press_pre,prepare_temperature_pre,prepare_time_pre;
+  // 提取命令类型
+  uint16_t cmd_type = ((msg->cmd_type_high) << 8) | (msg->cmd_type_low);
+  uint16_t data = (uint16_t)msg->value;
+    // 初始化实例的成员变量
+    my_prepare_data.cmd_head_high = 0x6A;
+    my_prepare_data.cmd_head_low = 0xA6;
+    my_prepare_data.cmd_type_high = 0x00;
+    my_prepare_data.end_high = 0xFF;
+    my_prepare_data.end_low = 0xFF;
+  // 根据命令类型切换状态
+  switch (cmd_type) {
+  case 0x1042://设置预设值具体数值时需要先读取,小箭头
+    save_prepare=data;
+    switch (save_prepare) {
+    case 0:
+      prepare_press_pre = 150;
+      prepare_temperature_pre = 42;
+      prepare_time_pre = 1;
+      break;
+    case 1:
+      prepare_temperature_pre = AT24CXX_ReadOrWriteZero(0x08);
+            prepare_press_pre = AT24CXX_ReadOrWriteZero(0x0A);
+      prepare_time_pre = AT24CXX_ReadOrWriteZero(0x0C);
+      break;
+    case 2:
+       prepare_temperature_pre= AT24CXX_ReadOrWriteZero(0x10);
+            prepare_press_pre  = AT24CXX_ReadOrWriteZero(0x12);
+      prepare_time_pre = AT24CXX_ReadOrWriteZero(0x14);
+      break;
+    case 3:
+        prepare_temperature_pre = AT24CXX_ReadOrWriteZero(0x18);
+            prepare_press_pre  = AT24CXX_ReadOrWriteZero(0x1A);
+      prepare_time_pre = AT24CXX_ReadOrWriteZero(0x1C);
+      break;
+    }
+    my_prepare_data.cmd_type_low = 0xA9;
+    my_prepare_data.value = prepare_press_pre;
+    xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+    my_prepare_data.cmd_type_low = 0xA8;
+    my_prepare_data.value = prepare_temperature_pre;
+    xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+    my_prepare_data.cmd_type_low = 0xAA;
+    my_prepare_data.value = prepare_time_pre;
+    xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+    break;
+  case 0x1044://选择预设值，大框选择
+    set_prepare=data;
+    AT24CXX_WriteUInt16(0xFC,set_prepare);
+    switch (set_prepare) {
+    case 0:
+      prepare_press_pre = 150;
+      prepare_temperature_pre = 42;
+      prepare_time_pre = 1;
+      break;
+    case 1:
+      prepare_press_pre = AT24CXX_ReadOrWriteZero(0x08);
+      prepare_temperature_pre = AT24CXX_ReadOrWriteZero(0x0A);
+      prepare_time_pre = AT24CXX_ReadOrWriteZero(0x0C);
+      break;
+    case 2:
+      prepare_press_pre = AT24CXX_ReadOrWriteZero(0x10);
+      prepare_temperature_pre = AT24CXX_ReadOrWriteZero(0x12);
+      prepare_time_pre = AT24CXX_ReadOrWriteZero(0x14);
+      break;
+    case 3:
+      prepare_press_pre = AT24CXX_ReadOrWriteZero(0x18);
+      prepare_temperature_pre = AT24CXX_ReadOrWriteZero(0x1A);
+      prepare_time_pre = AT24CXX_ReadOrWriteZero(0x1C);
+      break;
+    }
+    my_prepare_data.cmd_type_low = 0xA4;
+    my_prepare_data.value = prepare_press_pre;
+    xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+    my_prepare_data.cmd_type_low = 0xA5;
+    my_prepare_data.value = prepare_temperature_pre;
+    xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+    my_prepare_data.cmd_type_low = 0xA6;
+    my_prepare_data.value = prepare_time_pre;
+    xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+
+    break;
+  case 0x1039://预设温度 prepare temprature
+    switch (save_prepare) {
+    case 1:
+      AT24CXX_WriteUInt16(0x08,data);
+      break;
+    case 2:
+      AT24CXX_WriteUInt16(0x10,data);
+      break;
+    case 3:
+      AT24CXX_WriteUInt16(0x18,data);
+      break;
+    }
+      break;
+  case 0x1040://预设压力 prepare press
+    switch (save_prepare) {
+    case 1:
+      AT24CXX_WriteUInt16(0x0A,data);
+      break;
+    case 2:
+      AT24CXX_WriteUInt16(0x12,data);
+      break;
+    case 3:
+      AT24CXX_WriteUInt16(0x1A,data);
+      break;
+    }
+    break;
+  case 0x1041://预设时间 prepare time
+    switch (save_prepare) {
+    case 1:
+      AT24CXX_WriteUInt16(0x0c,data);
+      break;
+    case 2:
+      AT24CXX_WriteUInt16(0x14,data);
+      break;
+    case 3:
+      AT24CXX_WriteUInt16(0x1c,data);
+      break;
+    }
+    break;
+  case 0x1043:
+    AT24CXX_WriteUInt16(0xf8,data);
+    break;
+  case 0x1046:
+    HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_6);
+    AT24C02_WriteAllBytes(0xff);//清理ee存储
+    HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_6);
+    break;
+    /* 其他未知命令 */
+  default:
+    break;
+  }
+}
 void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
+    a++;
+    printf("a=%u\n",a);
   // 确认帧尾是否合法
   // if (received_data->buffer[received_data->length - 2] != 0xFF ||
   //     received_data->buffer[received_data->length - 1] != 0xFF) {
@@ -244,6 +329,12 @@ void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
   switch (cmd_type) {
   case 0x5aa5: { // 命令类型 0x9000 - 处理 UART1 数据
     UART1_CMDHandler(received_data->buffer);
+
+    break;
+  }
+  case 0x6aa6: { // 命令类型 0x6aa6 - 处理 UART1 数据
+    UART1_CMDHandler_prepare(received_data->buffer);
+
     break;
   }
   case 0x7aa7: { // 命令类型 0x0200 - 更新 PID 参数（速度控制）
@@ -271,7 +362,6 @@ void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
 }
 extern UART_HandleTypeDef huart2;
 uint8_t usart1_tx = 1;
-
 void ScreenUpdateForce(float value) {
   static recept_data pData;
   pData.cmd_head_high = 0x5A;
@@ -291,7 +381,6 @@ void ScreenUpdateForce(float value) {
     HAL_UART_Transmit_IT(&huart2, (uint8_t *)&pData, sizeof(pData));
   }
 }
-
 void ScreenUpdateTemperature(float value) {
   static recept_data pData;
   pData.cmd_head_high = 0x5A;
@@ -335,11 +424,12 @@ void ScreenWorkModeQuit(void) {
   pData.end_low = 0xff;  // 帧尾
   if (usart1_tx) {
     usart1_tx = 0;
+      taskENTER_CRITICAL();
     HAL_UART_Transmit_IT(&huart2, (uint8_t *)&pData,
                          sizeof(pData)); // ???????????????????
+      taskEXIT_CRITICAL();
   }
 }
-
 void ScreenTimerStart(void) {
 
   static recept_data pData;
@@ -351,8 +441,10 @@ void ScreenTimerStart(void) {
   pData.end_low = 0xff;  // 帧尾
   if (usart1_tx) {
     usart1_tx = 0;
+      taskENTER_CRITICAL();
     HAL_UART_Transmit_IT(&huart2, (uint8_t *)&pData,
                          sizeof(pData)); // ???????????????
+                         taskEXIT_CRITICAL();
   }
 }
 void Eye_twitching_invalid(void) {
@@ -370,23 +462,13 @@ void Eye_twitching_invalid(void) {
                          sizeof(pData)); // ???????????????
   }
 }
-
-void Eye_twitching_invalid_master(float count) {
-  static recept_data pData;
-  pData.cmd_head_high = 0x5A;
-  pData.cmd_head_low = 0xA5;
-  pData.cmd_type_high = 0x92;
-  pData.cmd_type_low = 0x00;
-  pData.data = count;
-  pData.end_high = 0xff; // 帧尾
-  pData.end_low = 0xff;  // 帧尾
+void Eye_twitching_invalid_master(prepare_data_p myprepare_data) {
   if (usart1_tx) {
     usart1_tx = 0;
-    HAL_UART_Transmit_IT(&huart2, (uint8_t *)&pData,
-                         sizeof(pData)); // ???????????????
+    HAL_UART_Transmit_IT(&huart2, (uint8_t *)myprepare_data,
+                         sizeof(prepare_data)); // ???????????????
   }
 }
-
 void ScreenWorkMode_count(float count) {
   static recept_data pData;
   pData.cmd_head_high = 0x5A;

@@ -51,6 +51,8 @@ extern "C" {
 #include "ws2812b.h"
 #include "app_sys.h"
 #include "ads1220.h"
+#include <stdio.h>
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

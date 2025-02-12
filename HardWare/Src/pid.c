@@ -36,7 +36,7 @@ pid->integral += error;
 // 对积分项进行限幅，防止积分项过大（积分饱和）或过小（积分失效）
 Limit(pid->integral, pid->integral_min, pid->integral_max);
 
-float derivative = error - pid->previous_error; 
+double derivative = error - pid->previous_error;
 // 计算微分项：当前误差与上一次误差的差值，用于预测误差的变化趋势
 
 pid->previous_error = error; 
@@ -44,7 +44,9 @@ pid->previous_error = error;
 p=pid->Kp * error;
 i=pid->Ki * pid->integral;
 d=pid->Kd * derivative;
-float output = pid->Kp * error + pid->Ki * pid->integral + pid->Kd * derivative; 
+     //printf("%.2f,%.2f,%.2f,",error,pid->integral,derivative);
+     //printf("%.2f,%.2f,%.2f,",p,i,derivative);
+float output = pid->Kp * error + pid->Ki * pid->integral + pid->Kd * derivative;
 // 计算PID输出：比例项（Kp）、积分项（Ki）、微分项（Kd）的加权和
 
 // 对输出进行限幅，防止输出值超出允许范围

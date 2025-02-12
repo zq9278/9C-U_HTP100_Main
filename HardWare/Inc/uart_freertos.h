@@ -39,13 +39,23 @@ typedef struct __attribute__((packed)){
     uint8_t end_high; // 
     uint8_t end_low;  // 
 } recept_data_debug, *recept_data_debug_p;
+
+typedef struct __attribute__((packed)){
+  uint8_t cmd_head_high; //
+  uint8_t cmd_head_low;  //
+  uint8_t cmd_type_high; //
+  uint8_t cmd_type_low;  //
+  uint16_t value;
+  uint8_t end_high; //
+  uint8_t end_low;  //
+} prepare_data, *prepare_data_p;
 void command_parsing(uart_data *received_data);
 void UART1_CMDHandler(recept_data_p msg);
 void ScreenUpdateSOC(float value);
 void ScreenWorkModeQuit(void);
 void ScreenTimerStart(void);
 void Eye_twitching_invalid(void) ;
-void Eye_twitching_invalid_master(float count);
+void Eye_twitching_invalid_master(prepare_data_p myprepare_data);
 void ScreenWorkMode_count(float count);
 
 void ScreenUpdateForce(float value);
