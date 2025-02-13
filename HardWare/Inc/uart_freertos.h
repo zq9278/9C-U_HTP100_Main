@@ -68,7 +68,7 @@ void ScreenWorkMode_count(float count);
 
 void ScreenUpdateForce(float value);
 void ScreenUpdateTemperature(float value);
-
+uint16_t Calculate_CRC(uint8_t *data, uint16_t length);
 
 
 
