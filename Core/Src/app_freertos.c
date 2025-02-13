@@ -361,6 +361,25 @@ void UART_RECEPT_Task(void *argument)
 //      // HAL_UART_Transmit(&huart2, (uint8_t*)&recept_data.buffer,
 //      // recept_data.length, 10);
 //    }
+
+      for (uint16_t i = 0; i < frameData->size - sizeof(recept_data); i++) {
+          recept_data *parsed_frame = (recept_data *)(frameData->buffer + i);
+          if (parsed_frame->cmd_head_high == FRAME_HEADER_BYTE1 &&
+              parsed_frame->cmd_head_low == FRAME_HEADER_BYTE2 &&
+              parsed_frame->end_high == FRAME_TAIL_BYTE1 &&
+              parsed_frame->end_low == FRAME_TAIL_BYTE2) {
+              // 计算 CRC 校验
+              uint16_t calculated_crc = Calculate_CRC((uint8_t *)parsed_frame, sizeof(recept_data) - 4);
+              if (calculated_crc == parsed_frame->crc) {
+                  UART_Process_Frame((uint8_t *)parsed_frame, parsed_frame->frame_length);
+              } else {
+                  printf("Error: CRC mismatch\n");
+              }
+              i += parsed_frame->frame_length - 1;
+          }
+      }
+
+
       if (osMessageQueueGet(UART_DMA_IDLE_RECEPT_QUEUEHandle, &frameData, NULL, osWaitForever) == osOK) { // 从消息队列中获取数据
           if (frameData == NULL) {
               printf("Error: Received NULL frameData pointer\n");

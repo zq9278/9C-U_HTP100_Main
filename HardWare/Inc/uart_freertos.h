@@ -26,10 +26,12 @@ typedef struct
 
 typedef struct __attribute__((packed)) {
     uint8_t cmd_head_high; // 
-    uint8_t cmd_head_low;  // 
+    uint8_t cmd_head_low;  //
+    uint8_t frame_length; // 帧长度
     uint8_t cmd_type_high; // 
     uint8_t cmd_type_low;  // 
     float data;
+    uint16_t crc; // CRC 校验
     uint8_t end_high; // 
     uint8_t end_low;  // 
 } recept_data, *recept_data_p;
