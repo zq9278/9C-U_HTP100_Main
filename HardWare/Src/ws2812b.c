@@ -96,13 +96,13 @@ uint32_t GRB_DATA;
     static uint8_t LEDDir = 0;
 void UpdateBreathingLight(void) {
     if (LEDDir == 0) {
-      RGB_DATA += 2;
+      RGB_DATA += 1;
       if (RGB_DATA >= 100) {
         LEDDir = 1;
       }
     } else {
       RGB_DATA -= 2;
-      if (RGB_DATA <= 0) {
+      if (RGB_DATA <= 10) {
         LEDDir = 0;
       }
     }
@@ -117,16 +117,16 @@ void UpdateLightState(ChargeState_t state) {
   case STATE_WORKING:
   case STATE_CHARGED:
     // 白色常亮0x6666ff
-    PWM_WS2812B_Write_24Bits(LED_NUM, 0xffffff); // 白色grb
+    PWM_WS2812B_Write_24Bits(LED_NUM, 0x444444); // 白色grb
     PWM_WS2812B_Show(LED_NUM);
     break;
   case STATE_LOW_BATTERY:
       
    // 根据 white_delay 状态设置灯光
     if (white_delay) {
-        PWM_WS2812B_Write_24Bits(14, 0xFFFFFF); // 白色
+        PWM_WS2812B_Write_24Bits(LED_NUM, 0x444444); // 白色
     } else {
-        PWM_WS2812B_Write_24Bits(14, 0x000000); // 黑色
+        PWM_WS2812B_Write_24Bits(LED_NUM, 0x000000); // 黑色
     }
     PWM_WS2812B_Show(LED_NUM); // 更新灯光
     break;

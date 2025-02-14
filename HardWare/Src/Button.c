@@ -12,7 +12,7 @@ extern osMessageQueueId_t HEAT_DATAHandle;
 extern osMessageQueueId_t PRESS_DATAHandle;
 volatile SystemState_t currentState = STATE_OFF;
 extern uint8_t heat_finish,press_finish,auto_finish;
-extern PID_TypeDef HeatPID, pid_heat;;
+extern PID_TypeDef HeatPID;
 extern uint8_t emergency_stop;
 void Button_detection(void) {
   // 根据当前状态切换到下一个状态
@@ -28,6 +28,7 @@ void Button_detection(void) {
 //          HeatPID.previous_error = pid_heat.previous_error;
 //          HeatPID.integral = pid_heat.integral;
     HeatPID.setpoint = 42.5+temperature_compensation;
+          HeatPID.Ki=0.3;
     //xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将加热数据发送到队列
     //osEventFlagsSet(HEAT_ONHandle, (1 << 0)); // 设置第0位 // 启动加热任务
           
@@ -74,6 +75,7 @@ void Button_detection(void) {
     // HeatPID.setpoint = 42.5;
 //
     HeatPID.setpoint = 42.5+temperature_compensation;
+          HeatPID.Ki=0.3;
     //xQueueSend(HEAT_DATAHandle, &HeatPID, 0);  // 将加热数据发送到队列
     TMC_ENN(0);                                // 启动电机
     osEventFlagsSet(PRESS_ONHandle, (1 << 0)); // 设置第0位

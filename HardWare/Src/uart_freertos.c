@@ -89,7 +89,7 @@ void UART1_CMDHandler(recept_data_p msg) {
     // data=((data * 1.0 / 88.4) / 9.8)*1000;
     MotorPID.setpoint = data;
 
-    xQueueSend(PRESS_DATAHandle, &MotorPID, 0); // 将数据发送到队列
+    //xQueueSend(PRESS_DATAHandle, &MotorPID, 0); // 将数据发送到队列
     break;
   /* 屏幕挤压停止 */
   case 0x1034:
@@ -116,7 +116,7 @@ void UART1_CMDHandler(recept_data_p msg) {
     xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将数据发送到队列
     MotorPID.setpoint = data;
 
-    xQueueSend(PRESS_DATAHandle, &MotorPID, 0); // 将数据发送到队列
+    //xQueueSend(PRESS_DATAHandle, &MotorPID, 0); // 将数据发送到队列
     osEventFlagsSet(HEAT_ONHandle, (1 << 0));   // 设置第0位 // 启动加热任务
     break;
   /* 屏幕自动模式停止 */
@@ -161,7 +161,6 @@ void UART1_CMDHandler(recept_data_p msg) {
   case 0x1040:
     soft_button=1;
     xSemaphoreGive(BUTTON_SEMAPHOREHandle); // 通知按键任务;
-
     break;
   case 0x1006:
     soft_button=1;
@@ -177,7 +176,6 @@ void UART1_CMDHandler(recept_data_p msg) {
     break;
   }
 }
-uint32_t a;
 void UART1_CMDHandler_prepare(prepare_data_p msg) {
     /*test
      *
@@ -345,19 +343,20 @@ void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
   case 0x7aa7: { // 命令类型 0x0200 - 更新 PID 参数（速度控制）
     recept_data_debug_p press_pid_data =
         (recept_data_debug *)received_data->buffer; // 解析数据
-    xQueueSend(PRESS_DATAHandle, &MotorPID, 0);     // 将数据发送到队列
+    //xQueueSend(PRESS_DATAHandle, &MotorPID, 0);     // 将数据发送到队列
     PID_Init(&MotorPID, press_pid_data->p, press_pid_data->i, press_pid_data->d,
              5000, -5000, 50000, -50000, press_pid_data->setpoint);
 
     break;
   }
-
   case 0x9aa9: { // 命令类型 0x0400 - 更新 PID 参数（加热控制）
     recept_data_debug_p heat_pid_data =
         (recept_data_debug *)(received_data->buffer); // 解析数据
     PID_Init(&HeatPID, heat_pid_data->p, heat_pid_data->i, heat_pid_data->d,
-             500, 0, 255, 0, heat_pid_data->setpoint);
-    xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将数据发送到队列
+             5000, -5000, 255, 0, heat_pid_data->setpoint);
+//      HeatPID.previous_error=0;
+//      HeatPID.integral=0;
+    //xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将数据发送到队列
   } break;
 
   default:
@@ -366,30 +365,31 @@ void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
   }
 }
 extern UART_HandleTypeDef huart2;
-uint8_t usart1_tx = 1;
 void ScreenUpdateForce(float value) {
   static recept_data pData;
   pData.cmd_head_high = 0x5A;
   pData.cmd_head_low = 0xA5;
+    pData.frame_length=0x0d;
   pData.cmd_type_high = 0x20;
-  pData.data = value;
   if (currentState == STATE_PRESS) {
     pData.cmd_type_low = 0x05;
   } else if (currentState == STATE_AUTO) {
     pData.cmd_type_low = 0x47;
   }
-
+    pData.data = value;
+    pData.crc=Calculate_CRC((uint8_t *)&pData, sizeof(pData) - 4);
   pData.end_high = 0xff; // 帧尾
   pData.end_low = 0xff;  // 帧尾
-  if (usart1_tx) {
-    usart1_tx = 0;
-    HAL_UART_Transmit_IT(&huart2, (uint8_t *)&pData, sizeof(pData));
-  }
+    taskENTER_CRITICAL();
+    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
+    taskEXIT_CRITICAL();
+
 }
 void ScreenUpdateTemperature(float value) {
   static recept_data pData;
   pData.cmd_head_high = 0x5A;
   pData.cmd_head_low = 0xA5;
+    pData.frame_length=0x0d;
   pData.cmd_type_high = 0x20;
   if (currentState == STATE_HEAT || currentState == STATE_PRE_HEAT) {
     pData.cmd_type_low = 0x41;
@@ -398,96 +398,132 @@ void ScreenUpdateTemperature(float value) {
     pData.cmd_type_low = 0x37;
   }
   pData.data = value;
+
+    pData.crc=Calculate_CRC((uint8_t *)&pData, sizeof(pData) - 4);
   pData.end_high = 0xff; // 帧尾
   pData.end_low = 0xff;  // 帧尾
-  if (usart1_tx) {
-    usart1_tx = 0;
-    HAL_UART_Transmit_IT(&huart2, (uint8_t *)&pData, sizeof(pData));
-  }
+    taskENTER_CRITICAL();
+    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
+    taskEXIT_CRITICAL();
+
 }
 void ScreenUpdateSOC(float value) {
   static recept_data pData;
   pData.cmd_head_high = 0x5A;
   pData.cmd_head_low = 0xA5;
+    pData.frame_length=0x0d;
   pData.cmd_type_high = 0x20;
   pData.cmd_type_low = 0x50;
   pData.data = value;
+    pData.crc=Calculate_CRC((uint8_t *)&pData, sizeof(pData) - 4);
   pData.end_high = 0xff; // 帧尾
   pData.end_low = 0xff;  // 帧尾
-  if (usart1_tx) {
-    usart1_tx = 0;
-    HAL_UART_Transmit_IT(&huart2, (uint8_t *)&pData, sizeof(pData)); // ??????
-  }
+    taskENTER_CRITICAL();
+    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
+    taskEXIT_CRITICAL();
+
 }
 void ScreenWorkModeQuit(void) {
   static recept_data pData;
   pData.cmd_head_high = 0x5A;
   pData.cmd_head_low = 0xA5;
+    pData.frame_length=0x0d;
   pData.cmd_type_high = 0x20;
   pData.cmd_type_low = 0x51;
+    pData.crc=Calculate_CRC((uint8_t *)&pData, sizeof(pData) - 4);
   pData.end_high = 0xff; // 帧尾
   pData.end_low = 0xff;  // 帧尾
-  if (usart1_tx) {
-    usart1_tx = 0;
-      taskENTER_CRITICAL();
-    HAL_UART_Transmit_IT(&huart2, (uint8_t *)&pData,
-                         sizeof(pData)); // ???????????????????
-      taskEXIT_CRITICAL();
-  }
+    taskENTER_CRITICAL();
+    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
+    taskEXIT_CRITICAL();
+
 }
 void ScreenTimerStart(void) {
 
   static recept_data pData;
   pData.cmd_head_high = 0x5A;
   pData.cmd_head_low = 0xA5;
+    pData.frame_length=0x0d;
   pData.cmd_type_high = 0x20;
   pData.cmd_type_low = 0x52;
+    pData.crc=Calculate_CRC((uint8_t *)&pData, sizeof(pData) - 4);
   pData.end_high = 0xff; // 帧尾
   pData.end_low = 0xff;  // 帧尾
-  if (usart1_tx) {
-    usart1_tx = 0;
-      taskENTER_CRITICAL();
-    HAL_UART_Transmit_IT(&huart2, (uint8_t *)&pData,
-                         sizeof(pData)); // ???????????????
-                         taskEXIT_CRITICAL();
-  }
+    taskENTER_CRITICAL();
+    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
+    taskEXIT_CRITICAL();
+
 }
 void Eye_twitching_invalid(void) {
 
   static recept_data pData;
   pData.cmd_head_high = 0x5A;
   pData.cmd_head_low = 0xA5;
+    pData.frame_length=0x0d;
   pData.cmd_type_high = 0x91;
   pData.cmd_type_low = 0x00;
+    pData.crc=Calculate_CRC((uint8_t *)&pData, sizeof(pData) - 4);
   pData.end_high = 0xff; // 帧尾
   pData.end_low = 0xff;  // 帧尾
-  if (usart1_tx) {
-    usart1_tx = 0;
-    HAL_UART_Transmit_IT(&huart2, (uint8_t *)&pData,
-                         sizeof(pData)); // ???????????????
-  }
+    taskENTER_CRITICAL();
+    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
+    taskEXIT_CRITICAL();
+
 }
 void Eye_twitching_invalid_master(prepare_data_p myprepare_data) {
-  if (usart1_tx) {
-    usart1_tx = 0;
-    HAL_UART_Transmit_IT(&huart2, (uint8_t *)myprepare_data,
-                         sizeof(prepare_data)); // ???????????????
-  }
+    myprepare_data->frame_length=0x0b;
+    myprepare_data->crc=Calculate_CRC((uint8_t *)myprepare_data, sizeof(*myprepare_data) - 4);
+    taskENTER_CRITICAL();
+    HAL_UART_Transmit(&huart2, (uint8_t *)myprepare_data, sizeof(*myprepare_data),100);
+    taskEXIT_CRITICAL();
+
 }
 void ScreenWorkMode_count(float count) {
   static recept_data pData;
   pData.cmd_head_high = 0x5A;
   pData.cmd_head_low = 0xA5;
+    pData.frame_length=0x0d;
   pData.cmd_type_high = 0x90;
   pData.cmd_type_low = 0x00;
   pData.data = count;
+    pData.crc=Calculate_CRC((uint8_t *)&pData, sizeof(pData) - 4);
   pData.end_high = 0xff; // 帧尾
   pData.end_low = 0xff;  // 帧尾
-  if (usart1_tx) {
-    usart1_tx = 0;
-    HAL_UART_Transmit_IT(&huart2, (uint8_t *)&pData,
-                         sizeof(pData)); // ???????????????
-  }
+    taskENTER_CRITICAL();
+    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
+    taskEXIT_CRITICAL();
+
+}
+void Serial_data_stream_parsing(uart_data *frameData){
+        if (frameData == NULL ) {
+            printf("Error: Invalid frameData pointer or size\n");
+        }
+        for (uint16_t i = 0; i < frameData->length - 1; i++) {
+           // if (frameData->buffer[i] == FRAME_HEADER_BYTE1 && i + 1 < frameData->length && frameData->buffer[i + 1] == FRAME_HEADER_BYTE2) {
+                if ((frameData->buffer[i] == 0x7a && i + 1 < frameData->length && frameData->buffer[i + 1] == 0xA7)||(frameData->buffer[i] == FRAME_HEADER_BYTE1 && i + 1 < frameData->length && frameData->buffer[i + 1] == FRAME_HEADER_BYTE2)||(frameData->buffer[i] == 0x6a && i + 1 < frameData->length && frameData->buffer[i + 1] == 0xa6)||(frameData->buffer[i] == 0x9a && i + 1 < frameData->length && frameData->buffer[i + 1] == 0xa9)) {
+                for (uint16_t j = i + 2; j < frameData->length - 1; j++) {
+                    if (frameData->buffer[j] == FRAME_TAIL_BYTE1 && j + 1 < frameData->length && frameData->buffer[j + 1] == FRAME_TAIL_BYTE2) {
+                        uint16_t frame_size = j - i + 2;
+                        if (frame_size > UART_RX_BUFFER_SIZE) {
+                            printf("Error: Frame size exceeds buffer limit\n");
+                            break;
+                        }
+                        // 计算CRC并校验
+                        uint16_t received_crc = (frameData->buffer[j - 2] | (frameData->buffer[j - 1] << 8));
+                        uint16_t calculated_crc = Calculate_CRC(&frameData->buffer[i], frame_size - 4); // 不包含CRC和帧尾
+                        if (calculated_crc == received_crc) {
+                            command_parsing(&frameData->buffer[i]);
+                        } else {
+                            printf("Error: CRC mismatch\n");
+                        }
+                        // 跳过已解析的帧数据，避免重复解析
+                        i = j + 1;
+                        break;
+                    }
+                }
+            }
+        }
+
 }
 uint16_t Calculate_CRC(uint8_t *data, uint16_t length)
 {

@@ -384,10 +384,10 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
     SPI_RxComplete = 1; // 设置接收完成标志
   }
 }
-extern uint8_t usart1_tx;
+//extern uint8_t usart1_tx;
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART2) {
-    usart1_tx = 1;
+    //usart1_tx = 1;
   }
 }
 // 全局变量，用于标记 DMA 传输状态

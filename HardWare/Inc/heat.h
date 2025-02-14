@@ -3,7 +3,7 @@
 #include "stm32g0xx_hal.h"  
 
 
-#define temperature_compensation 0.5
+#define temperature_compensation 0
 	void HeatInit(void);
 void HeatPWM(uint8_t state);
 void HeatPWMSet(uint8_t PWMVal);

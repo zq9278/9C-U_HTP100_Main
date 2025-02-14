@@ -413,13 +413,17 @@ void BQ27441_WriteWord(uint8_t WriteAddr, uint16_t WriteData) {
 }
 
 extern uint8_t low_battery;
+extern uint8_t flag_200ms;
 extern osMessageQueueId_t Battery_DATAHandle;
 float batp;
 void battery_status_update_bq27441(void) {
   BQ27441_MultiRead_DMA(&BQ27441);
   low_battery = (BQ27441.SOC < 20) && (BQ27441.SOC != 0);
     float battery = (float)BQ27441.SOC;
-    xQueueSend(Battery_DATAHandle, &battery, 0); // 将数据发送到队列
+    if(flag_200ms){
+        //flag_200ms=0;
+        xQueueSend(Battery_DATAHandle, &battery, 0); // 将数据发送到队列
+    }
 //   float bat=(4199-(float)BQ27441.Voltage)/(0.78);//电量百分比去掉%
 //    batp=(2000-bat)/20;
 //   xQueueSend(Battery_DATAHandle, &batp, 0); // 将数据发送到队列

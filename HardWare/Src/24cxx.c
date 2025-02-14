@@ -202,6 +202,7 @@ void prepare_data_set(void){
   // 初始化实例的成员变量
   my_prepare_data.cmd_head_high = 0x6A;
   my_prepare_data.cmd_head_low = 0xA6;
+  my_prepare_data.frame_length=0x0b;
   my_prepare_data.cmd_type_high = 0x00;
   my_prepare_data.end_high = 0xFF;
   my_prepare_data.end_low = 0xFF;
