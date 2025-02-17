@@ -43,11 +43,23 @@ void TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer)
 // 	Data[1]=WriteData>>8;
 // 	HAL_I2C_Mem_Write_DMA(&hi2c2, TMP112_ADDR, WriteAddr,I2C_MEMADD_SIZE_8BIT, Data, 2);
 // 	delay_ms(2);
-// } 
+// }
+#define ALPHA 0.1  // 设置平滑因子，值越大对最新数据的权重越大
+float previousEMA = 0.0;  // 之前的平滑值
 int16_t TmpData;
 float TmpRaw2Ture(void)
 {   TMP112_Read(0x00,EyeTmpRaw);
-	TmpData=(EyeTmpRaw[0]<<8) | EyeTmpRaw[1];
-		TmpData = TmpData >> 4;
-	return TmpData*0.0625;
+    TmpData=(EyeTmpRaw[0]<<8) | EyeTmpRaw[1];
+    TmpData = TmpData >> 4;
+    float tempature=TmpData*0.0625;
+
+    if (previousEMA == 0.0)
+    {
+        previousEMA = tempature;
+    }
+
+    // 计算EMA
+    previousEMA = ALPHA * tempature + (1 - ALPHA) * previousEMA;
+
+    return previousEMA;
 }

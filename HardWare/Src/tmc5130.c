@@ -152,7 +152,7 @@ uint8_t MotorChecking() {
             // 超时处理
             break;
         }
-        vTaskDelay(200);
+        vTaskDelay(10);
     }
 
     MotorSetHome();
@@ -275,13 +275,19 @@ extern uint8_t flag_200ms;
 //    }
 //    //printf("hhmg = %.2f,MotorPID.setpoint%.2f,MotorPWM%.2f\n",hhmg,MotorPID.setpoint,MotorPWM);
 //}
+extern uint8_t press_flag_400ms;
 void PressureControl() {
     float weight1 = ADS1220_ReadPressure();
     float weight = Limit(weight1 - weight0, 0, weight1 - weight0);
     float hhmg = (weight / 1000.0) * 9.8 * 78;
 
     // 发送压力数据到队列
-    xQueueSend(PressureHandle, &hhmg, 0);
+    if (
+    press_flag_400ms){
+        press_flag_400ms=0;
+        xQueueSend(PressureHandle, &hhmg, 0);
+    }
+
 
     switch (PressureModeStart) {
         case 1: { // 最开始的前进阶段

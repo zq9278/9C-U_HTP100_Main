@@ -279,6 +279,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 // 串口空闲中断回调函数
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
     if (huart->Instance == USART2) {
+        HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
         uart_data *pUartData = &uart_rx_data_t[uart_buff_ctrl];
         pUartData->length = Size;
         // 发送接收数据到队列
