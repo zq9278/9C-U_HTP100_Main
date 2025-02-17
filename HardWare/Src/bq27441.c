@@ -424,9 +424,6 @@ void battery_status_update_bq27441(void) {
         battery_flag_400ms=0;
         xQueueSend(Battery_DATAHandle, &battery, 0); // 将数据发送到队列
     }
-//   float bat=(4199-(float)BQ27441.Voltage)/(0.78);//电量百分比去掉%
-//    batp=(2000-bat)/20;
-//   xQueueSend(Battery_DATAHandle, &batp, 0); // 将数据发送到队列
     if (BQ27441.Voltage <= 3000) {
       BQ25895_Write(0x09, 0x64); // 电压低，关断保护
     }
