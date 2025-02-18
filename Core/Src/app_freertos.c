@@ -374,7 +374,7 @@ void Heat_Task(void *argument)
   /* USER CODE BEGIN Heat_Task */
     /* Infinite loop */
     HeatInit();
-
+//test1
     for (;;) {
         // 等待 HEAT_ON 标志被设置，且不清除标志位
         osEventFlagsWait(HEAT_ONHandle, (1 << 0), osFlagsWaitAny | osFlagsNoClear,
