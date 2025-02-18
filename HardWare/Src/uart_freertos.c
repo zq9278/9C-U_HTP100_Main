@@ -177,9 +177,7 @@ void UART1_CMDHandler(recept_data_p msg) {
   }
 }
 void UART1_CMDHandler_prepare(prepare_data_p msg) {
-    /*test
-     *
-     * */
+
 
   uint16_t hot_count,crimp_count,auto_count;
   uint16_t prepare_press_pre,prepare_temperature_pre,prepare_time_pre;
