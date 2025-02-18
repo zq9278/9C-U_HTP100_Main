@@ -390,6 +390,7 @@ void Heat_Task(void *argument)
                 xQueueSend(TemperatureHandle, &EyeTmp, 0); // 将数据发送到队列
             }
                 Heat_PWM = PID_Compute(&HeatPID, EyeTmp);
+            //Heat_PWM = 255;
                 HeatPWMSet((uint8_t) Heat_PWM);
 
 //        printf("%.6f,",EyeTmp);
