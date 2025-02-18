@@ -392,7 +392,6 @@ void Heat_Task(void *argument)
                 Heat_PWM = PID_Compute(&HeatPID, EyeTmp);
             //Heat_PWM = 255;
                 HeatPWMSet((uint8_t) Heat_PWM);
-
 //        printf("%.6f,",EyeTmp);
 //        printf("%.2f,",Heat_PWM);
 //        printf("%.2f\n",37.5);
