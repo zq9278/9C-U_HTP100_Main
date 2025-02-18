@@ -120,7 +120,8 @@ void UART1_CMDHandler(recept_data_p msg) {
   /* 屏幕自动模式停止 */
   case 0x1038:
     if (currentState == STATE_PRE_AUTO) {
-        HeatPWM(0); // 启动加热PWM
+        HeatPWM(0); // 加热PWM
+        vTaskDelete(HeatHandle);}
         if (currentState == STATE_AUTO) {
             HeatPWM(0); // 启动加热PWM
             vTaskDelete(PressHandle);
@@ -132,7 +133,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         }
 
         currentState = STATE_OFF; // 从自动模式回到关闭状态
-    }
+
     break;
   case 0x1040:
     soft_button=1;
