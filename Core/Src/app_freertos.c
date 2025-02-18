@@ -406,7 +406,6 @@ void Heat_Task(void *argument)
     osDelay(50);
   /* USER CODE END Heat_Task */
 }
-
 /* USER CODE BEGIN Header_Press_Task */
 /**
  * @brief Function implementing the Press thread.
