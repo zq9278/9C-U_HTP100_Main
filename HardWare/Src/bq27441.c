@@ -414,7 +414,7 @@ void BQ27441_WriteWord(uint8_t WriteAddr, uint16_t WriteData) {
 
 extern uint8_t low_battery;
 extern uint8_t battery_flag_400ms;
-extern osMessageQueueId_t Battery_DATAHandle;
+//extern osMessageQueueId_t Battery_DATAHandle;
 float batp;
 void battery_status_update_bq27441(void) {
   BQ27441_MultiRead_DMA(&BQ27441);

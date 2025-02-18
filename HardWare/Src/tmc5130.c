@@ -125,8 +125,6 @@ void StepMinMax(int32_t *Step, int32_t MinValue, int32_t MaxValue) {
     }
 }
 
-#define TIMEOUT_LIMIT 3000  // 超时限制，单位为系统节拍（tick），假设系统节拍是1ms
-extern osEventFlagsId_t PRESS_ONHandle;
 
 uint8_t MotorChecking() {
     uint8_t ReadData[4];
@@ -134,8 +132,6 @@ uint8_t MotorChecking() {
     TMC_ENN(0); //
     TMC5130_Write(0xa7, 0x10000);
     VelocityModeMove(Positive);
-    uint32_t start_time = xTaskGetTickCount();  // 获取当前tick计数值
-    uint32_t timeout_ticks = pdMS_TO_TICKS(TIMEOUT_LIMIT);  // 转换超时时间为tick
 
     while (1) {
         // 读取电机状态寄存器
@@ -144,12 +140,6 @@ uint8_t MotorChecking() {
         // 检查目标状态（假设目标状态为状态字第3字节的 bit1 为 1）
         if ((ReadData[3] & 0x02) == 0x02) {
             // 状态满足，退出循环
-            break;
-        }
-
-        // 检查超时
-        if (((xTaskGetTickCount() - start_time) >= timeout_ticks) || (osEventFlagsGet(PRESS_ONHandle) & (1 << 0))) {
-            // 超时处理
             break;
         }
         vTaskDelay(10);
@@ -207,14 +197,15 @@ float weight;
 float MotorPWM;       // 用于存储加热器的PWM占空比
 extern float weight0; // test_variable
 PID_TypeDef MotorPID;
-extern osMessageQueueId_t PRESS_DATAHandle; // 队列句柄
+
 uint8_t PressureModeStart = 1;
 float control_output;
 float control_output_speed;
 volatile int Flag_3s = 0, Flag_1s = 0;
-extern osTimerId_t motor_back_1sHandle;
-extern osTimerId_t motor_grab3sHandle;
-extern osMessageQueueId_t PressureHandle;
+//extern osMessageQueueId_t PRESS_DATAHandle; // 队列句柄
+//extern osTimerId_t motor_back_1sHandle;
+//extern osTimerId_t motor_grab3sHandle;
+//extern osMessageQueueId_t PressureHandle;
 extern float p, i, d;
 extern uint8_t flag_200ms;
 

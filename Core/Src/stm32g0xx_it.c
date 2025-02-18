@@ -338,7 +338,7 @@ void USART2_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-extern osSemaphoreId_t BUTTON_SEMAPHOREHandle; // 按键信号量句柄
+//extern osSemaphoreId_t BUTTON_SEMAPHOREHandle; // 按键信号量句柄
  void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
  {
     if (GPIO_Pin == SW_CNT_Pin) {  // 检查是否是目标按键

@@ -25,7 +25,7 @@
 #include "stm32g0xx_hal_uart.h"
 
 uart_data uart2_data; // DMA接收缓冲区，用于存放接收到的数据
-extern osMessageQueueId_t UART_DMA_IDLE_RECEPT_QUEUEHandle; // 接收完成消息队列
+//extern osMessageQueueId_t UART_DMA_IDLE_RECEPT_QUEUEHandle; // 接收完成消息队列
 
 
 uart_data uart_rx_data_t[UART_BUFFER_QUANTITY]; // 双缓冲数据存储

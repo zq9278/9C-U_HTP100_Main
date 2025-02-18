@@ -53,6 +53,7 @@ extern "C" {
 #include "ads1220.h"
 #include <stdio.h>
 #include <math.h>
+#include "UserApp.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

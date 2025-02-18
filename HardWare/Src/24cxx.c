@@ -2,7 +2,7 @@
 #include <stdint.h>
 extern I2C_HandleTypeDef hi2c2;
 extern uint8_t AD24C02_EYE[4];
-extern osMessageQueueId_t prepare_dataHandle;
+//extern osMessageQueueId_t prepare_dataHandle;
 SoftwareI2C iic_24x = {EE_SDA_GPIO_Port, EE_SDA_Pin, EE_SCL_GPIO_Port, EE_SCL_Pin};
 // »Ìº˛IIC≥ı ºªØ
 

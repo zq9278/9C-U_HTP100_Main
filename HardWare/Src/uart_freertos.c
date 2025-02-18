@@ -3,18 +3,13 @@
 #include "pid.h"
 #include "ws2812b.h"
 #include <stdint.h>
-extern osMessageQueueId_t HEAT_DATAHandle;
-extern osMessageQueueId_t PRESS_DATAHandle;
-extern osEventFlagsId_t PRESS_ONHandle;
-extern osEventFlagsId_t HEAT_ONHandle;
+//extern TaskHandle_t HeatHandle;
 extern volatile SystemState_t currentState;
 extern PID_TypeDef HeatPID;
 extern PID_TypeDef MotorPID;
 extern uint8_t emergency_stop;
 uint8_t heat_finish = 0, press_finish = 0, auto_finish = 0;
 extern prepare_data my_prepare_data;
-extern osMessageQueueId_t prepare_dataHandle;
-extern osSemaphoreId_t BUTTON_SEMAPHOREHandle; // 按键信号量句柄
 extern uint8_t soft_button;
 uint16_t save_prepare,set_prepare;
 void UART1_CMDHandler(recept_data_p msg) {
@@ -63,15 +58,13 @@ void UART1_CMDHandler(recept_data_p msg) {
     //HeatPID.setpoint = 37.5;
     HeatPID.setpoint = 37.5+temperature_compensation;
     xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将数据发送到队列
-    osEventFlagsSet(HEAT_ONHandle, (1 << 0)); // 设置第0位 // 启动加热任务
+    xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle);
     break;
   /* 屏幕加热停止 */
   case 0x1030:
     if (currentState == STATE_HEAT || STATE_PRE_HEAT) {
-
       HeatPWM(0); // 启动加热PWM
-      osEventFlagsClear(HEAT_ONHandle,
-                        (1 << 0)); // 清除第0位// 通知停止加热任务
+        vTaskDelete(HeatHandle);
       if ((heat_finish == 0) &&
           (currentState ==
            STATE_HEAT)) { // 如果加热任务未完成，且工作在正式模式下（非预热阶段）则设置紧急停止标志
@@ -89,8 +82,13 @@ void UART1_CMDHandler(recept_data_p msg) {
     // data=((data * 1.0 / 88.4) / 9.8)*1000;
     MotorPID.setpoint = data;
 
-    //xQueueSend(PRESS_DATAHandle, &MotorPID, 0); // 将数据发送到队列
-    break;
+          if (motor_homeHandle != NULL)
+          {
+              vTaskDelete(motor_homeHandle);
+              motor_homeHandle = NULL;  // 避免再次访问无效句柄
+          }
+
+          break;
   /* 屏幕挤压停止 */
   case 0x1034:
     if (currentState == STATE_PRESS) {
@@ -99,8 +97,9 @@ void UART1_CMDHandler(recept_data_p msg) {
           0) { // 如果挤压任务未完成，且工作在正式模式下（非预热阶段）则设置紧急停止标志
         emergency_stop =1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
       }
-      osEventFlagsClear(PRESS_ONHandle,
-                        (1 << 0)); // 清除第0位// 通知停止挤压任务
+        vTaskDelete(PressHandle);
+        xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
+
     }
     currentState = STATE_OFF; // 从挤压停止回到关闭状态
 
@@ -115,48 +114,25 @@ void UART1_CMDHandler(recept_data_p msg) {
     HeatPID.setpoint = 37.5+temperature_compensation;
     xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将数据发送到队列
     MotorPID.setpoint = data;
-
-    //xQueueSend(PRESS_DATAHandle, &MotorPID, 0); // 将数据发送到队列
-    osEventFlagsSet(HEAT_ONHandle, (1 << 0));   // 设置第0位 // 启动加热任务
+          xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle);
+          vTaskDelete(motor_homeHandle);//防止操作太快电机没有归位
     break;
   /* 屏幕自动模式停止 */
   case 0x1038:
-    // if (currentState == STATE_AUTO || STATE_PRE_AUTO) {
-
-    //   if ((auto_finish == 0) &&
-    //       (currentState ==
-    //        STATE_AUTO)) { //
-    //        如果自动任务未完成，且工作在正式模式下（非自动阶段）则设置紧急停止标志
-    //     emergency_stop =
-    //         true; // 设置紧急停止标志(1 << 0)); // 清除第0位//
-    //         通知停止加热任务
-    //   }
-
-    //   HeatPWM(0); // 启动加热PWM
-    //   osEventFlagsClear(HEAT_ONHandle,
-    //                     (1 << 0)); // 清除第0位// 通知停止加热任务
-    //   osEventFlagsClear(PRESS_ONHandle,
-    //                     (1 << 0)); // 清除第0位// 通知停止加热任务
-    //   currentState = STATE_OFF;    // 从自动模式回到关闭状态
-    // }
-
     if (currentState == STATE_PRE_AUTO) {
-      HeatPWM(0); // 启动加热PWM
-      osEventFlagsClear(HEAT_ONHandle,
-                        (1 << 0)); // 清除第0位// 通知停止加热任务
-    }
-    if (currentState == STATE_AUTO) {
-      HeatPWM(0); // 启动加热PWM
-      osEventFlagsClear(HEAT_ONHandle,
-                        (1 << 0)); // 清除第0位// 通知停止加热任务
-      osEventFlagsClear(PRESS_ONHandle,
-                        (1 << 0)); // 清除第0位// 通知停止加热任务
-      if (auto_finish ==0) { // 如果自动任务未完成，且工作在正式模式下（非自动阶段）则设置紧急停止标志
-        emergency_stop =1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
-      }
-    }
+        HeatPWM(0); // 启动加热PWM
+        if (currentState == STATE_AUTO) {
+            HeatPWM(0); // 启动加热PWM
+            vTaskDelete(PressHandle);
+            vTaskDelete(HeatHandle);
+            xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
+            if (auto_finish == 0) { // 如果自动任务未完成，且工作在正式模式下（非自动阶段）则设置紧急停止标志
+                emergency_stop = 1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
+            }
+        }
 
-    currentState = STATE_OFF; // 从自动模式回到关闭状态
+        currentState = STATE_OFF; // 从自动模式回到关闭状态
+    }
     break;
   case 0x1040:
     soft_button=1;
