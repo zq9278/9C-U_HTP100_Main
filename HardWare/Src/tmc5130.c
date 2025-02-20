@@ -142,7 +142,7 @@ uint8_t MotorChecking() {
             // ×´Ì¬Âú×ã£¬ÍË³öÑ­»·
             break;
         }
-        vTaskDelay(10);
+        vTaskDelay(100);
     }
 
     MotorSetHome();
@@ -276,7 +276,8 @@ void PressureControl() {
     if (
     press_flag_400ms){
         press_flag_400ms=0;
-        xQueueSend(PressureHandle, &hhmg, 0);
+        ScreenUpdateForce(hhmg);
+        //xQueueSend(PressureHandle, &hhmg, 0);
     }
 
 

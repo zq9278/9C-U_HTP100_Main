@@ -416,13 +416,18 @@ extern uint8_t low_battery;
 extern uint8_t battery_flag_400ms;
 //extern osMessageQueueId_t Battery_DATAHandle;
 float batp;
+static float lastBatteryValue = 0;// 声明一个变量用于存储上一次的值
 void battery_status_update_bq27441(void) {
   BQ27441_MultiRead_DMA(&BQ27441);
   low_battery = (BQ27441.SOC < 20) && (BQ27441.SOC != 0);
     float battery = (float)BQ27441.SOC;
+    //ScreenUpdateSOC(battery);
     if(battery_flag_400ms){
         battery_flag_400ms=0;
-        xQueueSend(Battery_DATAHandle, &battery, 0); // 将数据发送到队列
+        if (lastBatteryValue == 0 || fabs(battery - lastBatteryValue) <= 10.0f) {
+            lastBatteryValue = battery;
+            ScreenUpdateSOC(battery);
+        }
     }
     if (BQ27441.Voltage <= 3000) {
       BQ25895_Write(0x09, 0x64); // 电压低，关断保护

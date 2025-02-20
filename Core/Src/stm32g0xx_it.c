@@ -69,6 +69,7 @@ extern TIM_HandleTypeDef htim14;
 extern TIM_HandleTypeDef htim16;
 extern TIM_HandleTypeDef htim17;
 extern DMA_HandleTypeDef hdma_usart2_rx;
+extern DMA_HandleTypeDef hdma_usart2_tx;
 extern UART_HandleTypeDef huart2;
 extern TIM_HandleTypeDef htim6;
 
@@ -183,6 +184,7 @@ void DMA1_Ch4_7_DMAMUX1_OVR_IRQHandler(void)
   /* USER CODE END DMA1_Ch4_7_DMAMUX1_OVR_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_i2c2_tx);
   HAL_DMA_IRQHandler(&hdma_usart2_rx);
+  HAL_DMA_IRQHandler(&hdma_usart2_tx);
   HAL_DMA_IRQHandler(&hdma_tim16_ch1);
   /* USER CODE BEGIN DMA1_Ch4_7_DMAMUX1_OVR_IRQn 1 */
 
@@ -386,9 +388,14 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
 }
 //extern uint8_t usart1_tx;
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-  if (huart->Instance == USART2) {
-    //usart1_tx = 1;
-  }
+
+    if (huart->Instance == USART2) {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xSemaphoreGiveFromISR(usart2_dmatxSemaphore, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+
+
 }
 // 全局变量，用于标记 DMA 传输状态
 volatile bool dma_transfer_complete = false;

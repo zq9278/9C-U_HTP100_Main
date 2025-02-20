@@ -2,7 +2,6 @@
 #include <stdint.h>
 extern I2C_HandleTypeDef hi2c2;
 extern uint8_t AD24C02_EYE[4];
-//extern osMessageQueueId_t prepare_dataHandle;
 SoftwareI2C iic_24x = {EE_SDA_GPIO_Port, EE_SDA_Pin, EE_SCL_GPIO_Port, EE_SCL_Pin};
 // 软件IIC初始化
 
@@ -210,19 +209,19 @@ void prepare_data_set(void){
   hot_count = AT24CXX_ReadOrWriteZero(0x00);
   my_prepare_data.cmd_type_low = 0xA0;
   my_prepare_data.value = hot_count;
-  xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+  Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
   crimp_count = AT24CXX_ReadOrWriteZero(0x02);
   my_prepare_data.cmd_type_low = 0xA1;
   my_prepare_data.value = crimp_count;
-  xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+  Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
   auto_count = AT24CXX_ReadOrWriteZero(0x04);
   my_prepare_data.cmd_type_low = 0xA2;
   my_prepare_data.value = auto_count;
-  xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+  Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
   set_prepare = AT24CXX_ReadOrWriteZero(0xFC);
   my_prepare_data.cmd_type_low = 0xA3;
   my_prepare_data.value = set_prepare;
-  xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+  Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
   switch (set_prepare) {
   case 1:
     prepare_press = AT24CXX_ReadOrWriteZero(0x08);
@@ -242,17 +241,17 @@ void prepare_data_set(void){
   }
   my_prepare_data.cmd_type_low = 0xA4;
   my_prepare_data.value = prepare_press;
-  xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+  Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
   my_prepare_data.cmd_type_low = 0xA5;
   my_prepare_data.value = prepare_temperature;
-  xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+  Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
   my_prepare_data.cmd_type_low = 0xA6;
   my_prepare_data.value = prepare_time;
-  xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+  Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
   bee = AT24CXX_ReadOrWriteZero(0xF8);
   my_prepare_data.cmd_type_low = 0xA7;
   my_prepare_data.value = bee;
-  xQueueSend(prepare_dataHandle, &my_prepare_data, 0); // 将数据发送到队列
+  Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
 }
 void AD24C01_Factory_formatted(void){
   if(AT24CXX_ReadOrWriteZero(0xf0)==0){
