@@ -32,6 +32,7 @@ void UART_RECEPT_Task(void *argument) {
 }
 
 void Heat_Task(void *argument) {
+    LOG("heat_start");
     for (;;) {
         EyeTmp = TmpRaw2Ture();
         if (tempature_flag_400ms) {
@@ -42,9 +43,9 @@ void Heat_Task(void *argument) {
         }
         Heat_PWM = PID_Compute(&HeatPID, EyeTmp);
         HeatPWMSet((uint8_t) Heat_PWM);
-        LOG("%.6f,", EyeTmp);
-        LOG("%.2f,", Heat_PWM);
-        LOG("%.2f\n", 42.5);
+//        LOG("%.6f,", EyeTmp);
+//        LOG("%.2f,", Heat_PWM);
+//        LOG("%.2f\n", 42.5);
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -121,7 +122,7 @@ void Motor_go_home_task(void *argument) {
 void Device_Check_Task(void *pvParameters) {
     while (1) {
         if (serialTimeoutFlag)
-            LOG("请检查屏幕连接！\n");
+           // LOG("请检查屏幕连接！\n");
         IIC_EYETimeoutFlag = TMP112_IsDevicePresent();//检查iic是否存在
         // 延时一段时间，避免任务占用过多CPU资源（例如延时100毫秒）
         vTaskDelay(pdMS_TO_TICKS(1000));

@@ -53,8 +53,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             /* 屏幕加热开始 */
         case 0x1041:
             currentState = STATE_PRE_HEAT; // 切换到预加热状态
-            emergency_stop = 0;
-            HeatPWM(1);                    // 启动加热PWM
+            emergency_stop = 0;            HeatPWM(1);                    // 启动加热PWM
             //HeatPID.setpoint = 37.5;
             HeatPID.setpoint = 37.5 + temperature_compensation;
             xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle);
@@ -158,7 +157,22 @@ void UART1_CMDHandler(recept_data_p msg) {
         case 0x1052://屏幕应答信号
             //xSemaphoreGive(usart2_dmatxSemaphore);
             break;
-
+        case 0x1053:
+            HeatPID.setpoint = data + temperature_compensation;
+            break;
+        case 0x1054:
+            MotorPID.setpoint = data;
+            break;
+        case 0x1055:
+            currentState = STATE_PRE_AUTO; // 切换到预自动模式
+            emergency_stop = 0;
+            HeatPWM(1);                    // 启动加热PWM
+            xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle);
+            if (motor_homeHandle != NULL) {
+                vTaskDelete(motor_homeHandle);
+                motor_homeHandle = NULL;  // 避免再次访问无效句柄
+            }//防止操作太快电机没有归位
+            break;
             /* 其他未知命令 */
         default:
             break;
@@ -436,7 +450,20 @@ void ScreenWorkModeQuit(void) {
     USART2_DMA_Send(&pData, sizeof(pData));
 
 }
+void EYE_checkout(float data) {
+    static recept_data pData;
+    pData.cmd_head_high = 0x5A;
+    pData.cmd_head_low = 0xA5;
+    pData.frame_length = 0x0d;
+    pData.cmd_type_high = 0x20;
+    pData.cmd_type_low = 0x55;
+    pData.data = data;
+    pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
+    pData.end_high = 0xff; // 帧尾
+    pData.end_low = 0xff;  // 帧尾
+    USART2_DMA_Send(&pData, sizeof(pData));
 
+}
 void ScreenTimerStart(void) {
 
     static recept_data pData;
@@ -523,7 +550,7 @@ void Serial_data_stream_parsing(uart_data *frameData) {
                     uint16_t calculated_crc = Calculate_CRC(&frameData->buffer[i], frame_size - 4); // 不包含CRC和帧尾
                     if (calculated_crc == received_crc) {
                         command_parsing(&frameData->buffer[i]);
-                        printf("帧解析成功: \n");
+                        //printf("帧解析成功: \n");
                     } else {
                         printf("Error: CRC mismatch\n");
                     }

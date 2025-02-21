@@ -66,8 +66,8 @@ void ScreenTimerStart(void);
 void Eye_twitching_invalid(void) ;
 void Eye_twitching_invalid_master(prepare_data_p myprepare_data);
 void ScreenWorkMode_count(float count);
-
-void ScreenUpdateForce(float value);
+void EYE_checkout(float data);
+        void ScreenUpdateForce(float value);
 void ScreenUpdateTemperature(float value);
 void Serial_data_stream_parsing(uart_data *frameData);
 
