@@ -18,6 +18,8 @@ uart_data *frameData_uart;
 TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle;
 QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
 SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore,spi2RxDmaSemaphoreHandle,spi2TxDmaSemaphoreHandle;  // SPI2 DMA 完成信号量;  // 定义日志信号量;
+SemaphoreHandle_t xI2CMutex;       // I2C总线互斥量
+SemaphoreHandle_t xI2CCompleteSem; // 传输完成信号量
 
 
 
@@ -88,21 +90,17 @@ void Button_State_Task(void *argument) {
 }
 
 void APP_task(void *argument) {
-    AT24CXX_Init();
-    BQ27441_Init();
-    BQ25895_Init();
-    PWM_WS2812B_Init();
-    ADS1220_Init(); // 初始化ADS1220
-    TMC5130_Init();
-    HeatInit();
-    AD24C01_Factory_formatted();//如果flash没有初始化，则初始化
+uint16_t Voltage;
     for (;;) {
         osDelay(20);//the breath of frequency
-        UpdateChargeState_bq25895();
-        battery_status_update_bq27441();
+//        UpdateChargeState_bq25895();
+//        battery_status_update_bq27441();
         UpdateState(emergency_stop, charging, low_battery, fully_charged, working);
         UpdateLightState(ChargeState);
         STATE_POWER_5V_Update();
+
+        //HAL_I2C_Mem_Read_DMA(&hi2c1, BQ27441Address, 0x04, I2C_MEMADD_SIZE_8BIT,(uint8_t *)&(BQ_State->Voltage), 2);
+        BQ27441_Read_IT(0x04, (uint8_t *)&Voltage, 2);
     }
 }
 
@@ -131,11 +129,14 @@ void Device_Check_Task(void *pvParameters) {
 
 
 void Main(void) {
+
+
     logSemaphore = xSemaphoreCreateMutex();  // 创建LOG互斥信号量
     BUTTON_SEMAPHOREHandle = xSemaphoreCreateBinary();//按键互斥量
     usart2_dmatxSemaphore = xSemaphoreCreateBinary();        // usart2DMA信号量
     USART2_DMA_Init();
     SPI2_DMA_Semaphores_Init();
+    I2C_Semaphore_Init();
     ws2812_white_delayHandle = xTimerCreate("ws2812_white_delay", pdMS_TO_TICKS(400), pdFALSE, NULL,
                                             ws2812_white_delay_callback);
     ws2812_yellow_delayHandle = xTimerCreate("ws2812_yellow_delay", pdMS_TO_TICKS(400), pdFALSE, NULL,
@@ -156,6 +157,14 @@ void Main(void) {
 
     UART_DMA_IDLE_RECEPT_QUEUEHandle = xQueueCreate(3, sizeof(uart_data *));
 
+    AT24CXX_Init();
+    BQ27441_Init();
+    BQ25895_Init();
+    PWM_WS2812B_Init();
+    ADS1220_Init(); // 初始化ADS1220
+    TMC5130_Init();
+    HeatInit();
+    AD24C01_Factory_formatted();//如果flash没有初始化，则初始化
 
     xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 6, &UART_RECEPTHandle);
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 4, &Button_StateHandle);

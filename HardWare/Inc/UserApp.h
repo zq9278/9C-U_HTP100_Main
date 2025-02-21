@@ -29,7 +29,7 @@ extern uart_data *frameData_uart;
 /* FreeRTOS ¾ä±ú */
 extern TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, AD24C01Handle,motor_homeHandle,deviceCheckHandle;
 extern QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
-extern SemaphoreHandle_t BUTTON_SEMAPHOREHandle,logSemaphore,usart2_dmatxSemaphore,spi2RxDmaSemaphoreHandle,spi2TxDmaSemaphoreHandle;
+extern SemaphoreHandle_t BUTTON_SEMAPHOREHandle,logSemaphore,usart2_dmatxSemaphore,spi2RxDmaSemaphoreHandle,spi2TxDmaSemaphoreHandle,xI2CMutex,xI2CCompleteSem;
 /* Task function prototypes */
 void UART_RECEPT_Task(void *argument);
 void Heat_Task(void *argument);

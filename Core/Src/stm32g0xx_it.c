@@ -393,11 +393,36 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 // 全局变量，用于标记 DMA 传输状态
 volatile bool dma_transfer_complete = false;
 // DMA 回调函数
+//void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+//  if (hi2c->Instance == hi2c1.Instance) {
+//    dma_transfer_complete = true; // 标记 DMA 传输完成
+//  }
+//}
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-  if (hi2c->Instance == hi2c1.Instance) {
-    dma_transfer_complete = true; // 标记 DMA 传输完成
-  }
+    if (hi2c->Instance == hi2c1.Instance) {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xSemaphoreGiveFromISR(xI2CCompleteSem, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
 }
+
+void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    if (hi2c->Instance == hi2c1.Instance) {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xSemaphoreGiveFromISR(xI2CCompleteSem, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+}
+
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
+    if (hi2c->Instance == hi2c1.Instance) {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xSemaphoreGiveFromISR(xI2CCompleteSem, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+}
+
+
 // ============================
 // DMA 完成回调函数
 // ============================

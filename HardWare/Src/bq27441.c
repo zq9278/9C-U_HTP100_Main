@@ -22,7 +22,7 @@ uint8_t CHKSUM;
 uint8_t BQ27441_FLAG_LSB, BQ27441_CONTROL_STATUS_MSB;
 
 BQ27441_typedef BQ27441;
-
+volatile bool i2c_transfer_success = false; // 传输结果状态
 extern I2C_HandleTypeDef hi2c1;
 
 //uint8_t BQ27441_Init(void) {
@@ -164,6 +164,15 @@ extern I2C_HandleTypeDef hi2c1;
 // }
 //}
 
+void I2C_Semaphore_Init(void) {
+    xI2CMutex = xSemaphoreCreateMutex();
+    xI2CCompleteSem = xSemaphoreCreateBinary();
+
+    if (xI2CMutex == NULL || xI2CCompleteSem == NULL) {
+        printf("I2C信号量创建失败!\r\n");
+        Error_Handler();
+    }
+}
 
 uint8_t BQ27441_Init(void) {
   uint8_t OLD_CHKSUM, NEW_CHKSUM, TMP_CHKSUM; // 校验和变量
@@ -280,6 +289,67 @@ void BQ27441_Read(uint8_t ReadAddr, uint8_t *pBuffer) {
   }
   HAL_I2C_Mem_Read_DMA(&hi2c1, BQ27441Address, ReadAddr, I2C_MEMADD_SIZE_8BIT,
                        pBuffer, 1);
+}
+#define I2C_TIMEOUT_MS 100  // 超时时间
+
+HAL_StatusTypeDef BQ27441_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t size) {
+    HAL_StatusTypeDef status = HAL_ERROR;
+
+    // 获取互斥锁，防止多个任务同时访问I2C
+    if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
+        // 先清空信号量，防止上次操作影响
+        xSemaphoreTake(xI2CCompleteSem, 0);
+
+        // 启动 I2C 读操作 (使用中断模式)
+        status = HAL_I2C_Mem_Read_IT(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, size);
+        if (status == HAL_OK) {
+            // 等待 I2C 操作完成信号量 (带超时)
+            if (xSemaphoreTake(xI2CCompleteSem, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
+                status = HAL_OK;  // 操作成功
+            } else {
+                // 超时处理
+                HAL_I2C_DeInit(&hi2c1);
+                HAL_I2C_Init(&hi2c1);
+                status = HAL_TIMEOUT;
+            }
+        }
+
+        // 释放I2C互斥锁
+        xSemaphoreGive(xI2CMutex);
+    } else {
+        status = HAL_BUSY;  // 获取锁失败，I2C总线繁忙
+    }
+
+    return status;
+}
+HAL_StatusTypeDef BQ27441_Write_IT(uint8_t regAddr, uint8_t *pData, uint16_t size) {
+    HAL_StatusTypeDef status = HAL_ERROR;
+
+    if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
+        // 先清空信号量
+        xSemaphoreTake(xI2CCompleteSem, 0);
+
+        // 启动 I2C 写操作 (使用中断模式)
+        status = HAL_I2C_Mem_Write_IT(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT, pData, size);
+        if (status == HAL_OK) {
+            // 等待 I2C 操作完成信号量
+            if (xSemaphoreTake(xI2CCompleteSem, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
+                status = HAL_OK;  // 操作成功
+            } else {
+                // 超时处理
+                HAL_I2C_DeInit(&hi2c1);
+                HAL_I2C_Init(&hi2c1);
+                status = HAL_TIMEOUT;
+            }
+        }
+
+        // 释放I2C互斥锁
+        xSemaphoreGive(xI2CMutex);
+    } else {
+        status = HAL_BUSY;
+    }
+
+    return status;
 }
 
 // void BQ27441_MultiRead(BQ27441_typedef *BQ_State) {
