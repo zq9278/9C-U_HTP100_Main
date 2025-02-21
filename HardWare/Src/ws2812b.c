@@ -6,8 +6,8 @@ extern TIM_HandleTypeDef htim16;
 extern DMA_HandleTypeDef hdma_tim16_ch1;
 extern TIM_HandleTypeDef htim17;
 extern uint8_t charging, working, fully_charged, emergency_stop,low_battery;
-extern osTimerId_t ws2812_white_delayHandle;
-extern osTimerId_t ws2812_yellow_delayHandle;
+//extern osTimerId_t ws2812_white_delayHandle;
+//extern osTimerId_t ws2812_yellow_delayHandle;
 void PWM_WS2812B_Init(void) {
   charging=0;
   working=0;
@@ -87,7 +87,7 @@ void UpdateState(uint8_t emergency_stop, uint8_t charging, uint8_t low_battery,
   }
 }
 
-extern osTimerId_t breath_delayHandle;
+//extern osTimerId_t breath_delayHandle;
 uint8_t white_delay = 0;    // 状态变量（同时作为标志位和灯珠状态）
 uint8_t yellow_delay = 0;    // 状态变量（同时作为标志位和灯珠状态）
 uint8_t breathing_flag = 0; // 标志位，用于控制呼吸灯的开关

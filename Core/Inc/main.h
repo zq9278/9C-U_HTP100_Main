@@ -37,7 +37,7 @@ extern "C" {
 #include "cmsis_os.h"
 #include "queue.h"
 #include "semphr.h"  // 与信号量相关的 API
-#include "uart_freertos.h"
+#include "communication.h"
 #include "Button.h"
 #include "pid.h"
 #include "delay.h"
@@ -53,6 +53,10 @@ extern "C" {
 #include "ads1220.h"
 #include <stdio.h>
 #include <math.h>
+#include "UserApp.h"
+#include "interface_uart.h"
+#include "time_callback.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

@@ -6,10 +6,10 @@
  */
 
 #include "main.h"
-extern osEventFlagsId_t PRESS_ONHandle;
-extern osEventFlagsId_t HEAT_ONHandle;
-extern osMessageQueueId_t HEAT_DATAHandle;
-extern osMessageQueueId_t PRESS_DATAHandle;
+//extern osEventFlagsId_t PRESS_ONHandle;
+//extern osEventFlagsId_t HEAT_ONHandle;
+//extern osMessageQueueId_t HEAT_DATAHandle;
+//extern osMessageQueueId_t PRESS_DATAHandle;
 volatile SystemState_t currentState = STATE_OFF;
 extern uint8_t heat_finish,press_finish,auto_finish;
 extern PID_TypeDef HeatPID;
@@ -29,9 +29,6 @@ void Button_detection(void) {
 //          HeatPID.integral = pid_heat.integral;
     HeatPID.setpoint = 42+temperature_compensation;
           //HeatPID.Ki=0.04;
-    //xQueueSend(HEAT_DATAHandle, &HeatPID, 0); // 将加热数据发送到队列
-    //osEventFlagsSet(HEAT_ONHandle, (1 << 0)); // 设置第0位 // 启动加热任务
-          
     ScreenTimerStart();
           
     break;
@@ -45,14 +42,14 @@ void Button_detection(void) {
         
     }
     HeatPWM(0); // 关闭加热PWM
-    osEventFlagsClear(HEAT_ONHandle, (1 << 0)); // 清除第0位// 通知停止加热任务
+          vTaskDelete(HeatHandle);// 通知停止加热任务
     break;
 
   case STATE_PRE_PRESS:
     currentState = STATE_PRESS;                // 从预挤压进入挤压
    press_finish=0;
     TMC_ENN(0);                                // 启动电机
-    osEventFlagsSet(PRESS_ONHandle, (1 << 0)); // 设置第0位
+          xTaskCreate(Press_Task, "Press", 256, NULL, 3, &PressHandle);
           
     ScreenTimerStart();
           
@@ -66,7 +63,8 @@ void Button_detection(void) {
     ScreenWorkModeQuit();
         
     }
-    osEventFlagsClear(PRESS_ONHandle, (1 << 0)); // 清除第0位// 通知停止挤压任务
+          vTaskDelete(PressHandle);// 通知停止加热任务
+          xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
     break;
 
   case STATE_PRE_AUTO:
@@ -78,7 +76,7 @@ void Button_detection(void) {
           //HeatPID.Ki=0.04;
     //xQueueSend(HEAT_DATAHandle, &HeatPID, 0);  // 将加热数据发送到队列
     TMC_ENN(0);                                // 启动电机
-    osEventFlagsSet(PRESS_ONHandle, (1 << 0)); // 设置第0位
+          xTaskCreate(Press_Task, "Press", 256, NULL, 3, &PressHandle);
           
     ScreenTimerStart();
           
@@ -93,8 +91,9 @@ void Button_detection(void) {
          
     }
     HeatPWM(0); // 关闭加热PWM
-    osEventFlagsClear(HEAT_ONHandle, (1 << 0));  // 清除第0位// 通知停止加热任务
-    osEventFlagsClear(PRESS_ONHandle, (1 << 0)); // 清除第0位// 通知停止挤压任务
+          vTaskDelete(PressHandle);// 通知停止加热任务
+          vTaskDelete(HeatHandle);// 通知停止加热任务
+          xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
     break;
 
   default:

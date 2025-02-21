@@ -5,8 +5,8 @@
  * @Last Modified time: 2024-12-30 10:15:32
  */
 
-#ifndef USRT_FREERTOS_H
-#define USRT_FREERTOS_H
+#ifndef COMMUNICATION
+#define COMMUNICATION
 #include "stm32g0xx_hal.h"
 
 #define UART_RX_BUFFER_SIZE  256 // 串口接收缓冲区大小
@@ -66,14 +66,11 @@ void ScreenTimerStart(void);
 void Eye_twitching_invalid(void) ;
 void Eye_twitching_invalid_master(prepare_data_p myprepare_data);
 void ScreenWorkMode_count(float count);
-
-void ScreenUpdateForce(float value);
+void EYE_checkout(float data);
+        void ScreenUpdateForce(float value);
 void ScreenUpdateTemperature(float value);
 void Serial_data_stream_parsing(uart_data *frameData);
-uint16_t Calculate_CRC(uint8_t *data, uint16_t length);
 
 
 
-
-
-#endif // !USRT_FREERTOS_H
+#endif // !COMMUNICATION

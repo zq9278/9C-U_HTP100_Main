@@ -3,7 +3,7 @@
 
 
 uint8_t EyeTmpRaw[2];
-
+uint8_t IIC_EYETimeoutFlag;
 
 extern I2C_HandleTypeDef hi2c2;
 extern DMA_HandleTypeDef hdma_i2c2_rx;
@@ -22,8 +22,24 @@ void TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer)
    // 使用 HAL_I2C_Mem_Read_DMA 进行读操作
    HAL_I2C_Mem_Read_DMA(&hi2c2, 0x91, ReadAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, 2) ;
    
-}  
+}
 
+
+uint8_t TMP112_IsDevicePresent(void) {
+    float data;
+// 尝试 2 次，每次等待 10ms
+    HAL_StatusTypeDef result = HAL_I2C_IsDeviceReady(&hi2c2, 0x91, 2, 10);
+    if (result == HAL_OK) {
+        LOG("TMP112 已连接！\n");
+        data=1;
+  return 1;
+    } else {
+        LOG("未检测到 TMP112，请检查接线或地址！\n");
+        data=0;
+ return 0;
+    }
+     EYE_checkout( data);
+}
 // void TMP112_MultiRead(uint8_t* pBuffer)   
 // { 	
 // 	HAL_I2C_Mem_Read_DMA(&hi2c2, TMP112_ADDR, 0x00,I2C_MEMADD_SIZE_8BIT, pBuffer,0x14);
