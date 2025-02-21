@@ -55,21 +55,17 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern DMA_HandleTypeDef hdma_i2c1_rx;
-extern DMA_HandleTypeDef hdma_i2c1_tx;
 extern DMA_HandleTypeDef hdma_i2c2_rx;
-extern DMA_HandleTypeDef hdma_i2c2_tx;
 extern I2C_HandleTypeDef hi2c1;
 extern I2C_HandleTypeDef hi2c2;
+extern DMA_HandleTypeDef hdma_spi2_rx;
+extern DMA_HandleTypeDef hdma_spi2_tx;
 extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi2;
-extern DMA_HandleTypeDef hdma_tim16_ch1;
 extern TIM_HandleTypeDef htim7;
 extern TIM_HandleTypeDef htim14;
 extern TIM_HandleTypeDef htim16;
 extern TIM_HandleTypeDef htim17;
-extern DMA_HandleTypeDef hdma_usart2_rx;
-extern DMA_HandleTypeDef hdma_usart2_tx;
 extern UART_HandleTypeDef huart2;
 extern TIM_HandleTypeDef htim6;
 
@@ -153,7 +149,7 @@ void DMA1_Channel1_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
 
   /* USER CODE END DMA1_Channel1_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_i2c1_rx);
+  HAL_DMA_IRQHandler(&hdma_spi2_rx);
   /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
 
   /* USER CODE END DMA1_Channel1_IRQn 1 */
@@ -167,28 +163,11 @@ void DMA1_Channel2_3_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel2_3_IRQn 0 */
 
   /* USER CODE END DMA1_Channel2_3_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_i2c1_tx);
+  HAL_DMA_IRQHandler(&hdma_spi2_tx);
   HAL_DMA_IRQHandler(&hdma_i2c2_rx);
   /* USER CODE BEGIN DMA1_Channel2_3_IRQn 1 */
 
   /* USER CODE END DMA1_Channel2_3_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA1 channel 4, channel 5, channel 6, channel 7 and DMAMUX1 interrupts.
-  */
-void DMA1_Ch4_7_DMAMUX1_OVR_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Ch4_7_DMAMUX1_OVR_IRQn 0 */
-
-  /* USER CODE END DMA1_Ch4_7_DMAMUX1_OVR_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_i2c2_tx);
-  HAL_DMA_IRQHandler(&hdma_usart2_rx);
-  HAL_DMA_IRQHandler(&hdma_usart2_tx);
-  HAL_DMA_IRQHandler(&hdma_tim16_ch1);
-  /* USER CODE BEGIN DMA1_Ch4_7_DMAMUX1_OVR_IRQn 1 */
-
-  /* USER CODE END DMA1_Ch4_7_DMAMUX1_OVR_IRQn 1 */
 }
 
 /**
@@ -371,21 +350,14 @@ void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
     reset = 1;
   }
 }
+extern DMA_HandleTypeDef hdma_tim16_ch1;
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
   if (htim->Instance == TIM16) {
     hdma_tim16_ch1.State = HAL_DMA_STATE_READY;
   }
 }
-extern volatile uint8_t data_ready; // 标志位
-extern volatile uint8_t SPI_RxComplete;
-void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
-  if (hspi == &hspi2) {
-    data_ready = 1; // 数据接收完成，设置标志位
-  }
-  if (hspi->Instance == SPI1) {
-    SPI_RxComplete = 1; // 设置接收完成标志
-  }
-}
+
+
 //extern uint8_t usart1_tx;
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 
@@ -404,5 +376,28 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
   if (hi2c->Instance == hi2c1.Instance) {
     dma_transfer_complete = true; // 标记 DMA 传输完成
   }
+}
+// ============================
+// DMA 完成回调函数
+// ============================
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
+    if (hspi->Instance == SPI2) {
+        hspi2.State = HAL_SPI_STATE_READY;
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xSemaphoreGiveFromISR(spi2TxDmaSemaphoreHandle, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+}
+extern volatile uint8_t SPI_RxComplete;
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
+    if (hspi->Instance == SPI1) {
+        SPI_RxComplete = 1; // 设置接收完成标志
+    }
+    if (hspi->Instance == SPI2) {
+        hspi2.State = HAL_SPI_STATE_READY;
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xSemaphoreGiveFromISR(spi2RxDmaSemaphoreHandle, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
 }
 /* USER CODE END 1 */

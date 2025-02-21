@@ -7,129 +7,207 @@
 
 // SPI接口代码，用于与MCU通信的ADS1220
 #include "main.h"
-#include "stm32g0xx_hal_gpio.h"
 #include <stdint.h>
 
 // 定义全局变量
 volatile uint8_t spi_rx_buffer[3];
 volatile int32_t ads1220_result = 0;
 volatile uint8_t data_ready = 0; // 标志位
+extern SPI_HandleTypeDef hspi2;
+/*
+ * SPI2 DMA + 完成信号量封装 (ADS1220 支持，发送与接收分离信号量)
+ * 作者: zhangqi
+ * 日期: 2024-12-30
+ * 修改日期: 2025-01-05
+ */
 
+#include "main.h"
+#include "cmsis_os.h"
+#include <stdint.h>
+
+extern SPI_HandleTypeDef hspi2;
+
+// ============================
+// 信号量初始化
+// ============================
+void SPI2_DMA_Semaphores_Init(void) {
+    spi2TxDmaSemaphoreHandle = xSemaphoreCreateBinary();
+    spi2RxDmaSemaphoreHandle = xSemaphoreCreateBinary();
+
+    if (spi2TxDmaSemaphoreHandle != NULL) {
+        //xSemaphoreGive(spi2TxDmaSemaphoreHandle);  // 初始释放发送信号量
+    }
+
+    if (spi2RxDmaSemaphoreHandle != NULL) {
+        xSemaphoreGive(spi2RxDmaSemaphoreHandle);  // 初始释放接收信号量
+    }
+}
+// ============================
+// SPI 发送封装（DMA + 发送信号量）
+// ============================
+HAL_StatusTypeDef SPI2_Transmit_DMA(uint8_t *txData, uint16_t size, uint32_t timeout) {
+    if (xSemaphoreTake(spi2TxDmaSemaphoreHandle, 10) != pdPASS) {
+        return HAL_BUSY;  // 上一次发送未完成
+    }
+    //xSemaphoreTake(spi2TxDmaSemaphoreHandle, portMAX_DELAY);
+
+    if (HAL_SPI_Transmit_DMA(&hspi2, txData, size) != HAL_OK) {
+        xSemaphoreGive(spi2TxDmaSemaphoreHandle);  // 启动失败，立即释放信号量
+        return HAL_ERROR;
+    }
+
+    if (xSemaphoreTake(spi2TxDmaSemaphoreHandle, pdMS_TO_TICKS(timeout)) != pdPASS) {
+        return HAL_TIMEOUT;  // 超时处理
+    }
+
+    return HAL_OK;
+}
+
+// ============================
+// SPI 接收封装（DMA + 接收信号量）
+// ============================
+HAL_StatusTypeDef SPI2_Receive_DMA(uint8_t *rxData, uint16_t size, uint32_t timeout) {
+    if (xSemaphoreTake(spi2RxDmaSemaphoreHandle, 0) != pdPASS) {
+        return HAL_BUSY;  // 上一次接收未完成
+    }
+
+    if (HAL_SPI_Receive_DMA(&hspi2, rxData, size) != HAL_OK) {
+        xSemaphoreGive(spi2RxDmaSemaphoreHandle);  // 启动失败立即释放
+        return HAL_ERROR;
+    }
+
+    if (xSemaphoreTake(spi2RxDmaSemaphoreHandle, pdMS_TO_TICKS(timeout)) != pdPASS) {
+        return HAL_TIMEOUT;  // 超时处理
+    }
+
+    return HAL_OK;
+}
+
+// ============================
+// 写寄存器函数
+// ============================
 void ADS1220_WriteRegister(uint8_t reg, uint8_t value) {
-  uint8_t cmd = 0x40 | (reg << 2); // WREG命令 + 地址
-  ADS1220_CS_LOW();
-  HAL_SPI_Transmit_IT(&hspi2, &cmd, 1);   // 使用中断发送命令
-  HAL_SPI_Transmit_IT(&hspi2, &value, 1); // 使用中断发送数据
-  ADS1220_CS_HIGH();
-}
-
-void ADS1220_Init(void) {
-  // 上电后延时确保设备稳定
-  HAL_Delay(1);
-  // 重置ADS1220
-  ADS1220_CS_LOW();
-  uint8_t reset_cmd = ADS1220_CMD_RESET;
-  HAL_SPI_Transmit_IT(&hspi2, &reset_cmd, 1);
+    uint8_t cmd[2] = {0x40 | (reg << 2), value};  // WREG命令 + 地址 + 数据
+    ADS1220_CS_LOW();
+    if (SPI2_Transmit_DMA(cmd, 2, 100) != HAL_OK) {
+        printf("写寄存器失败 - REG: 0x%02X\n", reg);
+    }
     ADS1220_CS_HIGH();
-    osDelay(50); // 等待复位完成
-
-    uint8_t selfcal = selfcal_cmd;
-    HAL_SPI_Transmit_IT(&hspi2, &selfcal, 1);
-  ADS1220_CS_HIGH();
-    osDelay(50);// 等待自校准完成
-  // 配置ADS1220寄存器
-  ADS1220_WriteRegister(ADS1220_REG_CONFIG0, 0x3e); // 配置寄存器0
-  ADS1220_WriteRegister(ADS1220_REG_CONFIG1, 0x94); // 配置寄存器1
-  ADS1220_WriteRegister(ADS1220_REG_CONFIG2, 0x98); // 配置寄存器2
-  ADS1220_WriteRegister(ADS1220_REG_CONFIG3, 0x00); // 配置寄存器3
- 
 }
 
+// ============================
+// ADS1220 初始化
+// ============================
+void ADS1220_Init(void) {
+    HAL_Delay(1);  // 上电稳定时间
+
+    uint8_t reset_cmd = ADS1220_CMD_RESET;
+    ADS1220_CS_LOW();
+    SPI2_Transmit_DMA(&reset_cmd, 1, 100);
+    ADS1220_CS_HIGH();
+    osDelay(50);  // 等待复位完成
+
+    uint8_t selfcal_cmd = ADS1220_CMD_SELFCAL;
+    ADS1220_CS_LOW();
+    SPI2_Transmit_DMA(&selfcal_cmd, 1, 100);
+    ADS1220_CS_HIGH();
+    osDelay(50);  // 自校准完成等待
+
+    // 配置寄存器
+    ADS1220_WriteRegister(ADS1220_REG_CONFIG0, 0x3E);
+    ADS1220_WriteRegister(ADS1220_REG_CONFIG1, 0x94);
+    ADS1220_WriteRegister(ADS1220_REG_CONFIG2, 0x98);
+    ADS1220_WriteRegister(ADS1220_REG_CONFIG3, 0x00);
+}
+
+// ============================
+// 启动连续转换模式
+// ============================
 void ADS1220_StartConversion(void) {
-  // 启动连续转换模式
-  ADS1220_CS_LOW();
-  uint8_t start_cmd = ADS1220_CMD_START_SYNC;
-  HAL_SPI_Transmit_IT(&hspi2, &start_cmd, 1); // 使用中断发送命令
-  ADS1220_CS_HIGH();
-}
-#define ADS1220_DEAD_RESPONSE {0xFF, 0xFF, 0xFF}
-
-uint8_t response[3] = {0xFF, 0xFF, 0xFF}; // 假设死机时的返回值
-int32_t ADS1220_ReadData(void) {
-  uint8_t read_cmd = ADS1220_CMD_RDATA;
-  if (HAL_GPIO_ReadPin(ADS1220_DRDY_GPIO_Port, ADS1220_DRDY_Pin) == GPIO_PIN_RESET) // 检查是否死机
-//      if (1) // 检查是否死机
-  {
-//    ADS1220_CS_LOW();
-//    HAL_SPI_Transmit_IT(&hspi2, &read_cmd, 1);    // 发送读取数据命令
-//    HAL_SPI_Receive_IT(&hspi2, spi_rx_buffer, 3); // 接收3字节数据
-//    ADS1220_CS_HIGH();
-
-ADS1220_CS_LOW();
-// 发送读取命令
-if (HAL_SPI_Transmit(&hspi2, &read_cmd, 1, HAL_MAX_DELAY) != HAL_OK) {
-  ADS1220_CS_HIGH();
-  printf("SPI 发送失败\n");
-}
-// 接收3字节数据
-if (HAL_SPI_Receive(&hspi2, spi_rx_buffer, 3, HAL_MAX_DELAY) != HAL_OK) {
-  ADS1220_CS_HIGH();
-  printf("SPI 接收失败\n");
-}
-ADS1220_CS_HIGH(); // 传输完成后拉高 CS
-
-    //  // 手动逐字节检查数据是否与假设的死机值一致
-    //   if (spi_rx_buffer[0] == 0xFF &&
-    //       spi_rx_buffer[1] == 0xFF &&
-    //       spi_rx_buffer[2] == 0xFF) {
-    //       ADS1220_Init(); // 如果检测到死机，复位ADS1220
-    //   }
-    // 等待中断完成
-//    while (!data_ready) {
-//      // 这里可以加入超时机制，防止无限循环
-//    }
-//    data_ready = 0; // 清除标志位
-//                    // 解析数据
-  }
-//  else{
-//    ADS1220_Init(); // 如果检测到死机，复位ADS1220
-//  }
-  int32_t result = ((int32_t)spi_rx_buffer[0] << 16) |
-                   ((int32_t)spi_rx_buffer[1] << 8) | spi_rx_buffer[2];
-  if (result & 0x800000) {
-    result |= 0xFF000000; // 负数符号扩展
-  }
-  return result; // 返回解析结果
+    uint8_t start_cmd = ADS1220_CMD_START_SYNC;
+    ADS1220_CS_LOW();
+    SPI2_Transmit_DMA(&start_cmd, 1, 100);
+    ADS1220_CS_HIGH();
 }
 
-float ADS1220_ReadPressure(void) {
-
-  int32_t raw_data = ADS1220_ReadData(); // 获取原始数据
-  raw_data = -raw_data;                  // 将负值变为正值
-                                         // 1. 计算差分输入电压 V_in
-  float V_in = (raw_data * VREF) / 8388607.0;
-  // printf("v_in: %d \n",raw_data);
-
-  //     // 2. 反推出传感器原始输出 V_LOAD
-  float V_load = V_in / GAIN;
-  // printf("v_load: %f",V_load);
-
-  //     // 3. 根据传感器灵敏度计算重量
-  float weight =
-      V_load / (SENSITIVITY / 1000.0 *
-                EXCITATION_VOLTAGE); // 注意灵敏度单位为 mV/V，需转换为 V/V
-  return weight * 1000; // 返回压力值
-}
+// ============================
+// 停止连续转换
+// ============================
 void ADS1220_StopConversion(void) {
-  // 停止连续转换模式
-  ADS1220_CS_LOW();
-  uint8_t stop_cmd = ADS1220_CMD_POWERDOWN; // 使用掉电命令停止转换
-  HAL_SPI_Transmit_IT(&hspi2, &stop_cmd, 1); // 使用中断发送命令
-  ADS1220_CS_HIGH();
+    uint8_t stop_cmd = ADS1220_CMD_POWERDOWN;
+    ADS1220_CS_LOW();
+    SPI2_Transmit_DMA(&stop_cmd, 1, 100);
+    ADS1220_CS_HIGH();
 }
+
+// ============================
+// 读取数据函数 (DMA + 分离信号量处理)
+// ============================
+int32_t ADS1220_ReadData(void) {
+    uint8_t read_cmd = ADS1220_CMD_RDATA;
+    uint8_t rx_buffer[3] = {0};
+
+    ADS1220_CS_LOW();
+
+    // 发送读取命令
+    if (SPI2_Transmit_DMA(&read_cmd, 1, 100) != HAL_OK) {
+        ADS1220_CS_HIGH();
+        printf("读取命令发送失败\n");
+        return -1;
+    }
+
+    // 接收数据
+    if (SPI2_Receive_DMA(rx_buffer, 3, 100) != HAL_OK) {
+        ADS1220_CS_HIGH();
+        printf("数据接收失败\n");
+        return -1;
+    }
+
+    ADS1220_CS_HIGH();
+
+    int32_t result = ((int32_t)rx_buffer[0] << 16) |
+                     ((int32_t)rx_buffer[1] << 8)  |
+                     rx_buffer[2];
+
+    return (result & 0x800000) ? (result | 0xFF000000) : result;  // 符号扩展
+}
+
+// ============================
+// 读取压力值函数
+// ============================
+float ADS1220_ReadPressure(void) {
+    int32_t raw_data = ADS1220_ReadData();
+    if (raw_data == -1) return -1.0f;  // 读取失败处理
+
+    raw_data = -raw_data;  // 方向修正
+    float V_in = (raw_data * VREF) / 8388607.0f;
+    float V_load = V_in / GAIN;
+    float weight = V_load / ((SENSITIVITY / 1000.0f) * EXCITATION_VOLTAGE);
+
+    return weight * 1000.0f;  // 返回压力值 (g)
+}
+
+// ============================
+// 丢弃无效数据 (启动后读取无效值清除)
+// ============================
 void Discard_dirty_data(void) {
     for (int i = 0; i < 5; i++) {
-        float weight1 = ADS1220_ReadPressure() ; // 丢弃前几次读取结果
-        HAL_Delay(10);
+        ADS1220_ReadPressure();
+        HAL_Delay(10);  // 间隔读取，避免过快
+    }
+}
+
+// ============================
+// 示例任务: 周期性读取压力
+// ============================
+void Start_SPI_Task(void const *argument) {
+    for (;;) {
+        float pressure = ADS1220_ReadPressure();
+        if (pressure >= 0) {
+            printf("压力: %.2f g\n", pressure);
+        } else {
+            printf("读取压力失败\n");
+        }
+        osDelay(500);  // 500ms间隔读取
     }
 }

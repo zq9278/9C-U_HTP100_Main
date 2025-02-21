@@ -17,7 +17,7 @@ uart_data *frameData_uart;
 /* FreeRTOS Handles */
 TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle;
 QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
-SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore;;  // 定义日志信号量;
+SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore,spi2RxDmaSemaphoreHandle,spi2TxDmaSemaphoreHandle;  // SPI2 DMA 完成信号量;  // 定义日志信号量;
 
 
 
@@ -135,7 +135,7 @@ void Main(void) {
     BUTTON_SEMAPHOREHandle = xSemaphoreCreateBinary();//按键互斥量
     usart2_dmatxSemaphore = xSemaphoreCreateBinary();        // usart2DMA信号量
     USART2_DMA_Init();
-
+    SPI2_DMA_Semaphores_Init();
     ws2812_white_delayHandle = xTimerCreate("ws2812_white_delay", pdMS_TO_TICKS(400), pdFALSE, NULL,
                                             ws2812_white_delay_callback);
     ws2812_yellow_delayHandle = xTimerCreate("ws2812_yellow_delay", pdMS_TO_TICKS(400), pdFALSE, NULL,
