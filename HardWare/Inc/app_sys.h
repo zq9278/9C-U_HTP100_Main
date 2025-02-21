@@ -9,6 +9,5 @@
 
 #include "stm32g0xx_hal.h"
 void STATE_POWER_5V_Update(void);
-void MX_IWDG_Init(void);
 
 #endif /* __APP_SYS_H */
