@@ -46,6 +46,7 @@ void SPI2_DMA_Semaphores_Init(void) {
 // SPI 发送封装（DMA + 发送信号量）
 // ============================
 HAL_StatusTypeDef SPI2_Transmit_DMA(uint8_t *txData, uint16_t size, uint32_t timeout) {
+    xSemaphoreGive(spi2TxDmaSemaphoreHandle);  // 初始释放一次
     if (xSemaphoreTake(spi2TxDmaSemaphoreHandle, 10) != pdPASS) {
         return HAL_BUSY;  // 上一次发送未完成
     }
