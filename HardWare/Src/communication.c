@@ -13,6 +13,7 @@ extern uint8_t soft_button;
 uint16_t save_prepare, set_prepare;
 
 void UART1_CMDHandler(recept_data_p msg) {
+    LOG("into CMD handle\n");
     if (msg == NULL) {
         printf("Error: msg is NULL!\n");
         return;
@@ -53,16 +54,27 @@ void UART1_CMDHandler(recept_data_p msg) {
             /* 屏幕加热开始 */
         case 0x1041:
             currentState = STATE_PRE_HEAT; // 切换到预加热状态
-            emergency_stop = 0;            HeatPWM(1);                    // 启动加热PWM
+            emergency_stop = 0;
+            HeatPWM(1);                    // 启动加热PWM
             //HeatPID.setpoint = 37.5;
             HeatPID.setpoint = 37.5 + temperature_compensation;
-            xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle);
+            if (HeatHandle == NULL) {
+                if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) {
+                } else {
+                    LOG("Failed to create heat task.\r\n");
+                }
+            } else {
+                LOG("heat task already exists.\r\n");
+            }
             break;
             /* 屏幕加热停止 */
         case 0x1030:
-            if (currentState == STATE_HEAT || STATE_PRE_HEAT) {
+            if ((currentState == STATE_HEAT) || (currentState == STATE_PRE_HEAT)) {
                 HeatPWM(0); // 启动加热PWM
-                vTaskDelete(HeatHandle);
+                if (HeatHandle != NULL) {
+                    vTaskDelete(HeatHandle);
+                    HeatHandle = NULL;  // 避免再次访问无效句柄
+                }
                 if ((heat_finish == 0) &&
                     (currentState ==
                      STATE_HEAT)) { // 如果加热任务未完成，且工作在正式模式下（非预热阶段）则设置紧急停止标志
@@ -79,10 +91,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             emergency_stop = 0;
             // data=((data * 1.0 / 88.4) / 9.8)*1000;
             MotorPID.setpoint = data;
-            if (motor_homeHandle != NULL) {
-                vTaskDelete(motor_homeHandle);
-                motor_homeHandle = NULL;  // 避免再次访问无效句柄
-            }
+
 
             break;
             /* 屏幕挤压停止 */
@@ -93,9 +102,18 @@ void UART1_CMDHandler(recept_data_p msg) {
                     0) { // 如果挤压任务未完成，且工作在正式模式下（非预热阶段）则设置紧急停止标志
                     emergency_stop = 1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
                 }
-                vTaskDelete(PressHandle);
-                xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
-
+                if (PressHandle != NULL) {
+                    vTaskDelete(PressHandle);
+                    PressHandle = NULL;  // 避免再次访问无效句柄
+                }
+                if (motor_homeHandle == NULL) {
+                    if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle) == pdPASS) {
+                    } else {
+                        LOG("Failed to create motor_home task.\r\n");
+                    }
+                } else {
+                    LOG("motor_home task already exists.\r\n");
+                }
             }
             currentState = STATE_OFF; // 从挤压停止回到关闭状态
 
@@ -109,23 +127,43 @@ void UART1_CMDHandler(recept_data_p msg) {
             //HeatPID.setpoint = 37.5;
             HeatPID.setpoint = 37.5 + temperature_compensation;
             MotorPID.setpoint = data;
-            xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle);
-            if (motor_homeHandle != NULL) {
-                vTaskDelete(motor_homeHandle);
-                motor_homeHandle = NULL;  // 避免再次访问无效句柄
-            }//防止操作太快电机没有归位
+            if (HeatHandle == NULL) {
+                if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) {
+                } else {
+                    LOG("Failed to create HeatHandle task.\r\n");
+                }
+            } else {
+                LOG("HeatHandle task already exists.\r\n");
+            }
             break;
             /* 屏幕自动模式停止 */
         case 0x1038:
             if (currentState == STATE_PRE_AUTO) {
                 HeatPWM(0); // 加热PWM
-                vTaskDelete(HeatHandle);
+                if (HeatHandle != NULL) {
+                    vTaskDelete(HeatHandle);
+                    HeatHandle = NULL;  // 避免再次访问无效句柄
+                }
             }
             if (currentState == STATE_AUTO) {
                 HeatPWM(0); // 启动加热PWM
-                vTaskDelete(PressHandle);
-                vTaskDelete(HeatHandle);
-                xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
+                if (PressHandle != NULL) {
+                    vTaskDelete(PressHandle);
+                    PressHandle = NULL;  // 避免再次访问无效句柄
+                }
+                if (HeatHandle != NULL) {
+                    vTaskDelete(HeatHandle);
+                    HeatHandle = NULL;  // 避免再次访问无效句柄
+                }
+                if (motor_homeHandle == NULL) {
+                    if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle) == pdPASS) {
+                    } else {
+                        LOG("Failed to create motor_home task.\r\n");
+                    }
+                } else {
+                    LOG("motor_home task already exists.\r\n");
+                }
+
                 if (auto_finish == 0) { // 如果自动任务未完成，且工作在正式模式下（非自动阶段）则设置紧急停止标志
                     emergency_stop = 1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
                 }
@@ -151,11 +189,13 @@ void UART1_CMDHandler(recept_data_p msg) {
             xTimerReset(serialTimeoutTimerHandle, 0); // 重启动定时器
             break;
         case 0x1050://屏幕开机信号
+        LOG("into 1050\n");
             serialTimeoutFlag = 0;
             prepare_data_set();
             break;
         case 0x1052://屏幕应答信号
             //xSemaphoreGive(usart2_dmatxSemaphore);
+            LOG("screen is open\n");
             break;
         case 0x1053:
             HeatPID.setpoint = data + temperature_compensation;
@@ -222,7 +262,7 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
             my_prepare_data.cmd_type_low = 0xA9;
             my_prepare_data.value = prepare_press_pre;
             Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
-            
+
             my_prepare_data.cmd_type_low = 0xA8;
             my_prepare_data.value = prepare_temperature_pre;
             Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
@@ -334,6 +374,7 @@ void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
     // 解析命令
     switch (cmd_type) {
         case 0x5aa5: { // 命令类型 0x9000 - 处理 UART1 数据
+            LOG("into 5A A5\n");
             UART1_CMDHandler(received_data->buffer);
 
             break;
@@ -450,6 +491,7 @@ void ScreenWorkModeQuit(void) {
     USART2_DMA_Send(&pData, sizeof(pData));
 
 }
+
 void EYE_checkout(float data) {
     static recept_data pData;
     pData.cmd_head_high = 0x5A;
@@ -464,6 +506,7 @@ void EYE_checkout(float data) {
     USART2_DMA_Send(&pData, sizeof(pData));
 
 }
+
 void ScreenTimerStart(void) {
 
     static recept_data pData;
@@ -550,7 +593,10 @@ void Serial_data_stream_parsing(uart_data *frameData) {
                     uint16_t calculated_crc = Calculate_CRC(&frameData->buffer[i], frame_size - 4); // 不包含CRC和帧尾
                     if (calculated_crc == received_crc) {
                         command_parsing(&frameData->buffer[i]);
-                        //printf("帧解析成功: \n");
+for(uint16_t i = 0; i < frameData->length; i++) {
+                             LOG("%02X ", frameData->buffer[i]);
+                         }
+                         printf("\n");
                     } else {
                         printf("Error: CRC mismatch\n");
                     }

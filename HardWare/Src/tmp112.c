@@ -30,11 +30,11 @@ uint8_t TMP112_IsDevicePresent(void) {
 // 尝试 2 次，每次等待 10ms
     HAL_StatusTypeDef result = HAL_I2C_IsDeviceReady(&hi2c2, 0x91, 2, 10);
     if (result == HAL_OK) {
-        LOG("TMP112 已连接！\n");
+        //LOG("TMP112 已连接！\n");
         data=1;
   return 1;
     } else {
-        LOG("未检测到 TMP112，请检查接线或地址！\n");
+        //LOG("未检测到 TMP112，请检查接线或地址！\n");
         data=0;
  return 0;
     }

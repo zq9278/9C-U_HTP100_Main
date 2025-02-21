@@ -25,7 +25,7 @@ extern float Heat_PWM, EyeTmp;
 extern uint8_t flag_200ms;
 extern uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms;
 extern uart_data *frameData_uart;
-
+extern IWDG_HandleTypeDef hiwdg;
 /* FreeRTOS ¾ä±ú */
 extern TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, AD24C01Handle,motor_homeHandle,deviceCheckHandle;
 extern QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;

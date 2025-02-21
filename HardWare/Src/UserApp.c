@@ -92,15 +92,13 @@ void Button_State_Task(void *argument) {
 void APP_task(void *argument) {
 uint16_t Voltage;
     for (;;) {
+        HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
         osDelay(20);//the breath of frequency
-//        UpdateChargeState_bq25895();
-//        battery_status_update_bq27441();
+        UpdateChargeState_bq25895();
+        battery_status_update_bq27441();
         UpdateState(emergency_stop, charging, low_battery, fully_charged, working);
         UpdateLightState(ChargeState);
         STATE_POWER_5V_Update();
-
-        //HAL_I2C_Mem_Read_DMA(&hi2c1, BQ27441Address, 0x04, I2C_MEMADD_SIZE_8BIT,(uint8_t *)&(BQ_State->Voltage), 2);
-        BQ27441_Read_IT(0x04, (uint8_t *)&Voltage, 2);
     }
 }
 
@@ -129,7 +127,7 @@ void Device_Check_Task(void *pvParameters) {
 
 
 void Main(void) {
-
+    HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
 
     logSemaphore = xSemaphoreCreateMutex();  // 创建LOG互斥信号量
     BUTTON_SEMAPHOREHandle = xSemaphoreCreateBinary();//按键互斥量

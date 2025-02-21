@@ -3,7 +3,7 @@
 #include "stm32g0xx_hal.h"
 
 #define BQ27441Address	0xaa
-
+#define I2C_TIMEOUT_MS 100  // ³¬Ê±Ê±¼ä
 
 typedef struct
 {

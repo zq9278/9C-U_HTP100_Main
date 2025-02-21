@@ -369,6 +369,7 @@ void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 
   if (GPIO_Pin == PWR_SENSE_Pin) {
     reset = 1;
+      MX_IWDG_Init();
   }
 }
 extern DMA_HandleTypeDef hdma_tim16_ch1;

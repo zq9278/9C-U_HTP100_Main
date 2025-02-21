@@ -290,16 +290,14 @@ void BQ27441_Read(uint8_t ReadAddr, uint8_t *pBuffer) {
   HAL_I2C_Mem_Read_DMA(&hi2c1, BQ27441Address, ReadAddr, I2C_MEMADD_SIZE_8BIT,
                        pBuffer, 1);
 }
-#define I2C_TIMEOUT_MS 100  // 超时时间
+
 
 HAL_StatusTypeDef BQ27441_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t size) {
     HAL_StatusTypeDef status = HAL_ERROR;
-
     // 获取互斥锁，防止多个任务同时访问I2C
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
         // 先清空信号量，防止上次操作影响
         xSemaphoreTake(xI2CCompleteSem, 0);
-
         // 启动 I2C 读操作 (使用中断模式)
         status = HAL_I2C_Mem_Read_IT(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, size);
         if (status == HAL_OK) {
@@ -313,13 +311,11 @@ HAL_StatusTypeDef BQ27441_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t si
                 status = HAL_TIMEOUT;
             }
         }
-
         // 释放I2C互斥锁
         xSemaphoreGive(xI2CMutex);
     } else {
         status = HAL_BUSY;  // 获取锁失败，I2C总线繁忙
     }
-
     return status;
 }
 HAL_StatusTypeDef BQ27441_Write_IT(uint8_t regAddr, uint8_t *pData, uint16_t size) {
@@ -351,7 +347,6 @@ HAL_StatusTypeDef BQ27441_Write_IT(uint8_t regAddr, uint8_t *pData, uint16_t siz
 
     return status;
 }
-
 // void BQ27441_MultiRead(BQ27441_typedef *BQ_State) {
 //   while (hi2c1.State != HAL_I2C_STATE_READY) {
 //     ;
@@ -379,107 +374,28 @@ HAL_StatusTypeDef BQ27441_Write_IT(uint8_t regAddr, uint8_t *pData, uint16_t siz
 //   HAL_I2C_Mem_Read_DMA(&hi2c1, BQ27441Address, 0x0E, I2C_MEMADD_SIZE_8BIT,
 //                        (uint8_t *)&(BQ_State->FullChargeCapacity), 2);
 // }
-
 // 全局变量，用于标记 DMA 传输状态
 extern volatile bool dma_transfer_complete;
 // DMA 读取函数
 HAL_StatusTypeDef BQ27441_MultiRead_DMA(BQ27441_typedef *BQ_State) {
-  HAL_StatusTypeDef status;
-
-  // Voltage
-  dma_transfer_complete = false;
-  while (hi2c1.State != HAL_I2C_STATE_READY) {
-    ; // 等待 I2C 状态为空闲
-  }
-  status =
-      HAL_I2C_Mem_Read_DMA(&hi2c1, BQ27441Address, 0x04, I2C_MEMADD_SIZE_8BIT,
-                           (uint8_t *)&(BQ_State->Voltage), 2);
-  if (status != HAL_OK) {
-    return status;
-  }
-  while (!dma_transfer_complete && hi2c1.State != HAL_I2C_STATE_READY) {
-    ; // 等待传输完成
-  }
-
-  // Temperature
-  dma_transfer_complete = false;
-  while (hi2c1.State != HAL_I2C_STATE_READY) {
-    ;
-  }
-  status =
-      HAL_I2C_Mem_Read_DMA(&hi2c1, BQ27441Address, 0x02, I2C_MEMADD_SIZE_8BIT,
-                           (uint8_t *)&(BQ_State->Temperature), 2);
-  if (status != HAL_OK) {
-    return status;
-  }
-  while (!dma_transfer_complete && hi2c1.State != HAL_I2C_STATE_READY) {
-    ;
-  }
-
-  // AvgCurrent
-  dma_transfer_complete = false;
-  while (hi2c1.State != HAL_I2C_STATE_READY) {
-    ;
-  }
-  status =
-      HAL_I2C_Mem_Read_DMA(&hi2c1, BQ27441Address, 0x10, I2C_MEMADD_SIZE_8BIT,
-                           (uint8_t *)&(BQ_State->AvgCurrent), 2);
-  if (status != HAL_OK) {
-    return status;
-  }
-  while (!dma_transfer_complete && hi2c1.State != HAL_I2C_STATE_READY) {
-    ;
-  }
-
-  // SOC
-  dma_transfer_complete = false;
-  while (hi2c1.State != HAL_I2C_STATE_READY) {
-    ;
-  }
-  status =
-      HAL_I2C_Mem_Read_DMA(&hi2c1, BQ27441Address, 0x1C, I2C_MEMADD_SIZE_8BIT,
-                           (uint8_t *)&(BQ_State->SOC), 2);
-  if (status != HAL_OK) {
-    return status;
-  }
-  while (!dma_transfer_complete && hi2c1.State != HAL_I2C_STATE_READY) {
-    ;
-  }
-
-  // FullChargeCapacity
-  dma_transfer_complete = false;
-  while (hi2c1.State != HAL_I2C_STATE_READY) {
-    ;
-  }
-  status =
-      HAL_I2C_Mem_Read_DMA(&hi2c1, BQ27441Address, 0x0E, I2C_MEMADD_SIZE_8BIT,
-                           (uint8_t *)&(BQ_State->FullChargeCapacity), 2);
-  if (status != HAL_OK) {
-    return status;
-  }
-  while (!dma_transfer_complete && hi2c1.State != HAL_I2C_STATE_READY) {
-    ;
-  }
-
+    BQ27441_Read_IT(0x04,(uint8_t *)&(BQ_State->Voltage), 2);
+    BQ27441_Read_IT(0x02,(uint8_t *)&(BQ_State->Temperature), 2);
+    BQ27441_Read_IT(0x10,(uint8_t *)&(BQ_State->AvgCurrent), 2);
+    BQ27441_Read_IT(0x1C,(uint8_t *)&(BQ_State->SOC), 2);
+    BQ27441_Read_IT(0x0E,(uint8_t *)&(BQ_State->FullChargeCapacity), 2);
   return HAL_OK; // 所有读取操作成功
 }
 void BQ27441_WriteByte(uint8_t WriteAddr, uint8_t WriteData) {
-  while (hi2c1.State != HAL_I2C_STATE_READY) {
-    ;
-  }
   BQ27441_TempData[0] = WriteData;
-  HAL_I2C_Mem_Write_DMA(&hi2c1, BQ27441Address, WriteAddr, I2C_MEMADD_SIZE_8BIT,
-                        BQ27441_TempData, 1);
+    BQ27441_Write_IT( WriteAddr, BQ27441_TempData, 1);
 }
-
 void BQ27441_WriteWord(uint8_t WriteAddr, uint16_t WriteData) {
   while (hi2c1.State != HAL_I2C_STATE_READY) {
     ;
   }
   BQ27441_TempData[0] = WriteData;
   BQ27441_TempData[1] = WriteData >> 8;
-  HAL_I2C_Mem_Write_DMA(&hi2c1, BQ27441Address, WriteAddr, I2C_MEMADD_SIZE_8BIT,
-                        BQ27441_TempData, 2);
+  BQ27441_Write_IT(WriteAddr,BQ27441_TempData, 2);
 }
 
 extern uint8_t low_battery;
