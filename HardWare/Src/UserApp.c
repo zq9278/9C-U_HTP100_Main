@@ -157,7 +157,7 @@ void Main(void) {
     UART_DMA_IDLE_RECEPT_QUEUEHandle = xQueueCreate(3, sizeof(uart_data *));
 
 
-    xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 8, &UART_RECEPTHandle);
+    xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 6, &UART_RECEPTHandle);
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 4, &Button_StateHandle);
     xTaskCreate(APP_task, "APP", 256, NULL, 3, &APPHandle);
     xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);

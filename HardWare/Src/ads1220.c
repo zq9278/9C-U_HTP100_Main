@@ -35,9 +35,8 @@ void SPI2_DMA_Semaphores_Init(void) {
     spi2RxDmaSemaphoreHandle = xSemaphoreCreateBinary();
 
     if (spi2TxDmaSemaphoreHandle != NULL) {
-        //xSemaphoreGive(spi2TxDmaSemaphoreHandle);  // 初始释放发送信号量
+        xSemaphoreGive(spi2TxDmaSemaphoreHandle);  // 初始释放发送信号量
     }
-
     if (spi2RxDmaSemaphoreHandle != NULL) {
         xSemaphoreGive(spi2RxDmaSemaphoreHandle);  // 初始释放接收信号量
     }
@@ -46,42 +45,34 @@ void SPI2_DMA_Semaphores_Init(void) {
 // SPI 发送封装（DMA + 发送信号量）
 // ============================
 HAL_StatusTypeDef SPI2_Transmit_DMA(uint8_t *txData, uint16_t size, uint32_t timeout) {
-    xSemaphoreGive(spi2TxDmaSemaphoreHandle);  // 初始释放一次
-    if (xSemaphoreTake(spi2TxDmaSemaphoreHandle, 10) != pdPASS) {
-        return HAL_BUSY;  // 上一次发送未完成
-    }
-    //xSemaphoreTake(spi2TxDmaSemaphoreHandle, portMAX_DELAY);
-
-    if (HAL_SPI_Transmit_DMA(&hspi2, txData, size) != HAL_OK) {
-        xSemaphoreGive(spi2TxDmaSemaphoreHandle);  // 启动失败，立即释放信号量
-        return HAL_ERROR;
-    }
-
+    // 1?? 等待前一次传输完成
     if (xSemaphoreTake(spi2TxDmaSemaphoreHandle, pdMS_TO_TICKS(timeout)) != pdPASS) {
-        return HAL_TIMEOUT;  // 超时处理
+        return HAL_BUSY;  // 上一次传输未完成
+    }
+    // 2?? 启动 SPI DMA 传输
+    HAL_StatusTypeDef status = HAL_SPI_Transmit_DMA(&hspi2, txData, size);
+
+    if (status != HAL_OK) {
+        xSemaphoreGive(spi2TxDmaSemaphoreHandle);  // 启动失败立即释放信号量，防止死锁
     }
 
-    return HAL_OK;
+    return status;
 }
 
 // ============================
 // SPI 接收封装（DMA + 接收信号量）
 // ============================
 HAL_StatusTypeDef SPI2_Receive_DMA(uint8_t *rxData, uint16_t size, uint32_t timeout) {
-    if (xSemaphoreTake(spi2RxDmaSemaphoreHandle, 0) != pdPASS) {
+    //xSemaphoreGive(spi2RxDmaSemaphoreHandle);  // 初始释放一次
+    if (xSemaphoreTake(spi2RxDmaSemaphoreHandle, pdMS_TO_TICKS(timeout)) != pdPASS) {
         return HAL_BUSY;  // 上一次接收未完成
     }
-
-    if (HAL_SPI_Receive_DMA(&hspi2, rxData, size) != HAL_OK) {
-        xSemaphoreGive(spi2RxDmaSemaphoreHandle);  // 启动失败立即释放
-        return HAL_ERROR;
+    // 2?? 启动 SPI DMA 传输
+    HAL_StatusTypeDef status = HAL_SPI_Receive_DMA(&hspi2, rxData, size);
+    if (status != HAL_OK) {
+        xSemaphoreGive(spi2RxDmaSemaphoreHandle);  // 启动失败立即释放信号量，防止死锁
     }
-
-    if (xSemaphoreTake(spi2RxDmaSemaphoreHandle, pdMS_TO_TICKS(timeout)) != pdPASS) {
-        return HAL_TIMEOUT;  // 超时处理
-    }
-
-    return HAL_OK;
+    return status;
 }
 
 // ============================
@@ -91,7 +82,7 @@ void ADS1220_WriteRegister(uint8_t reg, uint8_t value) {
     uint8_t cmd[2] = {0x40 | (reg << 2), value};  // WREG命令 + 地址 + 数据
     ADS1220_CS_LOW();
     if (SPI2_Transmit_DMA(cmd, 2, 100) != HAL_OK) {
-        printf("写寄存器失败 - REG: 0x%02X\n", reg);
+        LOG("写寄存器失败 - REG: 0x%02X\n", reg);
     }
     ADS1220_CS_HIGH();
 }
@@ -105,12 +96,14 @@ void ADS1220_Init(void) {
     uint8_t reset_cmd = ADS1220_CMD_RESET;
     ADS1220_CS_LOW();
     SPI2_Transmit_DMA(&reset_cmd, 1, 100);
+    //HAL_SPI_Transmit_DMA(&hspi2, &reset_cmd, 1);
     ADS1220_CS_HIGH();
     osDelay(50);  // 等待复位完成
 
     uint8_t selfcal_cmd = ADS1220_CMD_SELFCAL;
     ADS1220_CS_LOW();
     SPI2_Transmit_DMA(&selfcal_cmd, 1, 100);
+    //HAL_SPI_Transmit_DMA(&hspi2, &selfcal_cmd, 1);
     ADS1220_CS_HIGH();
     osDelay(50);  // 自校准完成等待
 
@@ -153,14 +146,14 @@ int32_t ADS1220_ReadData(void) {
     // 发送读取命令
     if (SPI2_Transmit_DMA(&read_cmd, 1, 100) != HAL_OK) {
         ADS1220_CS_HIGH();
-        printf("读取命令发送失败\n");
+        LOG("读取命令发送失败\n");
         return -1;
     }
 
     // 接收数据
     if (SPI2_Receive_DMA(rx_buffer, 3, 100) != HAL_OK) {
         ADS1220_CS_HIGH();
-        printf("数据接收失败\n");
+        LOG("数据接收失败\n");
         return -1;
     }
 
@@ -205,9 +198,9 @@ void Start_SPI_Task(void const *argument) {
     for (;;) {
         float pressure = ADS1220_ReadPressure();
         if (pressure >= 0) {
-            printf("压力: %.2f g\n", pressure);
+            LOG("压力: %.2f g\n", pressure);
         } else {
-            printf("读取压力失败\n");
+            LOG("读取压力失败\n");
         }
         osDelay(500);  // 500ms间隔读取
     }
