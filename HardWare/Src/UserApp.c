@@ -35,20 +35,26 @@ void UART_RECEPT_Task(void *argument) {
 
 void Heat_Task(void *argument) {
     LOG("heat_start");
+    //Kalman_Init(&kf, 0.01f, 0.1f);  // Q: 越小越平滑, R: 越小越信任测量
     for (;;) {
         EyeTmp = TmpRaw2Ture();
         if (tempature_flag_400ms) {
             tempature_flag_400ms = 0;
             if (EyeTmp != 0.0f) {
-                ScreenUpdateTemperature(EyeTmp);
+                ScreenUpdateTemperature(EyeTmp+0.5);
             }
         }
+//        HeatPID.integral_max = 40;
+//        if ((EyeTmp>=38)&&(EyeTmp<=41.5)){
+//            HeatPID.Ki=1;
+//            HeatPID.integral_max = 100;
+//        }
         Heat_PWM = PID_Compute(&HeatPID, EyeTmp);
         HeatPWMSet((uint8_t) Heat_PWM);
 //        LOG("%.6f,", EyeTmp);
 //        LOG("%.2f,", Heat_PWM);
-//        LOG("%.2f\n", 42.5);
-        vTaskDelay(pdMS_TO_TICKS(100));
+//        LOG("%.2f\n", 37.5);
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
 

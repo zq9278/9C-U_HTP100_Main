@@ -57,7 +57,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             emergency_stop = 0;
             HeatPWM(1);                    // Æô¶¯¼ÓÈÈPWM
             //HeatPID.setpoint = 37.5;
-            HeatPID.setpoint = 37.5 + temperature_compensation;
+            HeatPID.setpoint = 37 + temperature_compensation;
             if (HeatHandle == NULL) {
                 if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) {
                 } else {
@@ -125,7 +125,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             emergency_stop = 0;
             HeatPWM(1);                    // Æô¶¯¼ÓÈÈPWM
             //HeatPID.setpoint = 37.5;
-            HeatPID.setpoint = 37.5 + temperature_compensation;
+            HeatPID.setpoint = 37 + temperature_compensation;
             MotorPID.setpoint = data;
             if (HeatHandle == NULL) {
                 if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) {
@@ -397,7 +397,7 @@ void command_parsing(uart_data *received_data) { // Çø·Öµ÷ÊÔÃüÁîºÍÆÁÄ»¹¤×÷ÃüÁî
             recept_data_debug_p heat_pid_data =
                     (recept_data_debug *) (received_data->buffer); // ½âÎöÊý¾Ý
             PID_Init(&HeatPID, heat_pid_data->p, heat_pid_data->i, heat_pid_data->d,
-                     5000, -5000, 255, 0, heat_pid_data->setpoint);
+                     3000, 0, 255, 0, heat_pid_data->setpoint);
 //      HeatPID.previous_error=0;
 //      HeatPID.integral=0;
         }
@@ -426,9 +426,6 @@ void ScreenUpdateForce(float value) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // Ö¡Î²
     pData.end_low = 0xff;  // Ö¡Î²
-    taskENTER_CRITICAL();
-    //HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
-    taskEXIT_CRITICAL();
     USART2_DMA_Send(&pData, sizeof(pData));
 
 }
@@ -450,9 +447,6 @@ void ScreenUpdateTemperature(float value) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // Ö¡Î²
     pData.end_low = 0xff;  // Ö¡Î²
-    taskENTER_CRITICAL();
-    //HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
-    taskEXIT_CRITICAL();
     USART2_DMA_Send(&pData, sizeof(pData));
 
 }
@@ -468,9 +462,6 @@ void ScreenUpdateSOC(float value) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // Ö¡Î²
     pData.end_low = 0xff;  // Ö¡Î²
-    taskENTER_CRITICAL();
-    //HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
-    taskEXIT_CRITICAL();
     USART2_DMA_Send(&pData, sizeof(pData));
 
 }
@@ -485,9 +476,6 @@ void ScreenWorkModeQuit(void) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // Ö¡Î²
     pData.end_low = 0xff;  // Ö¡Î²
-    taskENTER_CRITICAL();
-    //HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
-    taskEXIT_CRITICAL();
     USART2_DMA_Send(&pData, sizeof(pData));
 
 }
@@ -563,9 +551,6 @@ void ScreenWorkMode_count(float count) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // Ö¡Î²
     pData.end_low = 0xff;  // Ö¡Î²
-//    taskENTER_CRITICAL();
-//    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
-//    taskEXIT_CRITICAL();
     USART2_DMA_Send(&pData, sizeof(pData));
 }
 

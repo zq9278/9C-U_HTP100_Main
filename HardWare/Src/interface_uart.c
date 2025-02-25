@@ -67,7 +67,7 @@ void USART2_DMA_Init(void) {
 
 void USART2_DMA_Send(uint8_t *data, uint16_t length) {
     // 等待前一次发送完成
-    vTaskDelay(20);
+
     if (xSemaphoreTake(usart2_dmatxSemaphore, portMAX_DELAY) == pdTRUE) {
 
 //        while(xSemaphoreTake(usart2_dmatxSemaphore, portMAX_DELAY) == pdFALSE) {

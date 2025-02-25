@@ -34,7 +34,7 @@ pid->integral += error;
 // 更新积分项：累计误差值，用于处理稳态误差
 
 // 对积分项进行限幅，防止积分项过大（积分饱和）或过小（积分失效）
-Limit(pid->integral, pid->integral_min, pid->integral_max);
+    pid->integral=Limit(pid->integral, pid->integral_min, pid->integral_max);
 
 double derivative = error - pid->previous_error;
 // 计算微分项：当前误差与上一次误差的差值，用于预测误差的变化趋势
@@ -45,7 +45,7 @@ p=pid->Kp * error;
 i=pid->Ki * pid->integral;
 d=pid->Kd * derivative;
      //printf("%.2f,%.2f,%.2f,",error,pid->integral,derivative);
-   // LOG("%.2f,%.2f,%.2f,",p,i,d);
+    //LOG("%.2f,%.2f,%.2f,",p,i,d);
 float output = pid->Kp * error + pid->Ki * pid->integral + pid->Kd * derivative;
 // 计算PID输出：比例项（Kp）、积分项（Ki）、微分项（Kd）的加权和
 
