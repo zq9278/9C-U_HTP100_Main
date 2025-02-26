@@ -45,6 +45,7 @@ void Button_detection(void) {
             }
             HeatPWM(0); // 关闭加热PWM
             if (HeatHandle != NULL) {
+                LOG("heat_stop");
                 vTaskDelete(HeatHandle);
                 HeatHandle = NULL;  // 避免再次访问无效句柄
             }
@@ -134,6 +135,7 @@ void Button_detection(void) {
                 PressHandle = NULL;  // 避免再次访问无效句柄
             }
             if (HeatHandle != NULL) {
+                LOG("heat_stop");
                 vTaskDelete(HeatHandle);
                 HeatHandle = NULL;  // 避免再次访问无效句柄
             }

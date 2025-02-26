@@ -32,9 +32,9 @@ uint8_t TMP112_IsDevicePresent(void) {
     if (result == HAL_OK) {
         if (device_connected==0.0) {
             LOG("TMP112 已连接！\n");
-            taskENTER_CRITICAL();
-            HeatInit();// 临界区代码（禁止任务切换和中断）
-            taskEXIT_CRITICAL();
+//            taskENTER_CRITICAL();
+//            HeatInit();// 临界区代码（禁止任务切换和中断）
+//            taskEXIT_CRITICAL();
             device_connected=1.0;
         }
   return 1;

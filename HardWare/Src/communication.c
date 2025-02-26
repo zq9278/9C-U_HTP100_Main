@@ -13,7 +13,7 @@ extern uint8_t soft_button;
 uint16_t save_prepare, set_prepare;
 
 void UART1_CMDHandler(recept_data_p msg) {
-    LOG("into CMD handle\n");
+   // LOG("into CMD handle\n");
     if (msg == NULL) {
         printf("Error: msg is NULL!\n");
         return;
@@ -189,7 +189,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             xTimerReset(serialTimeoutTimerHandle, 0); // 重启动定时器
             break;
         case 0x1050://屏幕开机信号
-        LOG("into 1050\n");
+       // LOG("into 1050\n");
             serialTimeoutFlag = 0;
             prepare_data_set();
             break;
@@ -579,7 +579,7 @@ void Serial_data_stream_parsing(uart_data *frameData) {
                     if (calculated_crc == received_crc) {
                         command_parsing(&frameData->buffer[i]);
 for(uint16_t i = 0; i < frameData->length; i++) {
-                             LOG("%02X ", frameData->buffer[i]);
+                             //LOG("%02X ", frameData->buffer[i]);
                          }
                          printf("\n");
                     } else {
