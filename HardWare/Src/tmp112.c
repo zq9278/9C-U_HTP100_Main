@@ -90,7 +90,7 @@ float Kalman_Update(KalmanFilter *kf, float measurement) {
     return kf->x;
 }
 KalmanFilter kf;
-#define ALPHA 0.001  // 设置平滑因子，值越大对最新数据的权重越大
+#define ALPHA 0.1  // 设置平滑因子，值越大对最新数据的权重越大
 float previousEMA = 0.0;  // 之前的平滑值
 int16_t TmpData;
 float TmpRaw2Ture(void)
@@ -100,16 +100,14 @@ float TmpRaw2Ture(void)
     float tempature=TmpData*0.0625;
 
 //    // 阈值突变检测（示例伪代码）
-//    if (fabs(tempature - previousEMA) > 1) {
-//        previousEMA = tempature; // 突变时直接采用新值
-//    } else {
-//        previousEMA += ALPHA * (tempature - previousEMA); // 正常EMA
-//    }
+    if (previousEMA==0) {
+        previousEMA = tempature; // 突变时直接采用新值
+    }
 //
 //    // 计算EMA
-//    previousEMA = ALPHA * tempature + (1 - ALPHA) * previousEMA;
+    previousEMA = ALPHA * tempature + (1 - ALPHA) * previousEMA;
 
     //return previousEMA;
-     previousEMA = Kalman_Update(&kf, tempature);
+     //previousEMA = Kalman_Update(&kf, tempature);
     return previousEMA;
 }

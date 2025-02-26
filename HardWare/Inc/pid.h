@@ -14,6 +14,8 @@ typedef struct {
     float output_max;     // 输出限幅值
     float output_min;     // 输出下限幅值
     float setpoint;       // 设定值
+    float previous_measured_value ;
+    float derivative_filtered ;
 } PID_TypeDef;
 
 // 初始化PID控制器

@@ -8,7 +8,7 @@ PID_TypeDef HeatPID;
 extern TIM_HandleTypeDef htim14;
 void HeatInit(void){
    // PID_Init(&HeatPID, 17 , 0.028 , 120, 50, 0, 254,0,0);
-    PID_Init(&HeatPID, 18 , 0.014 , 2000, 3000, 0, 254,0,0);
+    PID_Init(&HeatPID, 16 , 0.02 , 200, 3000, 0, 254,0,0);
 }
 
 void HeatPWM(uint8_t state)

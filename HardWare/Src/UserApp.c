@@ -35,7 +35,7 @@ void UART_RECEPT_Task(void *argument) {
 
 void Heat_Task(void *argument) {
     LOG("heat_start");
-    Kalman_Init(&kf, 0.001f, 0.001f);  // Q: 越小越平滑, R: 越小越信任测量
+    Kalman_Init(&kf, 0.1f, 1.0f);  // Q: 越小越平滑, R: 越小越信任测量
     for (;;) {
         EyeTmp = TmpRaw2Ture();
         if (tempature_flag_400ms) {
@@ -54,7 +54,7 @@ void Heat_Task(void *argument) {
         LOG("%.6f,", EyeTmp);
         LOG("%.2f,", Heat_PWM);
         LOG("%.2f\n", HeatPID.setpoint);
-        vTaskDelay(pdMS_TO_TICKS(20));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
