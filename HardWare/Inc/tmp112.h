@@ -24,6 +24,7 @@ extern KalmanFilter kf;
 void Kalman_Init(KalmanFilter *kf, float Q, float R);
 float Kalman_Update(KalmanFilter *kf, float measurement);
 void TMP112_Init(void);
+void TMP112_WriteWord(uint8_t WriteAddr,uint8_t*  WriteData);
 void TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer);
 //void TMP112_MultiRead(uint8_t* pBuffer);
 // void TMP112_WriteByte(uint8_t WriteAddr,uint8_t WriteData);

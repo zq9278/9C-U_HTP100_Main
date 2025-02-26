@@ -45,7 +45,7 @@ p=pid->Kp * error;
 i=pid->Ki * pid->integral;
 d=pid->Kd * derivative;
      //printf("%.2f,%.2f,%.2f,",error,pid->integral,derivative);
-    //LOG("%.2f,%.2f,%.2f,",p,i,d);
+    LOG("%.2f,%.2f,%.2f,",p,i,d);
 float output = pid->Kp * error + pid->Ki * pid->integral + pid->Kd * derivative;
 // 计算PID输出：比例项（Kp）、积分项（Ki）、微分项（Kd）的加权和
 

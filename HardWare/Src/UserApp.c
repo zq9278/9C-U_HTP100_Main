@@ -35,7 +35,7 @@ void UART_RECEPT_Task(void *argument) {
 
 void Heat_Task(void *argument) {
     LOG("heat_start");
-    //Kalman_Init(&kf, 0.01f, 0.1f);  // Q: 越小越平滑, R: 越小越信任测量
+    Kalman_Init(&kf, 0.001f, 0.001f);  // Q: 越小越平滑, R: 越小越信任测量
     for (;;) {
         EyeTmp = TmpRaw2Ture();
         if (tempature_flag_400ms) {
@@ -51,9 +51,9 @@ void Heat_Task(void *argument) {
 //        }
         Heat_PWM = PID_Compute(&HeatPID, EyeTmp);
         HeatPWMSet((uint8_t) Heat_PWM);
-//        LOG("%.6f,", EyeTmp);
-//        LOG("%.2f,", Heat_PWM);
-//        LOG("%.2f\n", 37.5);
+        LOG("%.6f,", EyeTmp);
+        LOG("%.2f,", Heat_PWM);
+        LOG("%.2f\n", HeatPID.setpoint);
         vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
@@ -168,6 +168,7 @@ void Main(void) {
     ADS1220_Init(); // 初始化ADS1220
     TMC5130_Init();
     HeatInit();
+    TMP112_Init();
     AD24C01_Factory_formatted();//如果flash没有初始化，则初始化
 
     xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 6, &UART_RECEPTHandle);
