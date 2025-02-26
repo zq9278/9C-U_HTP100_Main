@@ -421,6 +421,18 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xSemaphoreGiveFromISR(xI2CCompleteSem, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        __HAL_RCC_I2C1_CLK_DISABLE();// 关闭 I2C 时钟
+        //osDelay(10);// 短暂延时
+        __HAL_RCC_I2C1_CLK_ENABLE(); // 重新使能 I2C 时钟
+        HAL_I2C_DeInit(&hi2c1);// 重新初始化 I2C 外设
+        HAL_I2C_Init(&hi2c1);
+    }
+    if (hi2c->Instance == hi2c2.Instance) {
+        __HAL_RCC_I2C2_CLK_DISABLE();// 关闭 I2C 时钟
+        //osDelay(10);// 短暂延时
+        __HAL_RCC_I2C2_CLK_ENABLE(); // 重新使能 I2C 时钟
+        HAL_I2C_DeInit(&hi2c2);// 重新初始化 I2C 外设
+        HAL_I2C_Init(&hi2c2);
     }
 }
 
