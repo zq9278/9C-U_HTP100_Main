@@ -56,7 +56,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             currentState = STATE_PRE_HEAT; // 切换到预加热状态
             emergency_stop = 0;
             HeatPWM(1);                    // 启动加热PWM
-            //HeatPID.setpoint = 37.5;
+            HeatPID.integral = 0;
             HeatPID.setpoint = 37 + temperature_compensation;
             if (HeatHandle == NULL) {
                 if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) {
@@ -124,7 +124,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             currentState = STATE_PRE_AUTO; // 切换到预自动模式
             emergency_stop = 0;
             HeatPWM(1);                    // 启动加热PWM
-            //HeatPID.setpoint = 37.5;
+            HeatPID.integral = 0;
             HeatPID.setpoint = 37 + temperature_compensation;
             MotorPID.setpoint = data;
             if (HeatHandle == NULL) {
@@ -397,7 +397,7 @@ void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
             recept_data_debug_p heat_pid_data =
                     (recept_data_debug *) (received_data->buffer); // 解析数据
             PID_Init(&HeatPID, heat_pid_data->p, heat_pid_data->i, heat_pid_data->d,
-                     3000, 0, 255, 0, heat_pid_data->setpoint);
+                     1500, 0, 255, 0, heat_pid_data->setpoint);
 //      HeatPID.previous_error=0;
 //      HeatPID.integral=0;
         }

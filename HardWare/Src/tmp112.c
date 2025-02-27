@@ -8,8 +8,6 @@ float device_connected=0.0;
 extern I2C_HandleTypeDef hi2c2;
 extern DMA_HandleTypeDef hdma_i2c2_rx;
 
-
-
 void TMP112_Init(void)
 {
     // 配置寄存器设置（示例：连续转换模式+8Hz采样）
@@ -98,15 +96,12 @@ float TmpRaw2Ture(void)
     TmpData=(EyeTmpRaw[0]<<8) | EyeTmpRaw[1];
     TmpData = TmpData >> 4;
     float tempature=TmpData*0.0625;
-
-//    // 阈值突变检测（示例伪代码）
+    // 阈值突变检测（示例伪代码）
     if (previousEMA==0) {
         previousEMA = tempature; // 突变时直接采用新值
     }
-//
 //    // 计算EMA
     previousEMA = ALPHA * tempature + (1 - ALPHA) * previousEMA;
-
     //return previousEMA;
      //previousEMA = Kalman_Update(&kf, tempature);
     return previousEMA;

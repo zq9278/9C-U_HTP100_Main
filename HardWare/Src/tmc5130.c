@@ -300,7 +300,7 @@ void PressureControl() {
             break;
         }
         case 3: { // Ñ¹Á¦±£³Ö½×¶Î
-            MotorPWM = PID_Compute(&MotorPID, hhmg);
+            MotorPWM = PID_Compute_motor(&MotorPID, hhmg);
             SetMotorSpeed((int)MotorPWM);
 
             if (Flag_3s) {

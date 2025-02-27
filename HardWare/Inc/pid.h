@@ -23,7 +23,7 @@ void PID_Init(PID_TypeDef *pid, float Kp, float Ki, float Kd, float integral_max
 
 // 计算PID控制输出
 float PID_Compute(PID_TypeDef *pid, float measured_value);
-
+float PID_Compute_motor(PID_TypeDef *pid, float measured_value);
 // 限幅宏
 //#define Limit(x, min, max) ((x) = (((x) <= (min)) ? (min) : (((x) >= (max)) ? (max) : (x))))
 #define Limit(x, min, max) (((x) <= (min)) ? (min) : (((x) >= (max)) ? (max) : (x)))
