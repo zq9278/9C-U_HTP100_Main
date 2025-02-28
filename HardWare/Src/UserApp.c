@@ -51,9 +51,6 @@ void Heat_Task(void *argument) {
 //        }
         Heat_PWM = PID_Compute(&HeatPID, EyeTmp);
         HeatPWMSet((uint8_t) Heat_PWM);
-//        LOG("%.6f,", EyeTmp);
-//        LOG("%.2f,", Heat_PWM);
-//        LOG("%.2f\n", HeatPID.setpoint);
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }

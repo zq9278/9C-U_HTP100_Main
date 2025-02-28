@@ -270,7 +270,7 @@ extern uint8_t press_flag_400ms;
 void PressureControl() {
     float weight1 = ADS1220_ReadPressure();
     float weight = Limit(weight1 - weight0, 0, weight1 - weight0);
-    float hhmg = (weight / 1000.0) * 9.8 * 78;
+    float hhmg = (weight / 1000.0) * 9.8 * 80;
 
     // 发送压力数据到队列
     if (
@@ -279,15 +279,12 @@ void PressureControl() {
         ScreenUpdateForce(hhmg);
         //xQueueSend(PressureHandle, &hhmg, 0);
     }
-
-
     switch (PressureModeStart) {
         case 1: { // 最开始的前进阶段
             control_output_speed = 20000;
             SetMotorSpeed((int)control_output_speed);
-            float start_force_flag = Limit(MotorPID.setpoint / 2, 80, MotorPID.setpoint / 2);
-
-            if (hhmg >= start_force_flag) {
+            //float start_force_flag = Limit(MotorPID.setpoint / 2, 80, MotorPID.setpoint / 2);
+            if (hhmg >= (MotorPID.setpoint*2)/3) {
                 PressureModeStart = 3;
                 SetMotorSpeed(0);
                 Flag_3s = 0;
