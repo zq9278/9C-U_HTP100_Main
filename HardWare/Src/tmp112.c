@@ -27,28 +27,41 @@ void TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer)
    
 }
 
-
+prepare_data my_prepare_data_times;
 uint8_t TMP112_IsDevicePresent(void) {
+    // 初始化实例的成员变量
+    my_prepare_data_times.cmd_head_high = 0x6A;
+    my_prepare_data_times.cmd_head_low = 0xA6;
+    my_prepare_data_times.frame_length=0x0b;
+    my_prepare_data_times.cmd_type_high = 0x00;
+    my_prepare_data_times.end_high = 0xFF;
+    my_prepare_data_times.end_low = 0xFF;
 
-// 尝试 2 次，每次等待 10ms
+// ???? 2 ?Σ???ε?? 10ms
     HAL_StatusTypeDef result = HAL_I2C_IsDeviceReady(&hi2c2, 0x91, 2, 10);
     if (result == HAL_OK) {
+        LOG("TMP112 ???????\n");
+        EYE_checkout(1.0);
         if (device_connected==0.0) {
-            LOG("TMP112 已连接！\n");
-//            taskENTER_CRITICAL();
-//            HeatInit();// 临界区代码（禁止任务切换和中断）
-//            taskEXIT_CRITICAL();
+            uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
+            my_prepare_data_times.cmd_type_low = 0xb0;
+            my_prepare_data_times.value = eye_times;
+            Eye_twitching_invalid_master(&my_prepare_data_times); // 将数据发送到队列
             device_connected=1.0;
         }
-  return 1;
+        return 1;
     } else {
+        EYE_checkout(0.0);
         if (device_connected==1.0){
-            LOG("未检测到 TMP112，请检查接线或地址！\n");
+            uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
+            eye_times+=1;
+            AT24CXX_WriteUInt16(0xf2,eye_times);
+            LOG("δ??? TMP112??????????????\n");
             device_connected=0.0;
         }
- return 0;
+        return 0;
     }
-     EYE_checkout( device_connected);
+    EYE_checkout( device_connected);
 }
 // void TMP112_MultiRead(uint8_t* pBuffer)   
 // { 	

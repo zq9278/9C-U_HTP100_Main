@@ -20,7 +20,7 @@ void BQ25895_MultiRead(uint8_t* pBuffer);
 void BQ25895_Write(uint8_t WriteAddr,uint8_t WriteData);
 void UpdateChargeState_bq25895(void);
 HAL_StatusTypeDef BQ25895_Write_IT(uint8_t regAddr, uint8_t WriteData) ;
-
+void bq25895_reinitialize_if_vbus_inserted(void);
 HAL_StatusTypeDef BQ25895_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t size) ;
 
 		 

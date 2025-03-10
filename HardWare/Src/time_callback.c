@@ -5,9 +5,13 @@
 #include "time_callback.h"
 TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,serialTimeoutTimerHandle,IIC_EYETimeoutTimerHandle;
 void ws2812_white_delay_callback(TimerHandle_t xTimer) {
+
     Flag_400ms = 1;
     white_delay = !white_delay;
     xTimerStart(ws2812_white_delayHandle, 0);
+
+
+
 }
 void ws2812_yellow_callback(TimerHandle_t xTimer) {
     emergency_stop = false;
@@ -32,6 +36,7 @@ void tempareture_pid_timer(TimerHandle_t xTimer) {
     tempature_flag_400ms = 1;
     press_flag_400ms = 1;
     battery_flag_400ms = 1;
+    is_charging_flag= 1;
 }
 // 串口超时处理函数
 uint8_t serialTimeoutFlag = 0;//有屏幕

@@ -3,16 +3,23 @@
 uint8_t BQ25895Reg[21];
 extern I2C_HandleTypeDef hi2c1;
 void BQ25895_Init(void) {
-
-  CHG_CE(0);                 // 关闭充电使能
-  //BQ25895_Write(0x02, 0x7C); // 设置寄存??0x02，将AUTO_DPDM_EN清零
-  BQ25895_Write(0x02, 0xFC); // 开启ADC
-  BQ25895_Write(0x03, 0x1E); // OTG关闭，最小系统电压???置??3.5V
-  BQ25895_Write(0x04, 0x20); // 设置充电电流??4096mA
-  // BQ25895_Write(0x05, 0x10); // 设置充电终???电流为64mA
-  BQ25895_Write(0x05, 0x13); // 设置充电终止电流为150mA
-  BQ25895_Write(0x07, 0x8D); // 关闭充电定时??
-  BQ25895_Write(0x00, 0x3F); // 3.25A
+    // 1. 解除芯片的出厂默认模式
+    BQ25895_Write(0x00, 0x30);  // 复位所有寄存器，确保非主机模式
+    // 2. 设置输入电流限制 (适用于5V/9V/12V输入, 选5A)
+    BQ25895_Write(0x00, 0x3A);  // 3.25A 输入电流限制 (IINLIM=3250mA)//重发
+    // 3. 设定充电电流为 3.5A
+    BQ25895_Write(0x04, 0x7C);  // ICHG = 3500mA (0x7C 对应 3.5A)
+    // 4. 设置充电电压为 4.2V (标准锂电池)
+    BQ25895_Write(0x06, 0x96);  // VREG = 4.2V
+    // 5. 设置端电流 (终止充电电流, 设为 250mA)
+    BQ25895_Write(0x05, 0x07);  // ITERM = 250mA
+    // 6. 使能自动充电 (DPM, BATFET 控制)
+    BQ25895_Write(0x09, 0x40);  // 自动充电，省去主机控制
+    // 7. 确保不会受到主机干扰
+    BQ25895_Write(0x0B, 0x80);  // 禁用 OTG, 仅作为充电器
+    // 8. 开启充电
+    BQ25895_Write(0x03, 0x30);  // 启用自动充电
+    CHG_CE(0);
 }
 void BQ25895_Read(uint8_t ReadAddr, uint8_t *pBuffer) {
     BQ25895_Read_IT(ReadAddr, pBuffer, 1);
@@ -111,15 +118,31 @@ void UpdateChargeState_bq25895(void) {
       working = 0;
     }
     break;
-  case 3: // Charge Termination Done
-    fully_charged = 1;
-    charging = 0;
-    working = 0;
-    break;
+//  case 3: // Charge Termination Done
+//    fully_charged = 1;
+//    charging = 0;
+//    working = 0;
+//    break;
   case 0: // Not Charging
     working = 1;
     charging = 0;
     fully_charged = 0;
     break;
   }
+}
+void bq25895_reinitialize_if_vbus_inserted(void) {
+    if (is_charging_flag){
+        is_charging_flag=0;
+        static uint8_t last_vbus_status = 0x00;
+        // 读取 VBUS 状态寄存器 0x0B
+        uint8_t vbus_status ;
+        BQ25895_Read(0x0B,&vbus_status);
+        // 检测 VBUS 是否插入 (Bit7 = 1 表示插入)
+        if ((vbus_status & 0x80) && !(last_vbus_status & 0x80)) {
+            BQ25895_Init(); // 重新初始化
+            LOG("充电器已插入，重新初始化 bq25895...\n");
+
+        }
+        last_vbus_status = vbus_status;
+    }
 }

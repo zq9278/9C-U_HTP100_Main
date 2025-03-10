@@ -23,7 +23,7 @@ extern uint8_t charging, working, low_battery, fully_charged, emergency_stop;
 extern PID_TypeDef HeatPID;
 extern float Heat_PWM, EyeTmp;
 extern uint8_t flag_200ms;
-extern uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms;
+extern uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms,is_charging_flag;
 extern uart_data *frameData_uart;
 extern IWDG_HandleTypeDef hiwdg;
 /* FreeRTOS ¾ä±ú */

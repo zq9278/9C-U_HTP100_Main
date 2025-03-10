@@ -11,7 +11,7 @@ extern uint8_t charging, working, low_battery, fully_charged, emergency_stop;
 extern PID_TypeDef HeatPID;
 float Heat_PWM, EyeTmp;
 uint8_t flag_200ms;
-uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms;
+uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms,is_charging_flag;
 uart_data *frameData_uart;
 
 /* FreeRTOS Handles */
@@ -41,7 +41,7 @@ void Heat_Task(void *argument) {
         if (tempature_flag_400ms) {
             tempature_flag_400ms = 0;
             if (EyeTmp != 0.0f) {
-                ScreenUpdateTemperature(EyeTmp);
+                ScreenUpdateTemperature(EyeTmp-temperature_compensation);
             }
         }
 //        HeatPID.integral_max = 40;
@@ -97,11 +97,15 @@ uint16_t Voltage;
     for (;;) {
         HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
         osDelay(20);//the breath of frequency
+        bq25895_reinitialize_if_vbus_inserted();
         UpdateChargeState_bq25895();
         battery_status_update_bq27441();
         UpdateState(emergency_stop, charging, low_battery, fully_charged, working);
         UpdateLightState(ChargeState);
         STATE_POWER_5V_Update();
+
+
+
     }
 }
 
