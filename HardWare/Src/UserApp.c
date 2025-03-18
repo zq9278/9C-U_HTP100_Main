@@ -97,7 +97,7 @@ uint16_t Voltage;
     for (;;) {
         HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
         osDelay(20);//the breath of frequency
-        bq25895_reinitialize_if_vbus_inserted();
+        //bq25895_reinitialize_if_vbus_inserted();
         UpdateChargeState_bq25895();
         battery_status_update_bq27441();
         UpdateState(emergency_stop, charging, low_battery, fully_charged, working);
