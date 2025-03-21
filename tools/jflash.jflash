@@ -1,0 +1,78 @@
+  AppVersion = 81201
+[GENERAL]
+  aATEModuleSel[24] = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+  ConnectMode = 0
+  CurrentFile = "D:\Project\SLK01\Software\UI\SLK01-9c_1-21\assets\bin\images_all.bin"
+  DataFileSAddr = 0x00100000
+  GUIMode = 0
+  HostName = ""
+  USBPort = 0
+  USBSerialNo = 0x00000000
+  UseATEModuleSelection = 0
+[JTAG]
+  Speed0 = 50000
+[FLASH]
+  AutoDetect = 0x00000001
+  DataTransferMode = 0x00000001
+  FlashType = 0x00000001
+  NumPages = 0x00010000
+  PageSizeShift = 0x00000008
+  SectorSizeShift = 0x00000010
+[CPU]
+  NumInitSteps = 0
+  NumExitSteps = 0
+[SPI]
+  CmdEnter4ByteMode = 0x00
+  CmdEraseBulk = 0xC7
+  CmdEraseSector = 0xD8
+  CmdExit4ByteMode = 0x00
+  CmdReadData = 0x03
+  CmdReadID = 0x9F
+  CmdReadStatus = 0x05
+  CmdWriteDisable = 0x04
+  CmdWriteEnable = 0x06
+  CmdWritePage = 0x02
+  CmdWriteStatus = 0x01
+  Dedicated4BAddrMode = 0x00
+  NumAddrBytes = 0x03
+  SendInitCommands = 0x00
+  StatusBitPos = 0x00
+  StatusIsReadyBit = 0x00
+  StatusRegFormat = 0x04
+  UseQuadMode = 0x00
+[QSPI]
+  CmdReadDataQuad = 0x00
+  CmdWritePageQuad = 0x00
+  NumDummyCyclesQuad = 0x00
+  NumQuadEnableInitSteps = 0
+  RdAddrTransferMode = 0x00000001
+  RdCmdTransferMode = 0x00000001
+  WrAddrTransferMode = 0x00000001
+  WrCmdTransferMode = 0x00000001
+[PRODUCTION]
+  AutoPerformsErase = 1
+  AutoPerformsProgram = 1
+  AutoPerformsVerify = 1
+  EnableFixedVTref = 0
+  EnableTargetPower = 0
+  EraseType = 2
+  FixedVTref = 0x00000000
+  MonitorVTref = 0
+  MonitorVTrefMax = 0x00000000
+  MonitorVTrefMin = 0x00000000
+  OverrideTimeouts = 0
+  PerformCompare = 0
+  ProgramSN = 0
+  SerialFile = ""
+  SNAddr = 0x00000000
+  SNInc = 0x00000000
+  SNLen = 0x00000000
+  SNListFile = ""
+  SNValue = 0x00000000
+  TargetPowerDelay = 0x000000C8
+  TimeoutEraseChip = 0x00061A80
+  TimeoutEraseSect = 0x00001388
+  TimeoutProgPage = 0x000003E8
+  TimeoutVerify = 0x00002710
+[PERFORMANCE]
+  DisableSkipBlankDataOnProgram = 0x00000000

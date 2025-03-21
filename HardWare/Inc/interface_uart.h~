@@ -1,0 +1,27 @@
+#ifndef __INTERFACE_UART_H__
+#define __INTERFACE_UART_H__
+#include "main.h"
+#include <stdarg.h>
+int __io_putchar(int ch) __attribute__((weak));//继承函数
+int __io_getchar(void) __attribute__((weak));
+uint16_t Calculate_CRC(uint8_t *data, uint16_t length);
+// 封装的日志函数 (支持可变参数)
+void LOG(const char *format, ...);
+#define USART2_TX_BUFFER_SIZE 256
+
+typedef struct {
+    uint8_t txBuffer[2][USART2_TX_BUFFER_SIZE]; // 双缓冲
+    uint8_t activeBuffer;                       // 当前活动缓冲区
+    SemaphoreHandle_t txSemaphore;              // 信号量
+} USART2_DMA_HandleTypeDef;
+
+extern USART2_DMA_HandleTypeDef huart2_dma;
+
+void USART2_DMA_Init(void);
+void USART2_DMA_Send(uint8_t *data, uint16_t length);
+
+
+#endif
+
+
+

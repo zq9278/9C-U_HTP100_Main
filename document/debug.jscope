@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<JScopeProject>
+    <FileVersion major="1" minor="1" />
+    <Project>
+        <Configuration>
+            <JLink>
+                <Options Connection="1" IsRTTSession="0" IsRTTWithTimeStamp="0" SamplingPeriod="100" SerialNo="0" JTAG_IRPre="0" JTAG_DRPre="0" IP="" TargetDevice="Cortex-M0+" TargetInterface="SWD" InterfaceSpeed="4000" />
+            </JLink>
+            <ElfFile Name="D:\Project\SLK01\Software\SLK-01-freertos-clion\cmake-build-debug-mingw\SLK-01_V1_0.elf" />
+            <Scope>
+                <Options TimeResolutionUs="1000000" />
+            </Scope>
+        </Configuration>
+        <Windows>
+            <Graph Show="1" />
+            <Watch Show="1" />
+        </Windows>
+        <SelectedSymbols>
+            <Symbol>
+                <Options Name="Voltage" Address="0x20000264" Type="short unsigned int" TypeID="7" Size="2" GraphColorRed="85" GraphColorGreen="170" GraphColorBlue="0" YMinSampled="4162" YMaxSampled="4206" YAvgSampled="4201.06" Offset="4" ShowInGraph="1" YOffset="0" IsAutoConfig="0" YResolution="1000" MaxValue="65535" File="D:/Project/SLK01/Software/SLK-01-freertos-clion/HardWare/Src/bq27441.c" DrawStyle="0" NameWithParents="BQ27441.Voltage" />
+            </Symbol>
+            <Symbol>
+                <Options Name="EyeTmp" Address="0x200007F0" Type="float" TypeID="1" Size="4" GraphColorRed="255" GraphColorGreen="255" GraphColorBlue="255" YMinSampled="38.5" YMaxSampled="38.5" YAvgSampled="38.5" Offset="6" ShowInGraph="1" YOffset="0" IsAutoConfig="0" YResolution="5" MaxValue="-2147483648" File="D:/Project/SLK01/Software/SLK-01-freertos-clion/Core/Src/app_freertos.c" DrawStyle="0" NameWithParents="EyeTmp" />
+            </Symbol>
+            <Symbol>
+                <Options Name="ChargeState" Address="0x2000024E" Type="enum ChargeState_t" TypeID="6" Size="1" GraphColorRed="255" GraphColorGreen="0" GraphColorBlue="0" YMinSampled="3" YMaxSampled="3" YAvgSampled="3" Offset="10" ShowInGraph="1" YOffset="0" IsAutoConfig="0" YResolution="1" MaxValue="255" File="D:/Project/SLK01/Software/SLK-01-freertos-clion/HardWare/Src/bq25895.c" DrawStyle="0" NameWithParents="ChargeState" />
+            </Symbol>
+        </SelectedSymbols>
+    </Project>
+</JScopeProject>
