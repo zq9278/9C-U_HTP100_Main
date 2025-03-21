@@ -100,6 +100,8 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
+    LOG("\n??  硬件故障！进入 HardFault_Handler ??\n");
+
 
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
@@ -392,19 +394,17 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 
 
 }
-// 全局变量，用于标记 DMA 传输状态
-volatile bool dma_transfer_complete = false;
-// DMA 回调函数
-//void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-//  if (hi2c->Instance == hi2c1.Instance) {
-//    dma_transfer_complete = true; // 标记 DMA 传输完成
-//  }
-//}
+extern volatile uint8_t i2c_dma_read_complete;  // 读完成标志
+extern volatile uint8_t i2c_dma_write_complete; // 写完成标志
+
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
     if (hi2c->Instance == hi2c1.Instance) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xSemaphoreGiveFromISR(xI2CCompleteSem, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+    if (hi2c->Instance == hi2c2.Instance) {
+        i2c_dma_read_complete = 1;  // 标记 DMA 传输完成
     }
 }
 
@@ -414,6 +414,10 @@ void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c) {
         xSemaphoreGiveFromISR(xI2CCompleteSem, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
+    if (hi2c->Instance == hi2c2.Instance) {
+        i2c_dma_write_complete = 1;  // 标记 DMA 传输完成
+    }
+
 }
 
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {

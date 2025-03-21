@@ -9,5 +9,5 @@
 
 #include "stm32g0xx_hal.h"
 void STATE_POWER_5V_Update(void);
-
+void close_mianAPP(void);
 #endif /* __APP_SYS_H */

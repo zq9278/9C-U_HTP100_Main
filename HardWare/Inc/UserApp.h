@@ -16,7 +16,7 @@
 extern uint8_t white_delay, yellow_delay, breathing_flag;
 extern uint8_t Flag_400ms;
 extern float weight0;
-extern volatile int Flag_3s, Flag_1s;
+extern volatile int Flag_3s, Flag_1s,eye_workingtime_1s,eye_existtime_1s;
 extern ChargeState_t ChargeState;
 extern uint8_t soft_button;
 extern uint8_t charging, working, low_battery, fully_charged, emergency_stop;

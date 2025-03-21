@@ -24,6 +24,7 @@ void Button_detection(void) {
             break;
 
         case STATE_PRE_HEAT:
+            EYE_working_Flag = 1;//眼盾在工作
             currentState = STATE_HEAT; // 从预热进入加热
             heat_finish = 0;
             // HeatPID.setpoint = 42.5;
@@ -36,6 +37,7 @@ void Button_detection(void) {
             break;
 
         case STATE_HEAT:
+            EYE_working_Flag = 0;//眼盾不在工作
             currentState = STATE_OFF;                   // 从加热进入关闭
             emergency_stop = 1;                      // 设置紧急停止标志
             if (heat_finish == 0) {//完成之后按钮不起作用
@@ -52,6 +54,7 @@ void Button_detection(void) {
             break;
 
         case STATE_PRE_PRESS:
+            EYE_working_Flag = 1;//眼盾在工作
             currentState = STATE_PRESS;                // 从预挤压进入挤压
             if (motor_homeHandle != NULL) {
                 vTaskDelete(motor_homeHandle);
@@ -72,6 +75,7 @@ void Button_detection(void) {
             break;
 
         case STATE_PRESS:
+            EYE_working_Flag = 0;//眼盾不在工作
             currentState = STATE_OFF;                    // 从挤压进入关闭
             emergency_stop = 1;                       // 设置紧急停止标志
             if (press_finish == 0) {
@@ -96,6 +100,7 @@ void Button_detection(void) {
             break;
 
         case STATE_PRE_AUTO:
+            EYE_working_Flag = 1;//眼盾在工作
             currentState = STATE_AUTO; // 从预自动进入自动模式
             if (motor_homeHandle != NULL) {
                 vTaskDelete(motor_homeHandle);
@@ -122,6 +127,7 @@ void Button_detection(void) {
             break;
 
         case STATE_AUTO:
+            EYE_working_Flag = 0;//眼盾不在工作
             currentState = STATE_OFF; // 从自动返回关闭
             emergency_stop = 1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
             if (auto_finish == 0) {

@@ -3,7 +3,7 @@
 //
 
 #include "time_callback.h"
-TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,serialTimeoutTimerHandle,IIC_EYETimeoutTimerHandle;
+TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,serialTimeoutTimerHandle,IIC_EYETimeoutTimerHandle,eye_is_existHandle;
 void ws2812_white_delay_callback(TimerHandle_t xTimer) {
 
     Flag_400ms = 1;
@@ -49,3 +49,14 @@ void SerialTimeout_Callback(TimerHandle_t xTimer)
 //{
 //    IIC_EYETimeoutFlag= 1;
 //}
+void eye_is_exist_callback(TimerHandle_t xTimer) {//眼盾检测时间
+    eye_workingtime_1s=1;
+    eye_existtime_1s=1;
+    if (EYE_exist_Flag){//眼盾存在，先读60的寿命，不够就加， 超过就发送眼盾失败数据
+
+
+    }
+    else if(EYE_working_Flag){//眼盾在工作，先读30的寿命，不够就加， 超过就发送眼盾失败数据
+
+    }
+}

@@ -201,7 +201,7 @@ PID_TypeDef MotorPID;
 uint8_t PressureModeStart = 1;
 float control_output;
 float control_output_speed;
-volatile int Flag_3s = 0, Flag_1s = 0;
+//volatile int Flag_3s = 0, Flag_1s = 0;
 //extern osMessageQueueId_t PRESS_DATAHandle; // ╤сап╬Д╠З
 //extern osTimerId_t motor_back_1sHandle;
 //extern osTimerId_t motor_grab3sHandle;

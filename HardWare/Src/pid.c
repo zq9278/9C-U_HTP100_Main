@@ -61,7 +61,7 @@ float PID_Compute(PID_TypeDef *pid, float measured_value) {
     float output_limited = Limit(output, pid->output_min, pid->output_max);
 
     // 调试输出
-    LOG("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",p,i,d,measured_value,output_limited,pid->setpoint);
+    //LOG("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",p,i,d,measured_value,output_limited,pid->setpoint);
 
     return output_limited;
 }
@@ -88,7 +88,7 @@ float PID_Compute_motor(PID_TypeDef *pid, float measured_value) {
 
 // 对输出进行限幅，防止输出值超出允许范围
     float output1=Limit(output, pid->output_min, pid->output_max);
-    LOG("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",p,i,d,measured_value,output1,pid->setpoint);
+    //LOG("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",p,i,d,measured_value,output1,pid->setpoint);
     return output1;
 // 返回PID控制器的最终输出值
 

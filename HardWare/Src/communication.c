@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 //extern TaskHandle_t HeatHandle;
-extern volatile SystemState_t currentState;
+//extern volatile SystemState_t currentState;
 extern PID_TypeDef HeatPID;
 extern PID_TypeDef MotorPID;
 extern uint8_t emergency_stop;
@@ -147,23 +147,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             }
             if (currentState == STATE_AUTO) {
                 HeatPWM(0); // 启动加热PWM
-                if (PressHandle != NULL) {
-                    vTaskDelete(PressHandle);
-                    PressHandle = NULL;  // 避免再次访问无效句柄
-                }
-                if (HeatHandle != NULL) {
-                    vTaskDelete(HeatHandle);
-                    HeatHandle = NULL;  // 避免再次访问无效句柄
-                }
-                if (motor_homeHandle == NULL) {
-                    if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle) == pdPASS) {
-                    } else {
-                        LOG("Failed to create motor_home task.\r\n");
-                    }
-                } else {
-                    LOG("motor_home task already exists.\r\n");
-                }
-
+                close_mianAPP();
                 if (auto_finish == 0) { // 如果自动任务未完成，且工作在正式模式下（非自动阶段）则设置紧急停止标志
                     emergency_stop = 1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
                 }
@@ -212,6 +196,21 @@ void UART1_CMDHandler(recept_data_p msg) {
                 vTaskDelete(motor_homeHandle);
                 motor_homeHandle = NULL;  // 避免再次访问无效句柄
             }//防止操作太快电机没有归位
+            break;
+              prepare_data my_prepare_data_times;
+        case 0x1056:
+
+                // 初始化实例的成员变量
+                my_prepare_data_times.cmd_head_high = 0x6A;
+                my_prepare_data_times.cmd_head_low = 0xA6;
+                my_prepare_data_times.frame_length=0x0b;
+                my_prepare_data_times.cmd_type_high = 0x00;
+                my_prepare_data_times.end_high = 0xFF;
+                my_prepare_data_times.end_low = 0xFF;
+            uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);//读取主机端记录的次数
+            my_prepare_data_times.cmd_type_low = 0xb0;
+            my_prepare_data_times.value = eye_times;
+            Eye_twitching_invalid_master(&my_prepare_data_times); // 将数据发送到队列
             break;
             /* 其他未知命令 */
         default:
@@ -351,6 +350,11 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         case 0x1046:
             HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
             AT24C02_WriteAllBytes(0xff);//清理ee存储
+            HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
+            break;
+        case 0x1047:
+            HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
+            AT24C02_WriteAllBytes_eye(0xff);//清理ee存储
             HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
             break;
             /* 其他未知命令 */
@@ -511,7 +515,38 @@ void ScreenTimerStart(void) {
 //    taskEXIT_CRITICAL();
     USART2_DMA_Send(&pData, sizeof(pData));
 }
+void ScreenTimerStop(void) {
 
+    static recept_data pData;
+    pData.cmd_head_high = 0x5A;
+    pData.cmd_head_low = 0xA5;
+    pData.frame_length = 0x0d;
+    pData.cmd_type_high = 0x20;
+    pData.cmd_type_low = 0x56;
+    pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
+    pData.end_high = 0xff; // 帧尾
+    pData.end_low = 0xff;  // 帧尾
+//    taskENTER_CRITICAL();
+//    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
+//    taskEXIT_CRITICAL();
+    USART2_DMA_Send(&pData, sizeof(pData));
+}
+void NEW_EYE(void) {
+
+    static recept_data pData;
+    pData.cmd_head_high = 0x5A;
+    pData.cmd_head_low = 0xA5;
+    pData.frame_length = 0x0d;
+    pData.cmd_type_high = 0x20;
+    pData.cmd_type_low = 0x57;
+    pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
+    pData.end_high = 0xff; // 帧尾
+    pData.end_low = 0xff;  // 帧尾
+//    taskENTER_CRITICAL();
+//    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
+//    taskEXIT_CRITICAL();
+    USART2_DMA_Send(&pData, sizeof(pData));
+}
 void Eye_twitching_invalid(void) {
 
     static recept_data pData;

@@ -2,6 +2,8 @@
 #include <stdint.h>
 extern I2C_HandleTypeDef hi2c2;
 extern uint8_t AD24C02_EYE[4];
+volatile uint8_t i2c_dma_read_complete = 0;  // 读完成标志
+volatile uint8_t i2c_dma_write_complete = 0; // 写完成标志
 SoftwareI2C iic_24x = {EE_SDA_GPIO_Port, EE_SDA_Pin, EE_SCL_GPIO_Port, EE_SCL_Pin};
 // 软件IIC初始化
 
@@ -128,6 +130,37 @@ void AT24C02_WriteAllBytes(uint8_t value) {
     HAL_Delay(5); // 每次写入后延时
   }
 }
+void AT24C02_WriteAllBytes_eye(uint8_t value) {
+    static uint8_t read_buffer[256];  // 读取结果
+    for (uint16_t addr = 0; addr < 256; addr++) {
+        uint8_t data = value;  // 如果需要不同的数据，可以调整此处
+        HAL_I2C_Mem_Write(&hi2c2, 0xA0, addr, I2C_MEMADD_SIZE_8BIT, &data, 1, 100);
+        HAL_Delay(5);  // 增加延迟，确保写入完成
+    }
+
+    // 使用 DMA 读取整片 EEPROM
+    HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA0, 0x00, I2C_MEMADD_SIZE_8BIT, read_buffer, 256);
+
+    // 等待 DMA 读取完成
+    while (!i2c_dma_read_complete)
+    {
+        osDelay(1);  // **短暂延迟，避免占用 CPU**
+    }
+
+    //osDelay(1000);
+    // 打印 EEPROM 读取数据
+    LOG("EEPROM 读取数据:\n");
+    for (uint16_t i = 2; i < 3; i++) {
+        LOG("Addr: 0x%02X, Data: 0x%02X\n", i, read_buffer[i]);
+    }
+}
+// 向AT24C02的所有地址写入相同的值
+//    void AT24C02_WriteAllBytes_eye(uint8_t value) {
+//    for (uint16_t addr = 0; addr < 256; addr++) {
+//        HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, (uint8_t *) addr, I2C_MEMADD_SIZE_8BIT, &value, 1);
+//        HAL_Delay(5); // 每次写入后延时
+//    }
+//}
 
 // 从 EEPROM 读取 uint32_t 数据，并在未初始化时写入 0
 uint32_t AT24CXX_ReadOrWriteZero(uint16_t startAddr) {
@@ -193,7 +226,58 @@ void Heating_film_Check(void) {
     // 启用功能3
   }
 }
+// **读取 EEPROM（使用 DMA）**
+uint16_t EYE_AT24CXX_Read(uint16_t startAddr) {
+    uint8_t buffer[2];
+    i2c_dma_read_complete = 0;  // **清除 DMA 完成标志**
+    uint32_t start_time = osKernelGetTickCount(); // 获取当前时间
+    uint32_t timeout = 100; // 超时时间（单位：ms）
+    // **启动 DMA 读取**
+    //HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, startAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2);
+    if(HAL_I2C_Mem_Read(&hi2c2, 0xA1, startAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2,0xffff)!=HAL_OK){
+        osDelay(5); // 延迟 5ms，防止 I2C 总线问题
+        HAL_I2C_Mem_Read(&hi2c2, 0xA1, startAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2,0xffff);
+    };
 
+
+//    // **等待 DMA 写入完成（带超时）**
+//    while (!i2c_dma_read_complete) {
+//        if (osKernelGetTickCount() - start_time > timeout) {
+//            LOG("EYE_AT24CXX_Read timeout!\n");
+//            break; // 超时退出
+//        }
+//        //LOG("Read\n");
+//        osDelay(10);
+//    }
+    return (uint16_t)((buffer[0] << 8) | buffer[1]);
+}
+
+// **写入 EEPROM（使用 DMA）**
+void EYE_AT24CXX_Write(uint16_t WriteAddr, uint16_t value) {
+    uint8_t buffer[2];
+    uint32_t start_time = osKernelGetTickCount(); // 获取当前时间
+    uint32_t timeout = 100; // 超时时间（单位：ms）
+    // **数据拆分**
+    buffer[0] = (uint8_t)(value >> 8);   // 高字节
+    buffer[1] = (uint8_t)(value & 0xFF); // 低字节
+
+    i2c_dma_write_complete = 0;  // **清除 DMA 完成标志**
+
+    // **启动 DMA 写入**
+    //HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, WriteAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2);
+    HAL_I2C_Mem_Write(&hi2c2, 0xA0, WriteAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2,0xffff);
+
+//    // **等待 DMA 写入完成（带超时）**
+//    while (!i2c_dma_write_complete) {
+//        if (osKernelGetTickCount() - start_time > timeout) {
+//            LOG("EYE_AT24CXX_Write timeout!\n");
+//            break; // 超时退出
+//        }
+//        //LOG("Write\n");
+//        osDelay(10);
+//    }
+
+}
 prepare_data my_prepare_data;
 void prepare_data_set(void){
   uint16_t hot_count,crimp_count,auto_count,prepare_press,prepare_temperature,prepare_time,bee,set_prepare;

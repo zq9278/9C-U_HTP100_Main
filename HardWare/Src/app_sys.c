@@ -13,3 +13,22 @@ void STATE_POWER_5V_Update(void) {
   STATE_POWER_5V = 0; // 开关关
 };
 }
+void close_mianAPP(void){
+    if (PressHandle != NULL) {
+        vTaskDelete(PressHandle);
+        PressHandle = NULL;  // 避免再次访问无效句柄
+    }
+    if (HeatHandle != NULL) {
+        vTaskDelete(HeatHandle);
+        HeatHandle = NULL;  // 避免再次访问无效句柄
+    }
+    if (motor_homeHandle == NULL) {
+        if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle) == pdPASS) {
+        } else {
+            LOG("Failed to create motor_home task.\r\n");
+        }
+    } else {
+        LOG("motor_home task already exists.\r\n");
+    }
+
+}

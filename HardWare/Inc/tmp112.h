@@ -32,6 +32,6 @@ void TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer);
 float TmpRaw2Ture(void);
 uint8_t TMP112_IsDevicePresent(void);
 extern uint8_t IIC_EYETimeoutFlag;//—€∂‹ «∑Ò¥Ê‘⁄
-		 
+extern uint8_t EYE_exist_Flag, EYE_working_Flag, EYE_exist_new_Flag,EYE_status;
 #endif
 

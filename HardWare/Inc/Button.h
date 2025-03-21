@@ -17,6 +17,6 @@ typedef enum {
     STATE_PRE_AUTO,
     STATE_AUTO
 } SystemState_t;
-
+extern volatile SystemState_t currentState;
 void Button_detection(void);
 #endif
