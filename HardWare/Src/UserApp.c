@@ -82,7 +82,9 @@ void Button_State_Task(void *argument) {
             // 检查按键状态是否仍为按下
             if ((HAL_GPIO_ReadPin(SW_CNT_GPIO_Port, SW_CNT_Pin) == GPIO_PIN_RESET) || (soft_button == 1)) {
                 // 按键稳定，执行按键逻辑
-                Button_detection();
+                if(EYE_status==1){
+                    Button_detection();
+                }
                 soft_button = 0;
             }
         }
@@ -152,7 +154,7 @@ void Device_Check_Task(void *pvParameters) {
                 EYE_status=0;
                 if (device_connected==1.0){//主机端眼盾使用次数没有记录上去
                     close_mianAPP();
-                    emergency_stop = 1; // 设置紧急停止标志
+                   // emergency_stop = 1; // 设置紧急停止标志
                     currentState=STATE_OFF;
                     ScreenTimerStop();
                     EYE_AT24CXX_Write(0x02, eye_workingtime_1s);//标记眼盾已使用
@@ -191,7 +193,7 @@ void Device_Check_Task(void *pvParameters) {
                 if (device_connected==1.0){//主机端眼盾使用次数没有记录上去
                     close_mianAPP();
                     ScreenTimerStop();
-                    emergency_stop = 1; // 设置紧急停止标志
+                    //emergency_stop = 1; // 设置紧急停止标志
                     currentState=STATE_OFF;
                     uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
                     eye_times+=1;
@@ -206,11 +208,7 @@ void Device_Check_Task(void *pvParameters) {
         } else{
             EYE_checkout(0.0);//向屏幕发送数据
         }
-
-//当检测不到眼盾时删除任务，状态归零
-        // 延时一段时间，避免任务占用过多CPU资源（例如延时100毫秒）
-        vTaskDelay(pdMS_TO_TICKS(100));
-        //LOG("APP_task\n");
+       // vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 

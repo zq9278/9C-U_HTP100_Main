@@ -79,7 +79,7 @@ uint8_t TMP112_IsDevicePresent(void) {
             if(!device_connected){
                 NEW_EYE();
             }
-            emergency_stop = 0; // 设置紧急标志
+            //emergency_stop = 0; // 设置紧急标志
             EYE_status=1;
             uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);//读取主机端记录的次数
             my_prepare_data_times.cmd_type_low = 0xb0;
@@ -92,11 +92,11 @@ uint8_t TMP112_IsDevicePresent(void) {
             }
         }
         return 1;
-//眼盾 清零
-        AT24C02_WriteAllBytes_eye(0xff);//清理ee存储
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,GPIO_PIN_RESET);
+
+//        AT24C02_WriteAllBytes_eye(0xff);//清理ee存储//眼盾 清零
+//        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,GPIO_PIN_RESET);
     } else {
- //眼盾 清零  //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,GPIO_PIN_SET);
+ //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,GPIO_PIN_SET); //眼盾 清零
         LOG("眼盾失效或拔出\n");
         EYE_exist_Flag=0;//眼盾不存在了
         EYE_status=0;
@@ -105,7 +105,7 @@ uint8_t TMP112_IsDevicePresent(void) {
         if ((EYE_working_Flag==1)&&(device_connected==1.0)){//主机端眼盾使用次数没有记录上去
             close_mianAPP();
             ScreenTimerStop();
-            emergency_stop = 1; // 设置紧急停止标志
+           // emergency_stop = 1; // 设置紧急停止标志
             uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
             eye_times+=1;
             AT24CXX_WriteUInt16(0xf2,eye_times);
