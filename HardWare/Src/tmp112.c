@@ -44,12 +44,12 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
             fail_count++;
         }
 
-        osDelay(20); // 等待 2ms 后重试
+        osDelay(10); // 等待 2ms 后重试
     }
 
     // 如果连续 `retries` 次都失败，则返回 HAL_ERROR
     if (fail_count >= retries) {
-        // LOG("I2C 设备 0x%02X 未连接 (连续 %d 次失败)\n", i2c_addr, retries);
+         //LOG("I2C 设备 0x%02X 未连接 (连续 %d 次失败)\n", i2c_addr, retries);
         return HAL_ERROR;
     }
 
@@ -76,9 +76,6 @@ uint8_t TMP112_IsDevicePresent(void) {
         uint16_t eye_time = EYE_AT24CXX_Read(0x02);//
         if (eye_time == 0xFFFF) {//没有被标记的眼盾
             EYE_exist_new_Flag=1;//检测到眼盾
-            if(!device_connected){
-                NEW_EYE();
-            }
             //emergency_stop = 0; // 设置紧急标志
             EYE_status=1;
             uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);//读取主机端记录的次数
@@ -92,7 +89,6 @@ uint8_t TMP112_IsDevicePresent(void) {
             }
         }
         return 1;
-
 //        AT24C02_WriteAllBytes_eye(0xff);//清理ee存储//眼盾 清零
 //        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,GPIO_PIN_RESET);
     } else {
@@ -104,6 +100,7 @@ uint8_t TMP112_IsDevicePresent(void) {
         currentState=STATE_OFF;
         if ((EYE_working_Flag==1)&&(device_connected==1.0)){//主机端眼盾使用次数没有记录上去
             close_mianAPP();
+            LOG("加热挤压都停止");
             ScreenTimerStop();
            // emergency_stop = 1; // 设置紧急停止标志
             uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);

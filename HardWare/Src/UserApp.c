@@ -208,7 +208,7 @@ void Device_Check_Task(void *pvParameters) {
         } else{
             EYE_checkout(0.0);//向屏幕发送数据
         }
-       // vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
