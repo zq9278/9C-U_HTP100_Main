@@ -15,10 +15,11 @@ uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms,is_charging_f
 uart_data *frameData_uart;
 
 /* FreeRTOS Handles */
-TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle;
+TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle,i2c2_recovery_task_handle;
 QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
 SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore,spi2RxDmaSemaphoreHandle,spi2TxDmaSemaphoreHandle;  // SPI2 DMA 完成信号量;  // 定义日志信号量;
 SemaphoreHandle_t xI2CMutex;       // I2C总线互斥量
+SemaphoreHandle_t i2c2_mutex,I2C2_DMA_Sem;
 SemaphoreHandle_t xI2CCompleteSem; // 传输完成信号量
 
 
@@ -157,7 +158,7 @@ void Device_Check_Task(void *pvParameters) {
                    // emergency_stop = 1; // 设置紧急停止标志
                     currentState=STATE_OFF;
                     ScreenTimerStop();
-                    EYE_AT24CXX_Write(0x02, eye_workingtime_1s);//标记眼盾已使用
+                    EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);//标记眼盾已使用
                     osDelay(10); // **等待 EEPROM 写入完成**
                     uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
                     eye_times+=1;
@@ -170,7 +171,7 @@ void Device_Check_Task(void *pvParameters) {
 
         if (EYE_working_Flag&&eye_workingtime_1s){//当眼盾存在且定时器=1是，计算30寿命
             eye_workingtime_1s=0;
-            EYE_AT24CXX_Write(0x02, eye_workingtime_1s);//标记眼盾已使用
+            EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);//标记眼盾已使用
             osDelay(10); // **等待 EEPROM 写入完成**
             uint16_t eye_start_time = EYE_AT24CXX_Read(0x04);
             osDelay(10);
@@ -211,12 +212,40 @@ void Device_Check_Task(void *pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
+extern I2C_HandleTypeDef hi2c2;
+void I2C2_RecoveryTask(void *param) {
+    for (;;) {
+        // 一直等待通知信号（错误发生）
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        LOG("[恢复任务] I2C2 错误发生，开始重建资源...\n");
+        // 1. 删除互斥锁
+        if (i2c2_mutex != NULL) {
+            vSemaphoreDelete(i2c2_mutex);
+        }
+        // 2. 重新创建互斥锁
+        i2c2_mutex = xSemaphoreCreateMutex();
+        if (i2c2_mutex == NULL) {
+            LOG("互斥锁重建失败！\n");
+            continue;
+        }
+        // 3. 重建 I2C 外设
+        __HAL_RCC_I2C2_CLK_DISABLE();
+        __HAL_RCC_I2C2_CLK_ENABLE();
+        HAL_I2C_DeInit(&hi2c2);
+        HAL_I2C_Init(&hi2c2);
+        // 4. 可选：重建 I2C2 的 DMA（如果你用了 HAL_DMA_Init）
+        // HAL_DMA_DeInit(&hdma_i2c2_rx); // 可选
+        // HAL_DMA_Init(&hdma_i2c2_rx);   // 可选
+        LOG("[恢复任务] I2C2 资源重建完成！\n");
+    }
+}
 
 
 void Main(void) {
     HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
-
     logSemaphore = xSemaphoreCreateMutex();  // 创建LOG互斥信号量
+    i2c2_mutex = xSemaphoreCreateMutex();  // 创建LOG互斥信号量
+    I2C2_DMA_Sem = xSemaphoreCreateBinary();
     BUTTON_SEMAPHOREHandle = xSemaphoreCreateBinary();//按键互斥量
     usart2_dmatxSemaphore = xSemaphoreCreateBinary();        // usart2DMA信号量
     USART2_DMA_Init();
@@ -240,7 +269,6 @@ void Main(void) {
                                             SerialTimeout_Callback);
     xTimerStart(serialTimeoutTimerHandle, 0); // 启动定时器
 
-
     UART_DMA_IDLE_RECEPT_QUEUEHandle = xQueueCreate(3, sizeof(uart_data *));
 
     AT24CXX_Init();
@@ -258,6 +286,7 @@ void Main(void) {
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 4, &Button_StateHandle);
     xTaskCreate(APP_task, "APP", 256, NULL, 3, &APPHandle);
     xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
-    xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 1, &deviceCheckHandle);
+    xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 2, &deviceCheckHandle);
+    xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 128, NULL, 5, &i2c2_recovery_task_handle);
 
 }

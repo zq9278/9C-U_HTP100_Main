@@ -226,58 +226,68 @@ void Heating_film_Check(void) {
     // 启用功能3
   }
 }
-// **读取 EEPROM（使用 DMA）**
+extern char *i2c2_mutex_owner; // 当前持有锁的函数/任务名
 uint16_t EYE_AT24CXX_Read(uint16_t startAddr) {
     uint8_t buffer[2];
-    i2c_dma_read_complete = 0;  // **清除 DMA 完成标志**
-    uint32_t start_time = osKernelGetTickCount(); // 获取当前时间
-    uint32_t timeout = 100; // 超时时间（单位：ms）
-    // **启动 DMA 读取**
-    //HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, startAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2);
-    if(HAL_I2C_Mem_Read(&hi2c2, 0xA1, startAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2,0xffff)!=HAL_OK){
-        osDelay(5); // 延迟 5ms，防止 I2C 总线问题
-        HAL_I2C_Mem_Read(&hi2c2, 0xA1, startAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2,0xffff);
-    };
+    HAL_StatusTypeDef status;
 
-
-//    // **等待 DMA 写入完成（带超时）**
-//    while (!i2c_dma_read_complete) {
-//        if (osKernelGetTickCount() - start_time > timeout) {
-//            LOG("EYE_AT24CXX_Read timeout!\n");
-//            break; // 超时退出
-//        }
-//        //LOG("Read\n");
-//        osDelay(10);
-//    }
+    // 1. 获取 I2C2 的互斥锁，最长等待 100ms
+    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+        LOG("EYE_AT24CXX_Read：获取 I2C2 互斥锁失败！\n");
+        return 0xFFFF; // 错误返回
+    }
+    // 2. 启动 I2C2 的 DMA 读操作
+    status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, startAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2);
+    if (status != HAL_OK) {
+        LOG("EYE_AT24CXX_Read：DMA 启动失败，状态码：%d\n", status);
+        xSemaphoreGive(i2c2_mutex);
+        return 0xFFFF;
+    }
+    // 3. 等待 DMA 读取完成（回调中释放 xI2C2CompleteSem）
+    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+        LOG("EYE_AT24CXX_Read：DMA 读取超时！\n");
+        xSemaphoreGive(i2c2_mutex);
+        return 0xFFFF;
+    }
+    // 4. 释放互斥锁
+    xSemaphoreGive(i2c2_mutex);
+    // 5. 合成并返回结果
     return (uint16_t)((buffer[0] << 8) | buffer[1]);
 }
-
-// **写入 EEPROM（使用 DMA）**
-void EYE_AT24CXX_Write(uint16_t WriteAddr, uint16_t value) {
+HAL_StatusTypeDef EYE_AT24CXX_Write(uint16_t WriteAddr, uint16_t value) {
     uint8_t buffer[2];
-    uint32_t start_time = osKernelGetTickCount(); // 获取当前时间
-    uint32_t timeout = 100; // 超时时间（单位：ms）
-    // **数据拆分**
-    buffer[0] = (uint8_t)(value >> 8);   // 高字节
-    buffer[1] = (uint8_t)(value & 0xFF); // 低字节
+    HAL_StatusTypeDef status;
 
-    i2c_dma_write_complete = 0;  // **清除 DMA 完成标志**
+    buffer[0] = (uint8_t)(value >> 8);
+    buffer[1] = (uint8_t)(value & 0xFF);
 
-    // **启动 DMA 写入**
-    //HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, WriteAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2);
-    HAL_I2C_Mem_Write(&hi2c2, 0xA0, WriteAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2,0xffff);
+    // 1. 获取 I2C 互斥锁（永久等待）
+    if (xSemaphoreTake(i2c2_mutex, 100) != pdTRUE) {
+        LOG("获取 I2C2 互斥锁失败！\n");
+        return HAL_ERROR;
+    }
 
-//    // **等待 DMA 写入完成（带超时）**
-//    while (!i2c_dma_write_complete) {
-//        if (osKernelGetTickCount() - start_time > timeout) {
-//            LOG("EYE_AT24CXX_Write timeout!\n");
-//            break; // 超时退出
-//        }
-//        //LOG("Write\n");
-//        osDelay(10);
-//    }
-
+    // 2. 清空旧的信号量状态，避免残留
+    xSemaphoreTake(I2C2_DMA_Sem, 0);
+    // 3. 尝试启动 DMA
+    status = HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, WriteAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2);
+    if (status != HAL_OK) {
+        LOG("DMA 启动失败！设备可能已断开？状态码: %d\n", status);
+        xSemaphoreGive(i2c2_mutex);
+        return HAL_ERROR;
+    }
+    // 4. 等待 DMA 完成信号（100ms）
+    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+        LOG("EYE_AT24CXX_Write：DMA 写入超时！设备可能已拔出！\n");
+        xSemaphoreGive(i2c2_mutex);
+        return HAL_TIMEOUT;
+    }
+    // 5. 释放互斥锁
+    xSemaphoreGive(i2c2_mutex);
+    return HAL_OK;
 }
+
+
 prepare_data my_prepare_data;
 void prepare_data_set(void){
   uint16_t hot_count,crimp_count,auto_count,prepare_press,prepare_temperature,prepare_time,bee,set_prepare;

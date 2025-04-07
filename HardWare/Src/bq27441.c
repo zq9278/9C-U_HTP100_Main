@@ -457,8 +457,8 @@ void battery_status_update_bq27441(void) {
             ScreenUpdateSOC(battery);
         }
     }
-    if (BQ27441.Voltage <= 3000) {
-      //BQ25895_Write(0x09, 0x64); // 电压低，关断保护
+    if (BQ27441.Voltage <= 3200) {
+      BQ25895_Write(0x09, 0x64); // 电压低，关断保护
     }
   }
 

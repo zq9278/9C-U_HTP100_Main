@@ -20,42 +20,72 @@ void TMP112_Init(void)
     TMP112_WriteWord( 0x01, config);
 }  
 
-void TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer)   
- { 	while (hdma_i2c2_rx.State != HAL_DMA_STATE_READY)
-    ; // 绛?寰?DMA瀹???
-	
-   // 使用 HAL_I2C_Mem_Read_DMA 进行读操作
-   HAL_I2C_Mem_Read_DMA(&hi2c2, 0x91, ReadAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, 2) ;
-   
-}
-HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
-    HAL_StatusTypeDef result;
-    uint32_t timeout = 10;  // 每次检查最多等待 10ms
-    uint8_t fail_count = 5; // 记录连续失败次数
-
-    for (uint8_t i = 0; i < retries; i++) {
-        result = HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr, 1, timeout);
-
-        if (result == HAL_OK) {
-            // 如果成功，重置失败计数器，并返回成功
-            fail_count = 0;
-            return HAL_OK;
-        } else {
-            fail_count++;
-        }
-
-        osDelay(10); // 等待 2ms 后重试
-    }
-
-    // 如果连续 `retries` 次都失败，则返回 HAL_ERROR
-    if (fail_count >= retries) {
-         //LOG("I2C 设备 0x%02X 未连接 (连续 %d 次失败)\n", i2c_addr, retries);
+//void TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer)   
+// { 	while (hdma_i2c2_rx.State != HAL_DMA_STATE_READY)
+//    ; // 绛?寰?DMA瀹???
+//	
+//   // 使用 HAL_I2C_Mem_Read_DMA 进行读操作
+//   HAL_I2C_Mem_Read_DMA(&hi2c2, 0x91, ReadAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, 2) ;
+//   
+//}
+ char *i2c2_mutex_owner = NULL; // 当前持有锁的函数/任务名
+HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
+    HAL_StatusTypeDef status;
+    // 1. 获取 I2C2 的互斥锁，最长等待100ms
+    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(portMAX_DELAY)) != pdTRUE) {
+        LOG("TMP112_Read：获取 I2C2 互斥锁失败\r\n");
         return HAL_ERROR;
     }
 
-    return HAL_OK; // 这里一般不会执行到
+    // 2. 启动 I2C2 的 DMA 读取
+    status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0x91, ReadAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, 2);
+    if (status != HAL_OK) {
+        LOG("TMP112_Read：DMA 启动失败，状态码：%d\r\n", status);
+        xSemaphoreGive(i2c2_mutex); // 启动失败也要释放互斥锁
+        return status;
+    }
+
+    // 3. 等待 DMA 读取完成信号（由回调释放）
+    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(portMAX_DELAY)) != pdTRUE) {
+        LOG("TMP112_Read：DMA读取超时\r\n");
+        xSemaphoreGive(i2c2_mutex);
+        return HAL_TIMEOUT;
+    }
+
+    // 4. 操作完成，释放 I2C2 互斥锁
+    xSemaphoreGive(i2c2_mutex);
+    return HAL_OK;
 }
 
+
+HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
+    HAL_StatusTypeDef result;
+    uint8_t fail_count = 0;
+    if (i2c2_mutex == NULL) {
+        LOG("错误：I2C互斥锁未初始化！\r\n");
+        return HAL_ERROR;
+    }
+    if (xSemaphoreTake(i2c2_mutex, 100) == pdTRUE) {
+        for (uint8_t i = 0; i < retries; i++) {
+            result = HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr, 1, 100);
+
+            if (result == HAL_OK) {
+                xSemaphoreGive(i2c2_mutex);  // ? 成功前释放锁
+                i2c2_mutex_owner = NULL;
+                return HAL_OK;
+            } else {
+                fail_count++;
+            }
+            osDelay(100);
+        }
+        //LOG("I2C 设备 0x%02X 未连接 (连续 %d 次失败)\n", i2c_addr, retries);
+        xSemaphoreGive(i2c2_mutex);  // ? 失败后也要释放锁
+        return HAL_ERROR;
+    } else {
+        LOG("I2C_CheckDevice：获取互斥锁失败！\n");
+        return HAL_ERROR;
+    }
+}
 
 prepare_data my_prepare_data_times;
 uint8_t TMP112_IsDevicePresent(void) {
@@ -73,7 +103,7 @@ uint8_t TMP112_IsDevicePresent(void) {
     if (result == HAL_OK) {
         //LOG("眼盾连接中\n");
         EYE_exist_Flag=1;//检测到眼盾
-        uint16_t eye_time = EYE_AT24CXX_Read(0x02);//
+        uint16_t eye_time = EYE_AT24CXX_Read(EYE_MARK_MAP);//
         if (eye_time == 0xFFFF) {//没有被标记的眼盾
             EYE_exist_new_Flag=1;//检测到眼盾
             //emergency_stop = 0; // 设置紧急标志
@@ -106,7 +136,7 @@ uint8_t TMP112_IsDevicePresent(void) {
             uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
             eye_times+=1;
             AT24CXX_WriteUInt16(0xf2,eye_times);
-            EYE_AT24CXX_Write(0x02, eye_workingtime_1s);//标记眼盾已使用
+            EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);//标记眼盾已使用
             osDelay(10); // **等待 EEPROM 写入完成**
             device_connected=0.0;//主机端眼盾使用次数已经记录上去
             EYE_working_Flag=0;//眼盾不工作了

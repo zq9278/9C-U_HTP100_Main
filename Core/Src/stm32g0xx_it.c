@@ -397,28 +397,52 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 extern volatile uint8_t i2c_dma_read_complete;  // 读完成标志
 extern volatile uint8_t i2c_dma_write_complete; // 写完成标志
 
+//void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+//    if (hi2c->Instance == hi2c1.Instance) {
+//        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+//        xSemaphoreGiveFromISR(xI2CCompleteSem, &xHigherPriorityTaskWoken);
+//        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+//    }
+//    if (hi2c->Instance == hi2c2.Instance) {
+//        i2c_dma_read_complete = 1;  // 标记 DMA 传输完成
+//    }
+//}
+//
+//void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c) {
+//    if (hi2c->Instance == hi2c1.Instance) {
+//        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+//        xSemaphoreGiveFromISR(xI2CCompleteSem, &xHigherPriorityTaskWoken);
+//        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+//    }
+//    if (hi2c->Instance == hi2c2.Instance) {
+//        i2c_dma_write_complete = 1;  // 标记 DMA 传输完成
+//    }
+//
+//}
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
     if (hi2c->Instance == hi2c1.Instance) {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xSemaphoreGiveFromISR(xI2CCompleteSem, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    } else if (hi2c->Instance == hi2c2.Instance) {
+        xSemaphoreGiveFromISR(I2C2_DMA_Sem, &xHigherPriorityTaskWoken);
     }
-    if (hi2c->Instance == hi2c2.Instance) {
-        i2c_dma_read_complete = 1;  // 标记 DMA 传输完成
-    }
+
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
     if (hi2c->Instance == hi2c1.Instance) {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xSemaphoreGiveFromISR(xI2CCompleteSem, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-    }
-    if (hi2c->Instance == hi2c2.Instance) {
-        i2c_dma_write_complete = 1;  // 标记 DMA 传输完成
+    } else if (hi2c->Instance == hi2c2.Instance) {
+        xSemaphoreGiveFromISR(I2C2_DMA_Sem, &xHigherPriorityTaskWoken);
     }
 
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
+
 
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
     if (hi2c->Instance == hi2c1.Instance) {
@@ -431,13 +455,24 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
         HAL_I2C_DeInit(&hi2c1);// 重新初始化 I2C 外设
         HAL_I2C_Init(&hi2c1);
     }
+//    if (hi2c->Instance == hi2c2.Instance) {
+//        __HAL_RCC_I2C2_CLK_DISABLE();// 关闭 I2C 时钟
+//        //osDelay(10);// 短暂延时
+//        __HAL_RCC_I2C2_CLK_ENABLE(); // 重新使能 I2C 时钟
+//        HAL_I2C_DeInit(&hi2c2);// 重新初始化 I2C 外设
+//        HAL_I2C_Init(&hi2c2);
+//    }
     if (hi2c->Instance == hi2c2.Instance) {
-        __HAL_RCC_I2C2_CLK_DISABLE();// 关闭 I2C 时钟
-        //osDelay(10);// 短暂延时
-        __HAL_RCC_I2C2_CLK_ENABLE(); // 重新使能 I2C 时钟
-        HAL_I2C_DeInit(&hi2c2);// 重新初始化 I2C 外设
-        HAL_I2C_Init(&hi2c2);
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        if (i2c2_recovery_task_handle != NULL) {
+            vTaskNotifyGiveFromISR(i2c2_recovery_task_handle, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        } else {
+            // 调试信息（建议加上）
+            LOG("错误：恢复任务句柄未初始化！\n");
+        }
     }
+
 }
 
 

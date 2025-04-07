@@ -14,6 +14,9 @@
 #define AT24C256	32767  
 
 #define EE_TYPE AT24C02
+//#define EYE_MARK_MAP 0x02
+#define EYE_MARK_MAP 0x12
+
 
 #define EEPROM_BQ27441Config_Add 0xFA
 					  
@@ -33,6 +36,6 @@ void prepare_data_set(void);
 uint32_t AT24CXX_ReadOrWriteZero(uint16_t startAddr);
 void AT24CXX_WriteUInt16(uint16_t WriteAddr, uint16_t value);
 uint16_t EYE_AT24CXX_Read(uint16_t startAddr);
-void EYE_AT24CXX_Write(uint16_t WriteAddr, uint16_t value) ;
+HAL_StatusTypeDef EYE_AT24CXX_Write(uint16_t WriteAddr, uint16_t value) ;
 void AD24C01_Factory_formatted(void);
 #endif
