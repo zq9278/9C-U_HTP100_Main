@@ -1,6 +1,7 @@
 # 忽略 build 文件夹
-build/
-
+#build/
+cmake-build-release-mingw/
+cmake-build-debug-mingw/
 # 忽略 cmake 文件夹
 cmake/
 
