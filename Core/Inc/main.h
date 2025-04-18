@@ -57,6 +57,7 @@ extern "C" {
 #include "interface_uart.h"
 #include "time_callback.h"
 #include "string.h"
+#include "device_lifetime.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

@@ -28,7 +28,7 @@ void TMP112_Init(void)
 //   HAL_I2C_Mem_Read_DMA(&hi2c2, 0x91, ReadAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, 2) ;
 //   
 //}
- char *i2c2_mutex_owner = NULL; // 当前持有锁的函数/任务名
+
 HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
     HAL_StatusTypeDef status;
     // 1. 获取 I2C2 的互斥锁，最长等待100ms
@@ -58,104 +58,65 @@ HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
 }
 
 
-HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
-    HAL_StatusTypeDef result;
-    uint8_t fail_count = 0;
-    if (i2c2_mutex == NULL) {
-        LOG("错误：I2C互斥锁未初始化！\r\n");
-        return HAL_ERROR;
-    }
-    if (xSemaphoreTake(i2c2_mutex, 100) == pdTRUE) {
-        for (uint8_t i = 0; i < retries; i++) {
-            result = HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr, 1, 100);
 
-            if (result == HAL_OK) {
-                xSemaphoreGive(i2c2_mutex);  // ? 成功前释放锁
-                i2c2_mutex_owner = NULL;
-                return HAL_OK;
-            } else {
-                fail_count++;
-            }
-            osDelay(100);
-        }
-        //LOG("I2C 设备 0x%02X 未连接 (连续 %d 次失败)\n", i2c_addr, retries);
-        xSemaphoreGive(i2c2_mutex);  // ? 失败后也要释放锁
-        return HAL_ERROR;
-    } else {
-        LOG("I2C_CheckDevice：获取互斥锁失败！\n");
-        return HAL_ERROR;
-    }
-}
 
-prepare_data my_prepare_data_times;
+
 uint8_t TMP112_IsDevicePresent(void) {
-    // 初始化实例的成员变量
-    my_prepare_data_times.cmd_head_high = 0x6A;
-    my_prepare_data_times.cmd_head_low = 0xA6;
-    my_prepare_data_times.frame_length=0x0b;
-    my_prepare_data_times.cmd_type_high = 0x00;
-    my_prepare_data_times.end_high = 0xFF;
-    my_prepare_data_times.end_low = 0xFF;
-
-// ???? 2 ?Σ???ε?? 10ms
-    //HAL_StatusTypeDef result = HAL_I2C_IsDeviceReady(&hi2c2, 0x91, 2, 100);
-    HAL_StatusTypeDef result=I2C_CheckDevice(0x91,10);
-    if (result == HAL_OK) {
-        //LOG("眼盾连接中\n");
-        EYE_exist_Flag=1;//检测到眼盾
-        uint16_t eye_time = EYE_AT24CXX_Read(EYE_MARK_MAP);//
-        if (eye_time == 0xFFFF) {//没有被标记的眼盾
-            EYE_exist_new_Flag=1;//检测到眼盾
-            //emergency_stop = 0; // 设置紧急标志
-            EYE_status=1;
-            uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);//读取主机端记录的次数
-            my_prepare_data_times.cmd_type_low = 0xb0;
-            my_prepare_data_times.value = eye_times;
-            Eye_twitching_invalid_master(&my_prepare_data_times); // 将数据发送到队列
-            device_connected=1.0;//主机端眼盾使用次数没有记录上去
-        } else {
-            if(!EYE_exist_new_Flag){
-                EYE_status=0;
-            }
-        }
-        return 1;
-//        AT24C02_WriteAllBytes_eye(0xff);//清理ee存储//眼盾 清零
-//        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,GPIO_PIN_RESET);
-    } else {
- //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,GPIO_PIN_SET); //眼盾 清零
-        LOG("眼盾失效或拔出\n");
-        EYE_exist_Flag=0;//眼盾不存在了
-        EYE_status=0;
-        EYE_exist_new_Flag=0;//检测到眼盾
-        currentState=STATE_OFF;
-        if ((EYE_working_Flag==1)&&(device_connected==1.0)){//主机端眼盾使用次数没有记录上去
-            close_mianAPP();
-            LOG("加热挤压都停止");
-            ScreenTimerStop();
-           // emergency_stop = 1; // 设置紧急停止标志
-            uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
-            eye_times+=1;
-            AT24CXX_WriteUInt16(0xf2,eye_times);
-            EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);//标记眼盾已使用
-            osDelay(10); // **等待 EEPROM 写入完成**
-            device_connected=0.0;//主机端眼盾使用次数已经记录上去
-            EYE_working_Flag=0;//眼盾不工作了
-        }
-        return 0;
-    }
+//    // 初始化实例的成员变量
+//    my_prepare_data_times.cmd_head_high = 0x6A;
+//    my_prepare_data_times.cmd_head_low = 0xA6;
+//    my_prepare_data_times.frame_length=0x0b;
+//    my_prepare_data_times.cmd_type_high = 0x00;
+//    my_prepare_data_times.end_high = 0xFF;
+//    my_prepare_data_times.end_low = 0xFF;
+//
+//// ???? 2 ?Σ???ε?? 10ms
+//    //HAL_StatusTypeDef result = HAL_I2C_IsDeviceReady(&hi2c2, 0x91, 2, 100);
+//    HAL_StatusTypeDef result=I2C_CheckDevice(0x91,10);
+//    if (result == HAL_OK) {
+//        //LOG("眼盾连接中\n");
+//        EYE_exist_Flag=1;//检测到眼盾
+//        uint16_t eye_time = EYE_AT24CXX_Read(EYE_MARK_MAP);//
+//        if (eye_time == 0xFFFF) {//没有被标记的眼盾
+//            EYE_exist_new_Flag=1;//检测到眼盾
+//            //emergency_stop = 0; // 设置紧急标志
+//            EYE_status=1;
+//            uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);//读取主机端记录的次数
+//            my_prepare_data_times.cmd_type_low = 0xb0;
+//            my_prepare_data_times.value = eye_times;
+//            Eye_twitching_invalid_master(&my_prepare_data_times); // 将数据发送到队列
+//            device_connected=1.0;//主机端眼盾使用次数没有记录上去
+//        } else {
+//            if(!EYE_exist_new_Flag){
+//                EYE_status=0;
+//            }
+//        }
+//        return 1;
+////        AT24C02_WriteAllBytes_eye(0xff);//清理ee存储//眼盾 清零
+////        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,GPIO_PIN_RESET);
+//    } else {
+// //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6,GPIO_PIN_SET); //眼盾 清零
+//        LOG("眼盾失效或拔出\n");
+//        EYE_exist_Flag=0;//眼盾不存在了
+//        EYE_status=0;
+//        EYE_exist_new_Flag=0;//检测到眼盾
+//        currentState=STATE_OFF;
+//        if ((EYE_working_Flag==1)&&(device_connected==1.0)){//主机端眼盾使用次数没有记录上去
+//            close_mianAPP();
+//            LOG("加热挤压都停止");
+//            ScreenTimerStop();
+//           // emergency_stop = 1; // 设置紧急停止标志
+//            uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
+//            eye_times+=1;
+//            AT24CXX_WriteUInt16(0xf2,eye_times);
+//            EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);//标记眼盾已使用
+//            osDelay(10); // **等待 EEPROM 写入完成**
+//            device_connected=0.0;//主机端眼盾使用次数已经记录上去
+//            EYE_working_Flag=0;//眼盾不工作了
+//        }
+//        return 0;
+//    }
 }
-// void TMP112_MultiRead(uint8_t* pBuffer)   
-// { 	
-// 	HAL_I2C_Mem_Read_DMA(&hi2c2, TMP112_ADDR, 0x00,I2C_MEMADD_SIZE_8BIT, pBuffer,0x14);
-// }  
- 
-// void TMP112_WriteByte(uint8_t WriteAddr,uint8_t WriteData)
-// {
-// 	uint8_t Data[1];
-// 	Data[0]=WriteData;
-// 	HAL_I2C_Mem_Write_DMA(&hi2c2, TMP112_ADDR, WriteAddr,I2C_MEMADD_SIZE_8BIT, Data, 1);
-// } 
-
  void TMP112_WriteWord(uint8_t WriteAddr,uint8_t* WriteData)
  {
  	HAL_I2C_Mem_Write_DMA(&hi2c2, 0x92, WriteAddr,I2C_MEMADD_SIZE_8BIT, WriteData, 2);

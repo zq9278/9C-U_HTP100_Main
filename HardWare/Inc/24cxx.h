@@ -15,7 +15,7 @@
 
 #define EE_TYPE AT24C02
 //#define EYE_MARK_MAP 0x02
-#define EYE_MARK_MAP 0x12
+
 
 
 #define EEPROM_BQ27441Config_Add 0xFA

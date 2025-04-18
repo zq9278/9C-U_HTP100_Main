@@ -7,7 +7,7 @@
 #define WS2812B_LOW	   HAL_GPIO_WritePin(WS2812B_GPIO_Port,WS2812B_Pin,GPIO_PIN_RESET)
 
 
-typedef unsigned char bool;
+//typedef unsigned char bool;
 #define true 1
 #define false 0
 

@@ -126,90 +126,14 @@ void Motor_go_home_task(void *argument) {
 // 检测任务函数
 void Device_Check_Task(void *pvParameters) {
 
-    extern float device_connected;
     xTimerStart(eye_is_existHandle, 0); // 启动定时器
-    while (1) {
-        //if (serialTimeoutFlag)
-           // LOG("请检查屏幕连接！\n");
-       // uint16_t eye_no_start_time = EYE_AT24CXX_Read(0x06);
-        IIC_EYETimeoutFlag = TMP112_IsDevicePresent();//检查iic是否存在
-        if (!EYE_working_Flag&&EYE_exist_Flag&&eye_existtime_1s){//当眼盾存在且定时器=1是，计算60寿命
-           eye_existtime_1s=0;
-            uint16_t eye_no_start_time = EYE_AT24CXX_Read(0x06);
-            osDelay(10);
-             LOG("eye_no_start_time=%d\n",eye_no_start_time);
-            if (eye_no_start_time == 0xFFFF) {
-                eye_no_start_time=0;
-            }
-            if ((eye_no_start_time <=360)&&(EYE_exist_new_Flag)) {
-                EYE_status=1;
-                LOG("眼盾正常工作60s,%d\n",eye_no_start_time);
-                eye_no_start_time++;
-                EYE_AT24CXX_Write(0x06, eye_no_start_time);
-                osDelay(10); // **等待 EEPROM 写入完成**
-            }
-            else{
-                EYE_exist_Flag=0;
-                EYE_exist_new_Flag=0;
-                EYE_working_Flag=0;//只要60和30有一个触发眼盾失效,另外一个就不需要检测了
-                EYE_status=0;
-                if (device_connected==1.0){//主机端眼盾使用次数没有记录上去
-                    close_mianAPP();
-                   // emergency_stop = 1; // 设置紧急停止标志
-                    currentState=STATE_OFF;
-                    ScreenTimerStop();
-                    EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);//标记眼盾已使用
-                    osDelay(10); // **等待 EEPROM 写入完成**
-                    uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
-                    eye_times+=1;
-                    AT24CXX_WriteUInt16(0xf2,eye_times);
-                    LOG("眼盾超时60s\n");
-                    device_connected=0.0;
-                }
-            }
-        }
+    // 初始化设备状态机（状态设置为未连接）
+    Device_Init();
 
-        if (EYE_working_Flag&&eye_workingtime_1s){//当眼盾存在且定时器=1是，计算30寿命
-            eye_workingtime_1s=0;
-            EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);//标记眼盾已使用
-            osDelay(10); // **等待 EEPROM 写入完成**
-            uint16_t eye_start_time = EYE_AT24CXX_Read(0x04);
-            osDelay(10);
-            LOG("eye_no_start_time1=%d\n",eye_start_time);
-            if (eye_start_time == 0xFFFF) {
-                eye_start_time=0;
-            }
-            if ((eye_start_time <=180)&&(EYE_exist_new_Flag)) {
-                LOG("眼盾正常工作30s,%d\n",eye_start_time);
-                eye_start_time++;
-                EYE_status=1;
-                EYE_AT24CXX_Write(0x04, eye_start_time);
-                osDelay(10); // **等待 EEPROM 写入完成**
-            }
-            else{
-                EYE_working_Flag=0;
-                EYE_exist_new_Flag=0;
-                EYE_exist_Flag=0;//只要60和30有一个触发眼盾失效,另外一个就不需要检测了
-                EYE_status=0;
-                if (device_connected==1.0){//主机端眼盾使用次数没有记录上去
-                    close_mianAPP();
-                    ScreenTimerStop();
-                    //emergency_stop = 1; // 设置紧急停止标志
-                    currentState=STATE_OFF;
-                    uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
-                    eye_times+=1;
-                    AT24CXX_WriteUInt16(0xf2,eye_times);
-                    LOG("眼盾超时30s\n");
-                    device_connected=0.0;
-                }
-            }
-        }
-        if(EYE_status){
-            EYE_checkout(1.0);//向屏幕发送数据
-        } else{
-            EYE_checkout(0.0);//向屏幕发送数据
-        }
-        vTaskDelay(pdMS_TO_TICKS(100));
+    // 无限循环，高频轮询设备状态（支持热插拔）
+    for (;;) {
+        DeviceStateMachine_Update();  // 更新设备状态
+        osDelay(100);  // 每 100ms 轮询一次
     }
 }
 extern I2C_HandleTypeDef hi2c2;
