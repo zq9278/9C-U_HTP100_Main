@@ -15,6 +15,8 @@ void STATE_POWER_5V_Update(void) {
 }
 void close_mianAPP(void){
     HeatPWM(0); // 关闭加热PWM
+    currentState = STATE_OFF; // 从自动模式回到关闭状态
+    ScreenTimerStop();
     if (PressHandle != NULL) {
         vTaskDelete(PressHandle);
         PressHandle = NULL;  // 避免再次访问无效句柄
@@ -24,7 +26,7 @@ void close_mianAPP(void){
         HeatHandle = NULL;  // 避免再次访问无效句柄
     }
     if (motor_homeHandle == NULL) {
-        if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle) == pdPASS) {
+        if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 4, &motor_homeHandle) == pdPASS) {
         } else {
             LOG("Failed to create motor_home task.\r\n");
         }

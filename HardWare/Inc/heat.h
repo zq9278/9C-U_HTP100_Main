@@ -4,6 +4,7 @@
 
 
 #define temperature_compensation 0
+#define temperature_target 41.5
 	void HeatInit(void);
 void HeatPWM(uint8_t state);
 void HeatPWMSet(uint8_t PWMVal);

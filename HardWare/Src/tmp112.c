@@ -76,7 +76,7 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
             } else {
                 fail_count++;
             }
-            osDelay(100);
+            osDelay(10);
         }
         //LOG("I2C 设备 0x%02X 未连接 (连续 %d 次失败)\n", i2c_addr, retries);
         xSemaphoreGive(i2c2_mutex);  // ? 失败后也要释放锁

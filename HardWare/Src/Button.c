@@ -30,7 +30,7 @@ void Button_detection(void) {
             // HeatPID.setpoint = 42.5;
 //          HeatPID.previous_error = pid_heat.previous_error;
 //          HeatPID.integral = pid_heat.integral;
-            HeatPID.setpoint = 41.5 + temperature_compensation;
+            HeatPID.setpoint = temperature_target + temperature_compensation;
             //HeatPID.Ki=0.04;
             ScreenTimerStart();
 
@@ -109,7 +109,7 @@ void Button_detection(void) {
             auto_finish = 0;
             // HeatPID.setpoint = 42.5;
 //
-            HeatPID.setpoint = 41.5 + temperature_compensation;
+            HeatPID.setpoint = temperature_target + temperature_compensation;
             //HeatPID.Ki=0.04;
             //xQueueSend(HEAT_DATAHandle, &HeatPID, 0);  // 将加热数据发送到队列
             TMC_ENN(0);                                // 启动电机
@@ -146,7 +146,7 @@ void Button_detection(void) {
                 HeatHandle = NULL;  // 避免再次访问无效句柄
             }
             if (motor_homeHandle == NULL) {
-                if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle) == pdPASS) {
+                if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 4, &motor_homeHandle) == pdPASS) {
                 } else {
                     LOG("Failed to create motor go home task.\r\n");
                 }

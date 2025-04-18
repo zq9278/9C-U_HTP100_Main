@@ -100,7 +100,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-    LOG("\n??  硬件故障！进入 HardFault_Handler ??\n");
+    LOG("\n  硬件故障！进入 HardFault_Handler \n");
 
 
   /* USER CODE END HardFault_IRQn 0 */

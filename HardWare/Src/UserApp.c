@@ -15,7 +15,7 @@ uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms,is_charging_f
 uart_data *frameData_uart;
 
 /* FreeRTOS Handles */
-TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle,i2c2_recovery_task_handle;
+TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle,i2c2_recovery_task_handle,CPU_StressTask_handle;
 QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
 SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore,spi2RxDmaSemaphoreHandle,spi2TxDmaSemaphoreHandle;  // SPI2 DMA 完成信号量;  // 定义日志信号量;
 SemaphoreHandle_t xI2CMutex;       // I2C总线互斥量
@@ -132,83 +132,86 @@ void Device_Check_Task(void *pvParameters) {
         //if (serialTimeoutFlag)
            // LOG("请检查屏幕连接！\n");
        // uint16_t eye_no_start_time = EYE_AT24CXX_Read(0x06);
-        IIC_EYETimeoutFlag = TMP112_IsDevicePresent();//检查iic是否存在
-        if (!EYE_working_Flag&&EYE_exist_Flag&&eye_existtime_1s){//当眼盾存在且定时器=1是，计算60寿命
-           eye_existtime_1s=0;
-            uint16_t eye_no_start_time = EYE_AT24CXX_Read(0x06);
-            osDelay(10);
-             LOG("eye_no_start_time=%d\n",eye_no_start_time);
-            if (eye_no_start_time == 0xFFFF) {
-                eye_no_start_time=0;
-            }
-            if ((eye_no_start_time <=360)&&(EYE_exist_new_Flag)) {
-                EYE_status=1;
-                LOG("眼盾正常工作60s,%d\n",eye_no_start_time);
-                eye_no_start_time++;
-                EYE_AT24CXX_Write(0x06, eye_no_start_time);
-                osDelay(10); // **等待 EEPROM 写入完成**
-            }
-            else{
-                EYE_exist_Flag=0;
-                EYE_exist_new_Flag=0;
-                EYE_working_Flag=0;//只要60和30有一个触发眼盾失效,另外一个就不需要检测了
-                EYE_status=0;
-                if (device_connected==1.0){//主机端眼盾使用次数没有记录上去
-                    close_mianAPP();
-                   // emergency_stop = 1; // 设置紧急停止标志
-                    currentState=STATE_OFF;
-                    ScreenTimerStop();
-                    EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);//标记眼盾已使用
-                    osDelay(10); // **等待 EEPROM 写入完成**
-                    uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
-                    eye_times+=1;
-                    AT24CXX_WriteUInt16(0xf2,eye_times);
-                    LOG("眼盾超时60s\n");
-                    device_connected=0.0;
-                }
-            }
-        }
 
-        if (EYE_working_Flag&&eye_workingtime_1s){//当眼盾存在且定时器=1是，计算30寿命
-            eye_workingtime_1s=0;
-            EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);//标记眼盾已使用
-            osDelay(10); // **等待 EEPROM 写入完成**
-            uint16_t eye_start_time = EYE_AT24CXX_Read(0x04);
-            osDelay(10);
-            LOG("eye_no_start_time1=%d\n",eye_start_time);
-            if (eye_start_time == 0xFFFF) {
-                eye_start_time=0;
-            }
-            if ((eye_start_time <=180)&&(EYE_exist_new_Flag)) {
-                LOG("眼盾正常工作30s,%d\n",eye_start_time);
-                eye_start_time++;
-                EYE_status=1;
-                EYE_AT24CXX_Write(0x04, eye_start_time);
-                osDelay(10); // **等待 EEPROM 写入完成**
-            }
-            else{
-                EYE_working_Flag=0;
-                EYE_exist_new_Flag=0;
-                EYE_exist_Flag=0;//只要60和30有一个触发眼盾失效,另外一个就不需要检测了
-                EYE_status=0;
-                if (device_connected==1.0){//主机端眼盾使用次数没有记录上去
-                    close_mianAPP();
-                    ScreenTimerStop();
-                    //emergency_stop = 1; // 设置紧急停止标志
-                    currentState=STATE_OFF;
-                    uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
-                    eye_times+=1;
-                    AT24CXX_WriteUInt16(0xf2,eye_times);
-                    LOG("眼盾超时30s\n");
-                    device_connected=0.0;
-                }
-            }
-        }
-        if(EYE_status){
-            EYE_checkout(1.0);//向屏幕发送数据
-        } else{
-            EYE_checkout(0.0);//向屏幕发送数据
-        }
+//        IIC_EYETimeoutFlag = TMP112_IsDevicePresent();//检查iic是否存在
+//        if (!EYE_working_Flag&&EYE_exist_Flag&&eye_existtime_1s){//当眼盾存在且定时器=1是，计算60寿命
+//           eye_existtime_1s=0;
+//            uint16_t eye_no_start_time = EYE_AT24CXX_Read(0x06);
+//            osDelay(10);
+//             LOG("eye_no_start_time=%d\n",eye_no_start_time);
+//            if (eye_no_start_time == 0xFFFF) {
+//                eye_no_start_time=0;
+//            }
+//            if ((eye_no_start_time <=360)&&(EYE_exist_new_Flag)) {
+//                EYE_status=1;
+//                LOG("眼盾正常工作60s,%d\n",eye_no_start_time);
+//                eye_no_start_time++;
+//                EYE_AT24CXX_Write(0x06, eye_no_start_time);
+//                osDelay(10); // **等待 EEPROM 写入完成**
+//            }
+//            else{
+//                EYE_exist_Flag=0;
+//                EYE_exist_new_Flag=0;
+//                EYE_working_Flag=0;//只要60和30有一个触发眼盾失效,另外一个就不需要检测了
+//                EYE_status=0;
+//                if (device_connected==1.0){//主机端眼盾使用次数没有记录上去
+//                    close_mianAPP();
+//                   // emergency_stop = 1; // 设置紧急停止标志
+//                    currentState=STATE_OFF;
+//                    ScreenTimerStop();
+//                    EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);//标记眼盾已使用
+//                    osDelay(10); // **等待 EEPROM 写入完成**
+//                    uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
+//                    eye_times+=1;
+//                    AT24CXX_WriteUInt16(0xf2,eye_times);
+//                    LOG("眼盾超时60s\n");
+//                    device_connected=0.0;
+//                }
+//            }
+//        }
+//
+//        if (EYE_working_Flag&&eye_workingtime_1s){//当眼盾存在且定时器=1是，计算30寿命
+//            eye_workingtime_1s=0;
+//            EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);//标记眼盾已使用
+//            osDelay(10); // **等待 EEPROM 写入完成**
+//            uint16_t eye_start_time = EYE_AT24CXX_Read(0x04);
+//            osDelay(10);
+//            LOG("eye_no_start_time1=%d\n",eye_start_time);
+//            if (eye_start_time == 0xFFFF) {
+//                eye_start_time=0;
+//            }
+//            if ((eye_start_time <=180)&&(EYE_exist_new_Flag)) {
+//                LOG("眼盾正常工作30s,%d\n",eye_start_time);
+//                eye_start_time++;
+//                EYE_status=1;
+//                EYE_AT24CXX_Write(0x04, eye_start_time);
+//                osDelay(10); // **等待 EEPROM 写入完成**
+//            }
+//            else{
+//                EYE_working_Flag=0;
+//                EYE_exist_new_Flag=0;
+//                EYE_exist_Flag=0;//只要60和30有一个触发眼盾失效,另外一个就不需要检测了
+//                EYE_status=0;
+//                if (device_connected==1.0){//主机端眼盾使用次数没有记录上去
+//                    close_mianAPP();
+//                    ScreenTimerStop();
+//                    //emergency_stop = 1; // 设置紧急停止标志
+//                    currentState=STATE_OFF;
+//                    uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
+//                    eye_times+=1;
+//                    AT24CXX_WriteUInt16(0xf2,eye_times);
+//                    LOG("眼盾超时30s\n");
+//                    device_connected=0.0;
+//                }
+//            }
+//        }
+//        if(EYE_status){
+//            EYE_checkout(1.0);//向屏幕发送数据
+//        } else{
+//            EYE_checkout(0.0);//向屏幕发送数据
+//        }
+        EYE_status=1;
+        EYE_checkout(1.0);//向屏幕发送数据
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -217,6 +220,20 @@ void I2C2_RecoveryTask(void *param) {
     for (;;) {
         // 一直等待通知信号（错误发生）
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+//        // 添加延迟，避免误报触发恢复（消抖处理）
+//        vTaskDelay(pdMS_TO_TICKS(100));  // 延迟100ms
+//
+//        // 可选：再次尝试访问I2C设备确认真的异常
+//        if (HAL_I2C_IsDeviceReady(&hi2c2, 0x91, 1, 100) == HAL_OK) {
+//            LOG("[恢复任务] 误触发，无需恢复。\n");
+//            continue; // 若I2C仍能正常工作，则跳过恢复
+//        }
+        EYE_checkout(0.0);//向屏幕发送数据眼盾失败
+        close_mianAPP();
+        EYE_exist_Flag=0;//眼盾不存在了
+        EYE_status=0;
+        EYE_exist_new_Flag=0;//检测到眼盾
+        LOG("加热挤压都停止");
         LOG("[恢复任务] I2C2 错误发生，开始重建资源...\n");
         // 1. 删除互斥锁
         if (i2c2_mutex != NULL) {
@@ -239,6 +256,17 @@ void I2C2_RecoveryTask(void *param) {
         LOG("[恢复任务] I2C2 资源重建完成！\n");
     }
 }
+void CPU_StressTask(void *param) {
+//    while (1) {
+//        volatile uint32_t dummy = 0;
+//        for (int i = 0; i < 1000000; ++i) {
+//            dummy += i;
+//
+//        }
+//        osDelay(1);
+//    }
+}
+
 
 
 void Main(void) {
@@ -285,8 +313,8 @@ void Main(void) {
     xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 6, &UART_RECEPTHandle);
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 4, &Button_StateHandle);
     xTaskCreate(APP_task, "APP", 256, NULL, 3, &APPHandle);
-    xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
-    xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 2, &deviceCheckHandle);
-    xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 128, NULL, 5, &i2c2_recovery_task_handle);
-
+    xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 4, &motor_homeHandle);
+    xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 3, &deviceCheckHandle);
+    xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 128, NULL, 6, &i2c2_recovery_task_handle);
+    //xTaskCreate(CPU_StressTask, "CPU_StressTask", 128, NULL, 1, &CPU_StressTask_handle);
 }

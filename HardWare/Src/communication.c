@@ -107,7 +107,7 @@ void UART1_CMDHandler(recept_data_p msg) {
                     PressHandle = NULL;  // 避免再次访问无效句柄
                 }
                 if (motor_homeHandle == NULL) {
-                    if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle) == pdPASS) {
+                    if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 4, &motor_homeHandle) == pdPASS) {
                     } else {
                         LOG("Failed to create motor_home task.\r\n");
                     }
@@ -446,7 +446,11 @@ void ScreenUpdateTemperature(float value) {
     if (currentState == STATE_AUTO || currentState == STATE_PRE_AUTO) {
         pData.cmd_type_low = 0x37;
     }
-    pData.data = value;
+    float temp = value+1;
+    if(temp>42.9){
+        temp=42.9;
+    }
+    pData.data = temp;
 
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // 帧尾
