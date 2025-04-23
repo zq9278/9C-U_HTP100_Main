@@ -24,7 +24,7 @@ void Button_detection(void) {
             break;
 
         case STATE_PRE_HEAT:
-            EYE_working_Flag = 1;//眼盾在工作
+            Device_StartUsage();
             currentState = STATE_HEAT; // 从预热进入加热
             heat_finish = 0;
             // HeatPID.setpoint = 42.5;
@@ -54,7 +54,7 @@ void Button_detection(void) {
             break;
 
         case STATE_PRE_PRESS:
-            EYE_working_Flag = 1;//眼盾在工作
+            Device_StartUsage();
             currentState = STATE_PRESS;                // 从预挤压进入挤压
             if (motor_homeHandle != NULL) {
                 vTaskDelete(motor_homeHandle);
@@ -100,7 +100,7 @@ void Button_detection(void) {
             break;
 
         case STATE_PRE_AUTO:
-            EYE_working_Flag = 1;//眼盾在工作
+            Device_StartUsage();
             currentState = STATE_AUTO; // 从预自动进入自动模式
             if (motor_homeHandle != NULL) {
                 vTaskDelete(motor_homeHandle);

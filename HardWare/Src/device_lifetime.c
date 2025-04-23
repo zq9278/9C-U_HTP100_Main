@@ -11,12 +11,14 @@ static DeviceContext_t device_ctx;
 extern I2C_HandleTypeDef hi2c2;
 extern SemaphoreHandle_t i2c2_mutex;
 extern TimerHandle_t eye_is_existHandle;
-char *i2c2_mutex_owner = NULL; // 当前持有锁的函数/任务名
+char *i2c2_mutex_owner = NULL;
 prepare_data my_prepare_data_times;
+
 extern volatile int eye_workingtime_1s;
 extern volatile int eye_existtime_1s;
 extern uint8_t EYE_exist_Flag;
 extern uint8_t EYE_working_Flag;
+extern uint8_t EYE_status;
 
 // 初始化设备状态机（系统启动时调用）
 void Device_Init(void) {
@@ -27,7 +29,9 @@ void Device_Init(void) {
 
 // 设置设备为报废状态
 void Device_MarkAsExpired(const char* reason) {
-    bool is_new_device = (device_ctx.started_usage == false);
+    //bool is_new_device = (device_ctx.started_usage == false);
+    uint16_t mark = EYE_AT24CXX_Read(EYE_MARK_MAP);
+    bool is_new_device = (mark == 0xFFFF);  // ← 判断依据改成 EEPROM 标记位
     LOG("? 设备报废：%s\n", reason);
     device_ctx.state = DEVICE_STATE_EXPIRED;
     device_ctx.connected = false;
@@ -38,17 +42,19 @@ void Device_MarkAsExpired(const char* reason) {
         eye_times += 1;
         AT24CXX_WriteUInt16(0xf2, eye_times);
         EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);
-        LOG("? 新设备使用次数已记录: %d\n", eye_times);
+        LOG("Normal: 新设备使用次数已记录: %d\n", eye_times);
     }
 
-    EYE_AT24CXX_Write(EYE_MARK_MAP, 0xFFFF);
+
     close_mianAPP();
     ScreenTimerStop();
     xTimerStop(eye_is_existHandle, 0);
+    EYE_status = 0;
 }
 
-// 外部调用：设备进入正式使用阶段（开始 B寿命）
+// 外部调用：进入正式使用（切换到B寿命）
 void Device_StartUsage(void) {
+    EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);
     my_prepare_data_times.cmd_head_high = 0x6A;
     my_prepare_data_times.cmd_head_low = 0xA6;
     my_prepare_data_times.frame_length = 0x0b;
@@ -62,9 +68,9 @@ void Device_StartUsage(void) {
         device_ctx.state = DEVICE_STATE_ACTIVE;
         xTimerStart(eye_is_existHandle, 0);
         LOG("定时器 eye_is_existHandle 启动\n");
-        LOG("? 设备进入正式使用阶段，开始 B段寿命\n");
+        LOG("Normal: 设备进入正式使用阶段，开始 B段寿命\n");
     } else {
-        LOG("?? 设备未处于可启动状态，StartUsage 调用失败\n");
+        LOG("Woring: 设备未处于可启动状态，StartUsage 调用失败\n");
     }
 }
 
@@ -94,64 +100,119 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
 }
 
 
-
-// 主状态机轮询更新函数（高频调用，支持热插拔）
+// 主状态机轮询更新函数（高频调用）
 void DeviceStateMachine_Update(void) {
     bool online = (I2C_CheckDevice(0x91, 2) == HAL_OK);
 
     switch (device_ctx.state) {
         case DEVICE_STATE_DISCONNECTED:
             if (online) {
-                LOG("? 检测到设备接入\n");
+                LOG("Normal: 检测到设备接入\n");
                 device_ctx.connected = true;
+
+                uint16_t mark = EYE_AT24CXX_Read(EYE_MARK_MAP);
+                LOG("Debug: EYE_MARK_MAP 读取值 = 0x%04X\n", mark);
+                osDelay(100);
+                device_ctx.started_usage = (mark != 0xFFFF);
+                LOG("Debug: started_usage = %d（0表示新设备，1表示已使用设备）\n", device_ctx.started_usage);
+
+                // 总是读取当前 EEPROM 剩余寿命
                 device_ctx.time_a_left = EYE_AT24CXX_Read(0xA0);
                 device_ctx.time_b_left = EYE_AT24CXX_Read(0xB0);
-                uint16_t mark = EYE_AT24CXX_Read(EYE_MARK_MAP);
-                device_ctx.started_usage = (mark != 0xFFFF);
-                device_ctx.state = device_ctx.started_usage ? DEVICE_STATE_ACTIVE : DEVICE_STATE_CONNECTED_IDLE;// 如果已使用则进入B段寿命，否则进入A段预扣状态
+                LOG("Debug: EEPROM A段寿命 = %d，B段寿命 = %d\n", device_ctx.time_a_left, device_ctx.time_b_left);
+
+                // ? 已标记 + A/B 寿命任意为 0 → 直接进入报废
+                if (device_ctx.started_usage ||device_ctx.time_a_left == 0 || device_ctx.time_b_left == 0) {
+                    LOG("? 已标记设备寿命耗尽，直接进入报废状态！\n");
+                    device_ctx.state = DEVICE_STATE_EXPIRED;
+                    xTimerStop(eye_is_existHandle, 0);
+                    EYE_status = 0;
+                    return;
+                }
+
+                // 若是新设备，进行 A/B 段校正写回
+                if (!device_ctx.started_usage) {
+                    if (device_ctx.time_a_left == 0xFFFF || device_ctx.time_a_left > DEVICE_LIFETIME_A_DEFAULT) {
+                        LOG("Warning: 读取到非法 A段寿命值：%d，开始修正\n", device_ctx.time_a_left);
+                        device_ctx.time_a_left = DEVICE_LIFETIME_A_DEFAULT;
+                        if (EYE_AT24CXX_Write(0xA0, device_ctx.time_a_left) == HAL_OK) {
+                            LOG("Correct: A段寿命已重写为默认值 %d\n", DEVICE_LIFETIME_A_DEFAULT);
+                        } else {
+                            LOG("Error: A段寿命重写失败\n");
+                        }
+                    } else {
+                        LOG("Normal: 未标记设备，A段当前寿命=%d（最大为%d）\n", device_ctx.time_a_left, DEVICE_LIFETIME_A_DEFAULT);
+                    }
+
+                    if (device_ctx.time_b_left == 0xFFFF || device_ctx.time_b_left > DEVICE_LIFETIME_B_DEFAULT) {
+                        LOG("Warning: 读取到非法 B段寿命值：%d，开始修正\n", device_ctx.time_b_left);
+                        device_ctx.time_b_left = DEVICE_LIFETIME_B_DEFAULT;
+                        if (EYE_AT24CXX_Write(0xB0, device_ctx.time_b_left) == HAL_OK) {
+                            LOG("Correct: B段寿命已重写为默认值 %d\n", DEVICE_LIFETIME_B_DEFAULT);
+                        } else {
+                            LOG("Error: B段寿命重写失败\n");
+                        }
+                    } else {
+                        LOG("Normal: 未标记设备，B段当前寿命=%d（最大为%d）\n", device_ctx.time_b_left, DEVICE_LIFETIME_B_DEFAULT);
+                    }
+                }
+
+                device_ctx.state = device_ctx.started_usage ? DEVICE_STATE_ACTIVE : DEVICE_STATE_CONNECTED_IDLE;
+                EYE_status = device_ctx.started_usage ? 0 : 1;
+                LOG("Debug: 状态迁移为：%s\n", device_ctx.started_usage ? "ACTIVE（B段）" : "CONNECTED_IDLE（A段）");
 
                 uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
+                LOG("Debug: 读取主机使用次数：%d\n", eye_times);
                 my_prepare_data_times.cmd_type_low = 0xb0;
                 my_prepare_data_times.value = eye_times;
                 Eye_twitching_invalid_master(&my_prepare_data_times);
-
                 LOG("主机端记录的次数: %d\n", eye_times);
                 LOG("设备状态初始化：A=%d, B=%d, 标记=%d\n", device_ctx.time_a_left, device_ctx.time_b_left, device_ctx.started_usage);
 
                 xTimerStart(eye_is_existHandle, 0);
+                LOG("定时器 eye_is_existHandle 启动\n");
             }
+
             break;
 
-        case DEVICE_STATE_CONNECTED_IDLE://进入A段预扣状态
+
+
+
+        case DEVICE_STATE_CONNECTED_IDLE://a段
             if (!online) {
-                LOG("?? 设备断开连接\n");
+                LOG("Woring: 设备断开连接\n");
                 device_ctx.connected = false;
                 device_ctx.state = DEVICE_STATE_DISCONNECTED;
                 xTimerStop(eye_is_existHandle, 0);
+                EYE_status = 0;
                 break;
             }
+
             if (eye_existtime_1s && device_ctx.time_a_left > 0) {
                 device_ctx.time_a_left--;
+                EYE_AT24CXX_Write(0xA0, device_ctx.time_a_left);  // ? 写回 EEPROM，确保断电后仍保留
                 eye_existtime_1s = 0;
-                LOG("? A段寿命剩余：%d\n", device_ctx.time_a_left);
+                LOG("Countdown: A段寿命剩余：%d\n", device_ctx.time_a_left);
             }
+
             if (device_ctx.time_a_left == 0) {
                 device_ctx.state = DEVICE_STATE_EXPIRED;
                 Device_MarkAsExpired("A段寿命耗尽");
             }
             break;
 
-        case DEVICE_STATE_ACTIVE:
+
+        case DEVICE_STATE_ACTIVE://b段
             if (!online) {
-                LOG("? 使用中设备断开，强制报废\n");
-                device_ctx.state = DEVICE_STATE_EXPIRED;
+                LOG("Woring: 使用中设备断开，强制报废\n");
+                //device_ctx.state = DEVICE_STATE_EXPIRED;
                 Device_MarkAsExpired("使用中断开连接");
                 break;
             }
             if (eye_workingtime_1s && device_ctx.time_b_left > 0) {
                 device_ctx.time_b_left--;
                 eye_workingtime_1s = 0;
-                LOG("? B段寿命剩余：%d\n", device_ctx.time_b_left);
+                LOG("Countdown: B段寿命剩余：%d\n", device_ctx.time_b_left);
             }
             if (device_ctx.time_b_left == 0) {
                 device_ctx.state = DEVICE_STATE_EXPIRED;
@@ -160,10 +221,22 @@ void DeviceStateMachine_Update(void) {
             break;
 
         case DEVICE_STATE_EXPIRED:
+            if (!online) {
+                LOG("Normal: 报废设备已拔出，等待新设备接入\n");
+                device_ctx.connected = false;
+                device_ctx.started_usage = false;
+                device_ctx.state = DEVICE_STATE_DISCONNECTED;
+                xTimerStop(eye_is_existHandle, 0);
+                EYE_status = 0;
+            }
             break;
 
+
         default:
-            LOG("? 状态机未知状态：%d\n", device_ctx.state);
+            LOG("Woring: 状态机未知状态：%d\n", device_ctx.state);
             break;
     }
+
+    // 实时发送设备状态（0 或 1）
+    EYE_checkout((float)EYE_status);
 }

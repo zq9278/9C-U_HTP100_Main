@@ -7,7 +7,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "main.h"
-#define EYE_MARK_MAP 0x12
+#define EYE_MARK_MAP 0x90
+#define DEVICE_LIFETIME_A_DEFAULT  600
+#define DEVICE_LIFETIME_B_DEFAULT  360
+
 
 // ×´Ì¬Ã¶¾Ù¶¨Òå
 typedef enum {
