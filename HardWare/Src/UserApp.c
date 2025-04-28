@@ -132,7 +132,9 @@ void Device_Check_Task(void *pvParameters) {
 
     // 无限循环，高频轮询设备状态（支持热插拔）
     for (;;) {
-        DeviceStateMachine_Update();  // 更新设备状态
+        //DeviceStateMachine_Update();  // 更新设备状态
+        EYE_status=1;
+        EYE_checkout((float)EYE_status);
         osDelay(100);  // 每 100ms 轮询一次
     }
 }
@@ -166,11 +168,18 @@ void I2C2_RecoveryTask(void *param) {
 }
 void PowerOnDelayTask(void *pvParameters)
 {
+    AD24C01_Factory_formatted();//如果flash没有初始化，则初始化
     // 上电后延迟1秒
     vTaskDelay(pdMS_TO_TICKS(500));
     // 拉低PA10
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
-    AD24C01_Factory_formatted();//如果flash没有初始化，则初始化
+    vTaskDelay(pdMS_TO_TICKS(200));
+    prepare_data_set();
+    vTaskDelay(pdMS_TO_TICKS(200));
+    prepare_data_set();
+    vTaskDelay(pdMS_TO_TICKS(200));
+    prepare_data_set();
+
     // 删除自己
     vTaskDelete(NULL);
     LOG("上电完成\n");

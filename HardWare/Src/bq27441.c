@@ -474,54 +474,71 @@ static BatteryMonitor_t batteryMonitor = {
 
 void BatteryMonitor_Run(void)
 {
+    // 每次进入都拿一次时间戳
     TickType_t nowTick = xTaskGetTickCount();
-    const TickType_t checkInterval = pdMS_TO_TICKS(100); // 100ms检测一次
+    const TickType_t checkInterval = pdMS_TO_TICKS(500); // 每500ms检测一次
 
     switch (batteryMonitor.state)
     {
         case BATTERY_NORMAL:
-            if (BQ27441.Voltage <= 2700) {
-                LOG("[Battery] 检测到电压过低 %d mV，进入检测流程...\n", BQ27441.Voltage);
+            if (BQ27441.Voltage <= 2700 && BQ27441.Voltage != 0)
+            {
+                LOG("[Battery] [NORMAL] 检测到电压过低 %d mV，切换到检测状态...\n", BQ27441.Voltage);
                 batteryMonitor.state = BATTERY_CHECK;
                 batteryMonitor.lowVoltageCounter = 0;
                 batteryMonitor.lastCheckTick = nowTick;
+            }
+            else
+            {
+                // 可以加上日志，偶尔输出
+                // LOG("[Battery] [NORMAL] 电压正常：%d mV\n", BQ27441.Voltage);
             }
             break;
 
         case BATTERY_CHECK:
             if (nowTick - batteryMonitor.lastCheckTick >= checkInterval)
             {
-                batteryMonitor.lastCheckTick = nowTick;
+                batteryMonitor.lastCheckTick = nowTick; // 更新检测时间点
 
-                if (BQ27441.Voltage <= 2700&& BQ27441.Voltage != 0)
+                if (BQ27441.Voltage <= 2700 && BQ27441.Voltage != 0)
                 {
                     batteryMonitor.lowVoltageCounter++;
-                    LOG("[Battery] 低压检测计数 %d 次，当前电压 %d mV\n", batteryMonitor.lowVoltageCounter, BQ27441.Voltage);
+                    LOG("[Battery] [CHECK] 低压检测 %d 次，当前电压 %d mV\n", batteryMonitor.lowVoltageCounter, BQ27441.Voltage);
 
                     if (batteryMonitor.lowVoltageCounter >= 5)
                     {
+                        LOG("[Battery] [CHECK] 满足关断条件，切换到确认关断状态。\n");
                         batteryMonitor.state = BATTERY_CONFIRM_SHUTDOWN;
                     }
                 }
                 else
                 {
-                    LOG("[Battery] 电压恢复正常，取消关断流程。\n");
+                    LOG("[Battery] [CHECK] 电压恢复正常（%d mV），回到正常状态。\n", BQ27441.Voltage);
                     batteryMonitor.state = BATTERY_NORMAL;
                 }
             }
             break;
 
         case BATTERY_CONFIRM_SHUTDOWN:
-            LOG("[Battery] 连续低电压确认，执行关断...\n");
-            BQ25895_Write(0x09, 0x64); // 发关断命令
+            LOG("[Battery] [CONFIRM_SHUTDOWN] 连续低电压确认，执行关断逻辑...\n");
+            // 这里可以实际执行一次关断动作，比如拉高一个关断引脚
+            // BQ25895_Write(0x09, 0x64); // 发关断命令（示例）
             batteryMonitor.state = BATTERY_SHUTDOWN;
             break;
 
         case BATTERY_SHUTDOWN:
-            // 保持关断，或者你也可以挂标志
+            // 关断状态保持，避免误动作
+            // 如果需要可以增加 watchdog 保护或者低功耗处理
+            LOG("[Battery] [SHUTDOWN] 当前处于关断状态，系统安全保护中。\n");
+            break;
+
+        default:
+            LOG("[Battery] [ERROR] 未知电池状态！state=%d，强制回归正常状态。\n", batteryMonitor.state);
+            batteryMonitor.state = BATTERY_NORMAL;
             break;
     }
 }
+
 
 void battery_status_update_bq27441(void) {
   BQ27441_MultiRead_DMA(&BQ27441);

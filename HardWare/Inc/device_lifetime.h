@@ -7,11 +7,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "main.h"
-#define EYE_MARK_MAP 0x10
+#define EYE_MARK_MAP 0xB1
 //#define DEVICE_LIFETIME_A_DEFAULT  600
 //#define DEVICE_LIFETIME_B_DEFAULT  360
-#define DEVICE_LIFETIME_A_DEFAULT  180
-#define DEVICE_LIFETIME_B_DEFAULT  120
+#define DEVICE_LIFETIME_A_DEFAULT  1800
+#define DEVICE_LIFETIME_B_DEFAULT  1200
 
 
 // ×´Ì¬Ã¶¾Ù¶¨Òå

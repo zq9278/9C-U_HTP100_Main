@@ -73,7 +73,6 @@ void Device_StartUsage(void) {
     } else {
         LOG("Woring: 设备未处于可启动状态，StartUsage 调用失败\n");
     }
-   // if(device_ctx.state == DEVICE_STATE_CONNECTED_IDLE)
 }
 
 // I2C 检测设备是否在线（带互斥锁）
