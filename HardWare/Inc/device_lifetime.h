@@ -7,9 +7,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "main.h"
-#define EYE_MARK_MAP 0x90
-#define DEVICE_LIFETIME_A_DEFAULT  600
-#define DEVICE_LIFETIME_B_DEFAULT  360
+#define EYE_MARK_MAP 0x10
+//#define DEVICE_LIFETIME_A_DEFAULT  600
+//#define DEVICE_LIFETIME_B_DEFAULT  360
+#define DEVICE_LIFETIME_A_DEFAULT  180
+#define DEVICE_LIFETIME_B_DEFAULT  120
 
 
 // 状态枚举定义
@@ -32,7 +34,6 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 // 初始化设备状态机
 void Device_Init(void);
 

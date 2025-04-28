@@ -37,7 +37,7 @@ void Device_MarkAsExpired(const char* reason) {
     device_ctx.connected = false;
     device_ctx.started_usage = true;
 
-    if (is_new_device) {
+    if (1) {
         uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
         eye_times += 1;
         AT24CXX_WriteUInt16(0xf2, eye_times);
@@ -51,6 +51,7 @@ void Device_MarkAsExpired(const char* reason) {
     xTimerStop(eye_is_existHandle, 0);
     EYE_status = 0;
 }
+
 
 // 外部调用：进入正式使用（切换到B寿命）
 void Device_StartUsage(void) {
@@ -72,6 +73,7 @@ void Device_StartUsage(void) {
     } else {
         LOG("Woring: 设备未处于可启动状态，StartUsage 调用失败\n");
     }
+   // if(device_ctx.state == DEVICE_STATE_CONNECTED_IDLE)
 }
 
 // I2C 检测设备是否在线（带互斥锁）

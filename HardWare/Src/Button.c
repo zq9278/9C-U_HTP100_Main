@@ -23,7 +23,7 @@ void Button_detection(void) {
 
             break;
 
-        case STATE_PRE_HEAT:
+        case STATE_PRE_HEAT://开启加热
             Device_StartUsage();
             currentState = STATE_HEAT; // 从预热进入加热
             heat_finish = 0;
@@ -36,7 +36,7 @@ void Button_detection(void) {
 
             break;
 
-        case STATE_HEAT:
+        case STATE_HEAT://关闭加热
             EYE_working_Flag = 0;//眼盾不在工作
             currentState = STATE_OFF;                   // 从加热进入关闭
             emergency_stop = 1;                      // 设置紧急停止标志
@@ -53,7 +53,7 @@ void Button_detection(void) {
             }
             break;
 
-        case STATE_PRE_PRESS:
+        case STATE_PRE_PRESS://开启挤压
             Device_StartUsage();
             currentState = STATE_PRESS;                // 从预挤压进入挤压
             if (motor_homeHandle != NULL) {
@@ -74,7 +74,7 @@ void Button_detection(void) {
 
             break;
 
-        case STATE_PRESS:
+        case STATE_PRESS://关闭挤压
             EYE_working_Flag = 0;//眼盾不在工作
             currentState = STATE_OFF;                    // 从挤压进入关闭
             emergency_stop = 1;                       // 设置紧急停止标志
@@ -99,7 +99,7 @@ void Button_detection(void) {
             }
             break;
 
-        case STATE_PRE_AUTO:
+        case STATE_PRE_AUTO://开启自动
             Device_StartUsage();
             currentState = STATE_AUTO; // 从预自动进入自动模式
             if (motor_homeHandle != NULL) {
@@ -126,7 +126,7 @@ void Button_detection(void) {
 
             break;
 
-        case STATE_AUTO:
+        case STATE_AUTO://关闭自动
             EYE_working_Flag = 0;//眼盾不在工作
             currentState = STATE_OFF; // 从自动返回关闭
             emergency_stop = 1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务

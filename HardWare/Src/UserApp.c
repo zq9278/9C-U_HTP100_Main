@@ -139,6 +139,7 @@ void Device_Check_Task(void *pvParameters) {
 extern I2C_HandleTypeDef hi2c2;
 void I2C2_RecoveryTask(void *param) {
     for (;;) {
+        close_mianAPP();
         // 一直等待通知信号（错误发生）
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         LOG("[恢复任务] I2C2 错误发生，开始重建资源...\n");
@@ -162,6 +163,17 @@ void I2C2_RecoveryTask(void *param) {
         // HAL_DMA_Init(&hdma_i2c2_rx);   // 可选
         LOG("[恢复任务] I2C2 资源重建完成！\n");
     }
+}
+void PowerOnDelayTask(void *pvParameters)
+{
+    // 上电后延迟1秒
+    vTaskDelay(pdMS_TO_TICKS(500));
+    // 拉低PA10
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
+    AD24C01_Factory_formatted();//如果flash没有初始化，则初始化
+    // 删除自己
+    vTaskDelete(NULL);
+    LOG("上电完成\n");
 }
 
 
@@ -204,7 +216,7 @@ void Main(void) {
     TMC5130_Init();
     HeatInit();
     TMP112_Init();
-    AD24C01_Factory_formatted();//如果flash没有初始化，则初始化
+
 
     xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 6, &UART_RECEPTHandle);
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 4, &Button_StateHandle);
@@ -212,5 +224,6 @@ void Main(void) {
     xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
     xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 2, &deviceCheckHandle);
     xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 128, NULL, 5, &i2c2_recovery_task_handle);
+    xTaskCreate(PowerOnDelayTask, "PowerOnDelay", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
 
 }

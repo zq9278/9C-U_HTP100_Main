@@ -14,6 +14,7 @@ void STATE_POWER_5V_Update(void) {
 };
 }
 void close_mianAPP(void){
+    currentState = STATE_OFF;
     HeatPWM(0); // 关闭加热PWM
     if (PressHandle != NULL) {
         vTaskDelete(PressHandle);
