@@ -1,6 +1,7 @@
 
 #include "main.h"
-
+#define LOW_BATTERY_SOC 3200
+#define WORKING_BATTERY_SOC    3300  // 提醒用户电压
 uint8_t BQ27441_TempData[2];
 
 // 3300mAh 的电池参数
@@ -325,36 +326,36 @@ void BQ27441_Read(uint8_t ReadAddr, uint8_t *pBuffer) {
 //    return status;
 //}
 
-//HAL_StatusTypeDef BQ27441_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t size) {
-//    HAL_StatusTypeDef status = HAL_ERROR;
-//    // 获取互斥锁，防止多个任务同时访问I2C
-//    if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-//        // 先清空信号量，防止上次操作影响
-//        xSemaphoreTake(xI2CCompleteSem, 0);
-//        // 启动 I2C 读操作 (使用中断模式)
-//        status = HAL_I2C_Mem_Read_IT(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, size);
-//        //status = HAL_I2C_Mem_Read(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, size,0xffff);
-//        if (status == HAL_OK) {
-//            // 等待 I2C 操作完成信号量 (带超时)
-//            if (xSemaphoreTake(xI2CCompleteSem, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-//                status = HAL_OK;  // 操作成功
-//            } else {
-//                // 超时处理
-//                HAL_I2C_DeInit(&hi2c1);
-//                HAL_I2C_Init(&hi2c1);
-//                status = HAL_TIMEOUT;
-//            }
-//        }
-//        // 释放I2C互斥锁
-//        xSemaphoreGive(xI2CMutex);
-//    } else {
-//        status = HAL_BUSY;  // 获取锁失败，I2C总线繁忙
-//    }
-//    return status;
-//}
 HAL_StatusTypeDef BQ27441_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t size) {
-    HAL_I2C_Mem_Read_IT(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, size);
+    HAL_StatusTypeDef status = HAL_ERROR;
+    // 获取互斥锁，防止多个任务同时访问I2C
+    if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
+        // 先清空信号量，防止上次操作影响
+        xSemaphoreTake(xI2CCompleteSem, 0);
+        // 启动 I2C 读操作 (使用中断模式)
+        status = HAL_I2C_Mem_Read_IT(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, size);
+        //status = HAL_I2C_Mem_Read(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, size,0xffff);
+        if (status == HAL_OK) {
+            // 等待 I2C 操作完成信号量 (带超时)
+            if (xSemaphoreTake(xI2CCompleteSem, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
+                status = HAL_OK;  // 操作成功
+            } else {
+                // 超时处理
+                HAL_I2C_DeInit(&hi2c1);
+                HAL_I2C_Init(&hi2c1);
+                status = HAL_TIMEOUT;
+            }
+        }
+        // 释放I2C互斥锁
+        xSemaphoreGive(xI2CMutex);
+    } else {
+        status = HAL_BUSY;  // 获取锁失败，I2C总线繁忙
+    }
+    return status;
 }
+//HAL_StatusTypeDef BQ27441_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t size) {
+//    HAL_I2C_Mem_Read_IT(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, size);
+//}
 HAL_StatusTypeDef BQ27441_Write_IT(uint8_t regAddr, uint8_t *pData, uint16_t size) {
     HAL_StatusTypeDef status = HAL_ERROR;
 
@@ -456,6 +457,7 @@ typedef enum {
     BATTERY_CHECK,
     BATTERY_CONFIRM_SHUTDOWN,
     BATTERY_SHUTDOWN,
+    BATTERY_WORKING_LOW
 } BatteryState_t;
 
 typedef struct {
@@ -472,6 +474,7 @@ static BatteryMonitor_t batteryMonitor = {
 
 // 你已有的函数
 
+
 void BatteryMonitor_Run(void)
 {
     // 每次进入都拿一次时间戳
@@ -481,68 +484,100 @@ void BatteryMonitor_Run(void)
     switch (batteryMonitor.state)
     {
         case BATTERY_NORMAL:
-            if (BQ27441.Voltage <= 2700 && BQ27441.Voltage != 0)
+            if (BQ27441.Voltage <= LOW_BATTERY_SOC && BQ27441.Voltage != 0)
             {
-                LOG("[Battery] [NORMAL] 检测到电压过低 %d mV，切换到检测状态...\n", BQ27441.Voltage);
+                LOG("[Battery] [NORMAL] 检测到严重低电压 %d mV，进入检测...\n", BQ27441.Voltage);
                 batteryMonitor.state = BATTERY_CHECK;
                 batteryMonitor.lowVoltageCounter = 0;
                 batteryMonitor.lastCheckTick = nowTick;
             }
+            else if (BQ27441.Voltage <= WORKING_BATTERY_SOC && BQ27441.Voltage != 0)
+            {
+                // 电压低于工作电压线，提前UART发送提示
+                LOG("[Battery] [NORMAL] 电池电量偏低（%d mV），提醒用户。\n", BQ27441.Voltage);
+                // 这里可以通过UART发出去
+                // uart_printf("Warning: Battery voltage low (%d mV)\r\n", BQ27441.Voltage);
+                batteryMonitor.state = BATTERY_WORKING_LOW;
+            }
             else
             {
-                // 可以加上日志，偶尔输出
-                // LOG("[Battery] [NORMAL] 电压正常：%d mV\n", BQ27441.Voltage);
+                // 电压正常，不动
+            }
+            break;
+
+        case BATTERY_WORKING_LOW:
+            // 在工作低电状态下继续监测
+            if (nowTick - batteryMonitor.lastCheckTick >= checkInterval)
+            {
+                batteryMonitor.lastCheckTick = nowTick;
+
+                if (BQ27441.Voltage <= LOW_BATTERY_SOC && BQ27441.Voltage != 0)
+                {
+                    LOG("[Battery] [WORKING_LOW] 电压进一步下降到严重低电（%d mV），进入检测关机流程。\n", BQ27441.Voltage);
+                    batteryMonitor.state = BATTERY_CHECK;
+                    batteryMonitor.lowVoltageCounter = 0;
+                }
+                else if (BQ27441.Voltage > WORKING_BATTERY_SOC)
+                {
+                    LOG("[Battery] [WORKING_LOW] 电压恢复正常（%d mV），回到正常状态。\n", BQ27441.Voltage);
+                    batteryMonitor.state = BATTERY_NORMAL;
+                }
+                else
+                {
+                    // 保持在 WORKING_LOW
+                }
             }
             break;
 
         case BATTERY_CHECK:
             if (nowTick - batteryMonitor.lastCheckTick >= checkInterval)
             {
-                batteryMonitor.lastCheckTick = nowTick; // 更新检测时间点
+                batteryMonitor.lastCheckTick = nowTick;
 
-                if (BQ27441.Voltage <= 2700 && BQ27441.Voltage != 0)
+                if (BQ27441.Voltage <= LOW_BATTERY_SOC && BQ27441.Voltage != 0)
                 {
                     batteryMonitor.lowVoltageCounter++;
-                    LOG("[Battery] [CHECK] 低压检测 %d 次，当前电压 %d mV\n", batteryMonitor.lowVoltageCounter, BQ27441.Voltage);
+                    LOG("[Battery] [CHECK] 低电压确认 %d 次（%d mV）\n", batteryMonitor.lowVoltageCounter, BQ27441.Voltage);
 
                     if (batteryMonitor.lowVoltageCounter >= 5)
                     {
-                        LOG("[Battery] [CHECK] 满足关断条件，切换到确认关断状态。\n");
+                        LOG("[Battery] [CHECK] 满足关断条件，进入确认关断状态。\n");
                         batteryMonitor.state = BATTERY_CONFIRM_SHUTDOWN;
                     }
                 }
                 else
                 {
-                    LOG("[Battery] [CHECK] 电压恢复正常（%d mV），回到正常状态。\n", BQ27441.Voltage);
+                    LOG("[Battery] [CHECK] 电压恢复（%d mV），回到正常状态。\n", BQ27441.Voltage);
                     batteryMonitor.state = BATTERY_NORMAL;
                 }
             }
             break;
 
         case BATTERY_CONFIRM_SHUTDOWN:
-            LOG("[Battery] [CONFIRM_SHUTDOWN] 连续低电压确认，执行关断逻辑...\n");
-            // 这里可以实际执行一次关断动作，比如拉高一个关断引脚
-            // BQ25895_Write(0x09, 0x64); // 发关断命令（示例）
+            LOG("[Battery] [CONFIRM_SHUTDOWN] 连续低电确认，执行关机逻辑...\n");
+            // 执行关机动作，比如
+             BQ25895_Write(0x09, 0x64); // 示例：写寄存器关机
             batteryMonitor.state = BATTERY_SHUTDOWN;
             break;
 
         case BATTERY_SHUTDOWN:
-            // 关断状态保持，避免误动作
-            // 如果需要可以增加 watchdog 保护或者低功耗处理
-            LOG("[Battery] [SHUTDOWN] 当前处于关断状态，系统安全保护中。\n");
+            LOG("[Battery] [SHUTDOWN] 当前处于关断状态，保护模式中。\n");
             break;
 
         default:
-            LOG("[Battery] [ERROR] 未知电池状态！state=%d，强制回归正常状态。\n", batteryMonitor.state);
+            LOG("[Battery] [ERROR] 未知电池状态！强制回归正常。\n");
             batteryMonitor.state = BATTERY_NORMAL;
             break;
     }
 }
 
 
+
 void battery_status_update_bq27441(void) {
   BQ27441_MultiRead_DMA(&BQ27441);
-  low_battery = (BQ27441.SOC < 10) && (BQ27441.SOC != 0);
+    //LOG("BQ27441: Voltage=%d mV, Temperature=%d C, AvgCurrent=%d mA, SOC=%d%%, FullChargeCapacity=%d mAh\n", BQ27441.Voltage, BQ27441.Temperature, BQ27441.AvgCurrent, BQ27441.SOC, BQ27441.FullChargeCapacity);
+  //low_battery = (BQ27441.SOC < 30) && (BQ27441.SOC != 0);
+  low_battery = (BQ27441.SOC < 30) ;
     fully_charged=(BQ27441.SOC>=99);
     float battery = (float)BQ27441.SOC;
     //ScreenUpdateSOC(battery);
@@ -553,7 +588,7 @@ void battery_status_update_bq27441(void) {
             ScreenUpdateSOC(battery);
         }
     }
-//    if (BQ27441.Voltage <= 2700) {
+//    if (BQ27441.Voltage <= 3300) {
 //        LOG("电池电压%d\n", BQ27441.Voltage); // 电压过低，关断保护\n");
 //      BQ25895_Write(0x09, 0x64); // 电压低，关断保护
 //    }
@@ -901,11 +936,11 @@ void main_app1(void) {
 //#endif
 
 
-#define DESIGN_CAPACITY_MAH  3000   // 直接输入毫安时 (mAh)
-#define NOMINAL_VOLTAGE_MV   3700   // 3.7V 电池
-#define TAPER_CURRENT_MA     220    // 充电截止电流 220mA
+#define DESIGN_CAPACITY_MAH  3300   // 直接输入毫安时 (mAh)
+#define NOMINAL_VOLTAGE_MV   3600   // 3.7V 电池
+#define TAPER_CURRENT_MA     64    // 充电截止电流 220mA
 #define DISCHARGE_CURRENT_MA 62     // 放电电流门限 62mA
-#define CHARGE_THRESHOLD_MA  100    // 充电门限 100mA
+#define CHARGE_THRESHOLD_MA  64    // 充电门限 100mA
 #define QUIT_CURRENT_MA      50     // 退出低功耗模式电流 50mA
 
 // **电池基本参数**

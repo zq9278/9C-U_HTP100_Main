@@ -29,10 +29,11 @@ void BQ25895_Init(void) {
     //BQ25895_Write(0x02, 0x7C); // 设置寄存??0x02，将AUTO_DPDM_EN清零
     BQ25895_Write(0x02, 0xFC); // 开启ADC
     BQ25895_Write(0x03, 0x1E); // OTG关闭，最小系统电压???置??3.5V
-    BQ25895_Write(0x04, 0x20); // 设置充电电流??4096mA
+    BQ25895_Write(0x04, 0x20); // 设置充电电流2048mA
     // BQ25895_Write(0x05, 0x10); // 设置充电终???电流为64mA
-    BQ25895_Write(0x05, 0x11); // 设置充电终止电流为128mA
+    BQ25895_Write(0x05, 0x11); // 设置充电终止电流为64mA
     BQ25895_Write(0x07, 0x8D); // 关闭充电定时??
+    BQ25895_Write(0x06, 0x94);  // 充电电压 4.2V
     BQ25895_Write(0x00, 0x3F); // 3.25A
 }
 

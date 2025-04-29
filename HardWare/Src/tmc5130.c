@@ -33,10 +33,12 @@ void TMC5130_Init(void) {
     TMC5130_Write(0xf0, 0x000701c8); // PWM_CONF: AUTO=1, 2/1024 Fclk, Switch
     // amplitude limit=200, Grad=1
 
-    TMC5130_Write(0xa4, 0x00011000); // A1 = 1 000 First acceleration
-    TMC5130_Write(0xa5,
-                  0x00015000); // V1 = 50 000 Acceleration threshold velocity V1
-    TMC5130_Write(0xa6, 0x00018fff); // AMAX = 500 Acceleration above V1
+
+    TMC5130_Write(0xa5,0x00015000); // V1 = 50 000 Acceleration threshold velocity V1
+    //TMC5130_Write(0xa4, 0x00011000); // A1 = 1 000 First acceleration
+    //TMC5130_Write(0xa6, 0x00018fff); // AMAX = 500 Acceleration above V1
+    TMC5130_Write(0xA4, 0x00000001); // A1 最小起始加速度（不能为0，最小为1）
+    TMC5130_Write(0xA6, 0x00001001); // AMAX 最小主加速度（不能为0，最小为1）
     TMC5130_Write(0xa7, MotorSpeed); // VMAX = 200 000
     TMC5130_Write(0xa8, 0x00001fff); // DMAX = 700 Deceleration above V1
     TMC5130_Write(0xaa, 0x00008000); // D1 = 1400 Deceleration below V1

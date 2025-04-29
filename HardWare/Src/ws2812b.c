@@ -110,52 +110,59 @@ void UpdateBreathingLight(void) {
 PWM_WS2812B_Write_24Bits(LED_NUM, GRB_DATA);
  //
 }
-void UpdateLightState(ChargeState_t state) {
+// 新增一个亮度缩放函数
+uint32_t ScaleColor(uint32_t color, float brightness)
+{
+    uint8_t g = (color >> 16) & 0xFF;
+    uint8_t r = (color >> 8) & 0xFF;
+    uint8_t b = color & 0xFF;
 
-  switch (state) {
-  case STATE_POWER_ON:
-  case STATE_WORKING:
-  case STATE_CHARGED:
-    // 白色常亮0x6666ff
-    PWM_WS2812B_Write_24Bits(LED_NUM, 0x444444); // 白色grb
-    PWM_WS2812B_Show(LED_NUM);
-    break;
-  case STATE_LOW_BATTERY:
-      
-   // 根据 white_delay 状态设置灯光
-    if (white_delay) {
-        PWM_WS2812B_Write_24Bits(LED_NUM, 0x444444); // 白色
-    } else {
-        PWM_WS2812B_Write_24Bits(LED_NUM, 0x000000); // 黑色
+    g = (uint8_t)(g * brightness);
+    r = (uint8_t)(r * brightness);
+    b = (uint8_t)(b * brightness);
+
+    return (g << 16) | (r << 8) | b;
+}
+
+// 修改后的 UpdateLightState
+void UpdateLightState(ChargeState_t state)
+{
+     float brightness=0.1;
+    switch (state) {
+        case STATE_POWER_ON:
+        case STATE_WORKING:
+        case STATE_CHARGED:
+            // 白色常亮
+            PWM_WS2812B_Write_24Bits(LED_NUM, ScaleColor(0x444444, brightness));
+            PWM_WS2812B_Show(LED_NUM);
+            break;
+
+        case STATE_LOW_BATTERY:
+            if (white_delay) {
+                PWM_WS2812B_Write_24Bits(LED_NUM, ScaleColor(0x444444, brightness)); // 白色
+            } else {
+                PWM_WS2812B_Write_24Bits(LED_NUM, 0x000000); // 黑色（熄灭）
+            }
+            PWM_WS2812B_Show(LED_NUM);
+            break;
+
+        case STATE_CHARGING:
+            UpdateBreathingLight(); // 这里是呼吸灯动画
+            PWM_WS2812B_Show(LED_NUM);
+            break;
+
+        case STATE_EMERGENCY_STOP:
+            if (yellow_delay == 0) {
+                osTimerStart(ws2812_yellow_delayHandle, 3000); // 黄灯持续 3 秒
+                yellow_delay = 1;
+            }
+            PWM_WS2812B_Write_24Bits(LED_NUM, ScaleColor(0xFFFF00, brightness)); // 黄色
+            PWM_WS2812B_Show(LED_NUM);
+            break;
+
+        default:
+            PWM_WS2812B_Write_24Bits(LED_NUM, 0x000000); // 默认熄灭
+            PWM_WS2812B_Show(LED_NUM);
+            break;
     }
-    PWM_WS2812B_Show(LED_NUM); // 更新灯光
-    break;
-
-  case STATE_CHARGING:
-    
- UpdateBreathingLight(); // 调用呼吸灯更新函数
-// UpdateWS2812FromTable(table_index);
-// table_index = (table_index + 1) % TABLE_SIZE;
-  PWM_WS2812B_Show(LED_NUM);
-//UpdateBreathingLight() ;
- // 根据查找表更新 WS2812 数据
- // 更新 WS2812 灯珠数据
-        
-    break;
-  case STATE_EMERGENCY_STOP:
-  if (yellow_delay==0) {
-     osTimerStart(ws2812_yellow_delayHandle, 3000); // 黄灯持续 3 秒
-     yellow_delay=1;
-  }
-   // 设置黄灯（0xFFFF00，RGB 255, 255, 0）
-    PWM_WS2812B_Write_24Bits(LED_NUM, 0xFFFF00);
-    PWM_WS2812B_Show(LED_NUM);
-    break;
-
-  default:
-    PWM_WS2812B_Write_24Bits(LED_NUM, 0); // 默???熄??
-    PWM_WS2812B_Show(LED_NUM);
-    break;
-  }
-  
 }
