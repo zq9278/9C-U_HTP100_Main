@@ -17,6 +17,7 @@ void AT24CXX_Init(void) {
 // ReadAddr: 要读取的地址
 // 返回值  : 读取到的字节数据
 uint8_t AT24CXX_ReadOneByte(uint16_t ReadAddr) {
+    taskENTER_CRITICAL();  // 禁止任务切换
   uint8_t temp = 0;
   I2C_Start(&iic_24x);
   if (EE_TYPE > AT24C16) {
@@ -34,6 +35,7 @@ uint8_t AT24CXX_ReadOneByte(uint16_t ReadAddr) {
   I2C_Wait_Ack(&iic_24x);
   temp = I2C_Read_Byte(&iic_24x, 0);
   I2C_Stop(&iic_24x); // 停止IIC通信
+    taskEXIT_CRITICAL();   // 恢复任务切换
   return temp;
 }
 
@@ -41,6 +43,7 @@ uint8_t AT24CXX_ReadOneByte(uint16_t ReadAddr) {
 // WriteAddr  : 写入地址
 // DataToWrite: 要写入的数据
 void AT24CXX_WriteOneByte(uint16_t WriteAddr, uint8_t DataToWrite) {
+    taskENTER_CRITICAL();  // 禁止任务切换
   I2C_Start(&iic_24x);
   if (EE_TYPE > AT24C16) {
     I2C_Send_Byte(&iic_24x, 0xA0); // 发送写命令
@@ -55,6 +58,7 @@ void AT24CXX_WriteOneByte(uint16_t WriteAddr, uint8_t DataToWrite) {
   I2C_Send_Byte(&iic_24x, DataToWrite); // 写入数据
   I2C_Wait_Ack(&iic_24x);
   I2C_Stop(&iic_24x); // 停止IIC通信
+    taskEXIT_CRITICAL();   // 恢复任务切换
   HAL_Delay(10); // 写入完成后延时
 }
 

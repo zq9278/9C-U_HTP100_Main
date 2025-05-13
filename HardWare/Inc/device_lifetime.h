@@ -7,11 +7,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "main.h"
-#define EYE_MARK_MAP 0xB1
+#define EYE_MARK_MAP 0xF1
 //#define DEVICE_LIFETIME_A_DEFAULT  600
 //#define DEVICE_LIFETIME_B_DEFAULT  360
-#define DEVICE_LIFETIME_A_DEFAULT  1800
-#define DEVICE_LIFETIME_B_DEFAULT  1200
+#define DEVICE_LIFETIME_A_DEFAULT  12000
+#define DEVICE_LIFETIME_B_DEFAULT  12000
+#define EYE_EEPROM_USE_COUNT_FLAG     0x08
 
 
 // 状态枚举定义
@@ -45,6 +46,7 @@ void Device_StartUsage(void);
 
 // 设备报废处理
 void Device_MarkAsExpired(const char* reason);
+void Test_EEPROM_FullReadWrite_256B(void);
 HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries);
 #ifdef __cplusplus
 }

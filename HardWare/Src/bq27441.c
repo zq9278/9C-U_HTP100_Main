@@ -557,6 +557,8 @@ void BatteryMonitor_Run(void)
             LOG("[Battery] [CONFIRM_SHUTDOWN] 连续低电确认，执行关机逻辑...\n");
             // 执行关机动作，比如
              BQ25895_Write(0x09, 0x64); // 示例：写寄存器关机
+//            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);//关闭屏幕
+//            close_mianAPP();
             batteryMonitor.state = BATTERY_SHUTDOWN;
             break;
 

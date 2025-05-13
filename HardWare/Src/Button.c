@@ -48,7 +48,8 @@ void Button_detection(void) {
             HeatPWM(0); // 关闭加热PWM
             if (HeatHandle != NULL) {
                 LOG("heat_stop");
-                vTaskDelete(HeatHandle);
+                xTaskNotifyGive(HeatHandle); // 通知任务自己退出
+                osDelay(50);
                 HeatHandle = NULL;  // 避免再次访问无效句柄
             }
             break;
@@ -57,9 +58,13 @@ void Button_detection(void) {
             Device_StartUsage();
             currentState = STATE_PRESS;                // 从预挤压进入挤压
             if (motor_homeHandle != NULL) {
-                vTaskDelete(motor_homeHandle);
-                motor_homeHandle = NULL;  // 避免再次访问无效句柄
+                xTaskNotifyGive(motor_homeHandle); // 通知任务自己退出
             }
+//            if (motor_homeHandle != NULL) {
+//                vTaskDelete(motor_homeHandle);
+//                motor_homeHandle = NULL;
+//                LOG("?? Motor_go_home_task 被强制删除！\n");
+//            }
             press_finish = 0;
             TMC_ENN(0);                                // 启动电机
             if (PressHandle == NULL) {
@@ -84,7 +89,8 @@ void Button_detection(void) {
 
             }
             if (PressHandle != NULL) {
-                vTaskDelete(PressHandle);
+                xTaskNotifyGive(PressHandle); // 通知任务自己退出
+                osDelay(50);
                 PressHandle = NULL;  // 避免再次访问无效句柄
             }
 
@@ -92,7 +98,7 @@ void Button_detection(void) {
                 if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle) == pdPASS) {
                     printf("Motor go home task created successfully.\r\n");
                 } else {
-                    printf("Failed to create motor go home task.\r\n");
+                    printf("挤压Failed to create motor go home task.\r\n");
                 }
             } else {
                 printf("Motor go home task already exists.\r\n");
@@ -104,7 +110,8 @@ void Button_detection(void) {
             currentState = STATE_AUTO; // 从预自动进入自动模式
             if (motor_homeHandle != NULL) {
                 vTaskDelete(motor_homeHandle);
-                motor_homeHandle = NULL;  // 避免再次访问无效句柄
+                motor_homeHandle = NULL;
+                LOG("?? Motor_go_home_task 被强制删除！\n");
             }
             auto_finish = 0;
             // HeatPID.setpoint = 42.5;
@@ -137,18 +144,20 @@ void Button_detection(void) {
             }
             HeatPWM(0); // 关闭加热PWM
             if (PressHandle != NULL) {
-                vTaskDelete(PressHandle);
+                xTaskNotifyGive(PressHandle); // 通知任务自己退出
+                osDelay(50);
                 PressHandle = NULL;  // 避免再次访问无效句柄
             }
             if (HeatHandle != NULL) {
                 LOG("heat_stop");
-                vTaskDelete(HeatHandle);
+                xTaskNotifyGive(HeatHandle); // 通知任务自己退出
+                osDelay(50);
                 HeatHandle = NULL;  // 避免再次访问无效句柄
             }
             if (motor_homeHandle == NULL) {
                 if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle) == pdPASS) {
                 } else {
-                    LOG("Failed to create motor go home task.\r\n");
+                    LOG("自动Failed to create motor go home task.\r\n");
                 }
             } else {
                 LOG("Motor go home task already exists.\r\n");

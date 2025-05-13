@@ -176,6 +176,9 @@ void UART1_CMDHandler(recept_data_p msg) {
        // LOG("into 1050\n");
             serialTimeoutFlag = 0;
             prepare_data_set();
+            currentState = STATE_OFF;
+            vTaskResume(deviceCheckHandle);
+
             break;
         case 0x1052://ÆÁÄ»Ó¦´ðÐÅºÅ
             //xSemaphoreGive(usart2_dmatxSemaphore);

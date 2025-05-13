@@ -32,7 +32,7 @@ void TMP112_Init(void)
 HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
     HAL_StatusTypeDef status;
     // 1. 获取 I2C2 的互斥锁，最长等待100ms
-    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(portMAX_DELAY)) != pdTRUE) {
+    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(300)) != pdTRUE) {
         LOG("TMP112_Read：获取 I2C2 互斥锁失败\r\n");
         return HAL_ERROR;
     }
@@ -46,7 +46,7 @@ HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
     }
 
     // 3. 等待 DMA 读取完成信号（由回调释放）
-    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(portMAX_DELAY)) != pdTRUE) {
+    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(300)) != pdTRUE) {
         LOG("TMP112_Read：DMA读取超时\r\n");
         xSemaphoreGive(i2c2_mutex);
         return HAL_TIMEOUT;

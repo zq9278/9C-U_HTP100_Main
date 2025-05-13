@@ -3,38 +3,50 @@
 uint8_t BQ25895Reg[21];
 extern I2C_HandleTypeDef hi2c1;
 void BQ25895_Init(void) {
-//    BQ25895_Write(0x00, 0x30);  // 复位所有寄存器
-//    HAL_Delay(1000);  // 确保芯片完成复位
+    osDelay(10);
+    CHG_CE(1);  // 关闭充电使能，准备配置
+
+//    // 0x00 - 输入电流限制设置为 3.25A，关闭 Watchdog
+//    BQ25895_Write(0x00, 0x3F);  // 3A限制 + Watchdog Timer disable
 //
-//    // 读取寄存器，确保复位完成
-//    uint8_t check_reset;
-//    BQ25895_Read(0x00, &check_reset);
-//    if (check_reset != 0x30) {
-//        LOG("复位失败，可能未写入成功\n");
-//        return;
-//    }
+//    // 0x01 - 禁用 Boost 温度保护,输入电压偏移为 0
+//    BQ25895_Write(0x01, 0xE0);  //
 //
-//    // 重新写入寄存器
-//    //BQ25895_Write(0x00, 0x3A);  // 3.25A 输入电流限制
-//    BQ25895_Write(0x00, 0x28);  // 降低输入电流限制到 2A
-//    BQ25895_Write(0x04, 0x28);  // 设置充电电流为 2A
-//    BQ25895_Write(0x06, 0x96);  // 充电电压 4.2V
-//    BQ25895_Write(0x05, 0x07);  // 终止电流 250mA
-//    BQ25895_Write(0x09, 0x40);  // 自动充电
-//    BQ25895_Write(0x0B, 0x80);  // 禁用 OTG
-//    BQ25895_Write(0x07, 0x8D); // 关闭充电定时******重要********
-//    BQ25895_Write(0x03, 0x30);  // 重新启用自动充电
-//    CHG_CE(0);
-    CHG_CE(0);                 // 关闭充电使能
-    //BQ25895_Write(0x02, 0x7C); // 设置寄存??0x02，将AUTO_DPDM_EN清零
+//    // 0x02 - 关闭 DPDM 检测 + 启用 ADC1s一次，Boost 频率 1.5MHz，关闭输入电流优化算法，关闭 QC 快充握手，关闭 MaxCharge 握手
+//    BQ25895_Write(0x02, 0xC0);  // [7] EN_HIZ=1关闭输入使能时禁用 + EN_ADC=1开启ADC
+//
+//    // 0x04 - 设置充电电流为 2.048A
+//    BQ25895_Write(0x04, 0x20);  // Charge Current = 2048mA
+//
+//    // 0x05 - 设置终止电流为 64mA
+//    BQ25895_Write(0x05, 0xF1);
+//
+//    // 0x06 - 设置充电电压为 4.2V
+//    BQ25895_Write(0x06, 0x5C);  // Charge Voltage = 4.2V
+//
+//    // 0x07 - 禁用充电定时器
+//    BQ25895_Write(0x07, 0x89);  // DIS_TIMER=1
+//
+//    // 0x08 - 保持默认（温度范围控制）
+//
+//    // 0x09 - 不使用 JEITA、OTG、Boost等
+//    BQ25895_Write(0x09, 0x00);
+//    // 0x03 - 设置最小系统电压为 3.5V（VINDPM）
+//    BQ25895_Write(0x03, 0x1A);  // VINDPM = 3.5V
+
+
+
+
+
     BQ25895_Write(0x02, 0xFC); // 开启ADC
-    BQ25895_Write(0x03, 0x1E); // OTG关闭，最小系统电压???置??3.5V
+
     BQ25895_Write(0x04, 0x20); // 设置充电电流2048mA
-    // BQ25895_Write(0x05, 0x10); // 设置充电终???电流为64mA
     BQ25895_Write(0x05, 0x11); // 设置充电终止电流为64mA
     BQ25895_Write(0x07, 0x8D); // 关闭充电定时??
     BQ25895_Write(0x06, 0x94);  // 充电电压 4.2V
     BQ25895_Write(0x00, 0x3F); // 3.25A
+    BQ25895_Write(0x03, 0x1E); // OTG关闭，最小系统电压???置??3.5V
+    CHG_CE(0);  // 打开充电
 }
 
 void BQ25895_Read(uint8_t ReadAddr, uint8_t *pBuffer) {
@@ -132,6 +144,9 @@ void UpdateChargeState_bq25895(void) {
       charging = 1;
       fully_charged = 0;
       working = 0;
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);//关闭屏幕
+        vTaskSuspend(deviceCheckHandle);
+
     }
     break;
 //  case 3: // Charge Termination Done
@@ -140,6 +155,7 @@ void UpdateChargeState_bq25895(void) {
 //    working = 0;
 //    break;
   case 0: // Not Charging
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//开启屏幕
     working = 1;
     charging = 0;
     fully_charged = 0;
@@ -172,12 +188,14 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
     if (((vbus_status & 0x80) || (vbus_status == 0x16)) &&
         !((last_vbus_status & 0x80) || (last_vbus_status == 0x16))) {
         LOG("充电器已插入，重新初始化 bq25895...\n");
+
         BQ25895_Init();
     }
 
     // 检测 VBUS 拔出 (仅当状态从插入 -> 拔出时执行)
     if (!(vbus_status & 0x80) && !(vbus_status == 0x16) &&
         ((last_vbus_status & 0x80) || (last_vbus_status == 0x16))) {
+
         LOG("充电器已拔出，清除初始化标记...\n");
     }
 

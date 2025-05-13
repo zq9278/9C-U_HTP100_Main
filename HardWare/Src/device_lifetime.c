@@ -26,7 +26,40 @@ void Device_Init(void) {
     device_ctx.state = DEVICE_STATE_DISCONNECTED;
     LOG("初始化设备状态机完成，等待设备接入\n");
 }
+void Test_EEPROM_FullReadWrite_256B(void)
+{
+    const uint16_t start_addr = 0x00;
+    const uint16_t end_addr   = 0xFF;  // 最大地址 256 字节 EEPROM
+    const uint8_t  test_pattern_base = 0x5A;
 
+    LOG("? 开始 EEPROM 全盘写入测试 (0x00 ~ 0xFF)...\n");
+
+    // 写入测试数据
+    for (uint16_t addr = start_addr; addr <= end_addr; addr++) {
+        uint8_t data = test_pattern_base + (addr & 0xFF);
+        AT24CXX_WriteOneByte(addr, data);
+        osDelay(5);  // 等待写完成
+    }
+
+    LOG("? 写入完成，开始校验...\n");
+
+    // 校验每个地址
+    for (uint16_t addr = start_addr; addr <= end_addr; addr++) {
+        uint8_t expected = test_pattern_base + (addr & 0xFF);
+        uint8_t actual = AT24CXX_ReadOneByte(addr);
+
+        if (actual != expected) {
+            LOG("? 校验失败：地址 0x%02X，期望 0x%02X，读出 0x%02X\n", addr, expected, actual);
+            return;
+        }
+
+        if ((addr % 16) == 0) {
+            LOG("? 校验进度：0x%02X\n", addr);
+        }
+    }
+
+    LOG("? EEPROM 全盘读写测试完成，数据一致！\n");
+}
 // 设置设备为报废状态
 void Device_MarkAsExpired(const char* reason) {
     //bool is_new_device = (device_ctx.started_usage == false);
@@ -37,15 +70,14 @@ void Device_MarkAsExpired(const char* reason) {
     device_ctx.connected = false;
     device_ctx.started_usage = true;
 
-    if (1) {
+    if (EYE_AT24CXX_Read(EYE_EEPROM_USE_COUNT_FLAG) == 0xffff) {
         uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
         eye_times += 1;
         AT24CXX_WriteUInt16(0xf2, eye_times);
         EYE_AT24CXX_Write(EYE_MARK_MAP, eye_workingtime_1s);
         LOG("Normal: 新设备使用次数已记录: %d\n", eye_times);
+        EYE_AT24CXX_Write( EYE_EEPROM_USE_COUNT_FLAG, 1);
     }
-
-
     close_mianAPP();
     ScreenTimerStop();
     xTimerStop(eye_is_existHandle, 0);
@@ -125,6 +157,7 @@ void DeviceStateMachine_Update(void) {
                 // ? 已标记 + A/B 寿命任意为 0 → 直接进入报废
                 if (device_ctx.started_usage ||device_ctx.time_a_left == 0 || device_ctx.time_b_left == 0) {
                     LOG("? 已标记设备寿命耗尽，直接进入报废状态！\n");
+                    Device_MarkAsExpired("开机检测到报废");
                     device_ctx.state = DEVICE_STATE_EXPIRED;
                     xTimerStop(eye_is_existHandle, 0);
                     EYE_status = 0;
@@ -181,6 +214,7 @@ void DeviceStateMachine_Update(void) {
 
         case DEVICE_STATE_CONNECTED_IDLE://a段
             if (!online) {
+                currentState = STATE_OFF;
                 LOG("Woring: 设备断开连接\n");
                 device_ctx.connected = false;
                 device_ctx.state = DEVICE_STATE_DISCONNECTED;
@@ -205,6 +239,7 @@ void DeviceStateMachine_Update(void) {
 
         case DEVICE_STATE_ACTIVE://b段
             if (!online) {
+                currentState = STATE_OFF;
                 LOG("Woring: 使用中设备断开，强制报废\n");
                 //device_ctx.state = DEVICE_STATE_EXPIRED;
                 Device_MarkAsExpired("使用中断开连接");

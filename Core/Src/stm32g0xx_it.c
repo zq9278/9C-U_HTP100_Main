@@ -52,6 +52,33 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+void HardFault_Handler_C(uint32_t *stacked_args) {
+    uint32_t r0  = stacked_args[0];
+    uint32_t r1  = stacked_args[1];
+    uint32_t r2  = stacked_args[2];
+    uint32_t r3  = stacked_args[3];
+    uint32_t r12 = stacked_args[4];
+    uint32_t lr  = stacked_args[5];
+    uint32_t pc  = stacked_args[6];
+    uint32_t psr = stacked_args[7];
+
+    LOG("? [HardFault] 系统崩溃！异常寄存器如下：\r\n");
+    LOG(" R0  = 0x%08lX\r\n", r0);
+    LOG(" R1  = 0x%08lX\r\n", r1);
+    LOG(" R2  = 0x%08lX\r\n", r2);
+    LOG(" R3  = 0x%08lX\r\n", r3);
+    LOG(" R12 = 0x%08lX\r\n", r12);
+    LOG(" LR  = 0x%08lX\r\n", lr);
+    LOG(" PC  = 0x%08lX\r\n", pc);
+    LOG(" PSR = 0x%08lX\r\n", psr);
+
+    // 如果你想暂停调试器，可以加上断点指令
+    __asm volatile("BKPT #0");
+
+    // 停住系统，等待调试
+    while (1);
+}
+
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -88,6 +115,7 @@ void NMI_Handler(void)
   /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
 
   /* USER CODE END NonMaskableInt_IRQn 0 */
+  HAL_RCC_NMI_IRQHandler();
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
   while (1) {
   }
@@ -100,7 +128,19 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-    LOG("\n??  硬件故障！进入 HardFault_Handler ??\n");
+    __asm volatile
+            (
+            "movs r0, #4            \n"
+            "mov r1, lr             \n"
+            "tst r0, r1             \n"
+            "beq _msp_used          \n"
+            "mrs r0, psp            \n"
+            "b HardFault_Handler_C  \n"
+            "_msp_used:                 \n"
+            "mrs r0, msp            \n"
+            "b HardFault_Handler_C  \n"
+            );
+
 
 
   /* USER CODE END HardFault_IRQn 0 */
@@ -370,9 +410,14 @@ extern uint8_t reset;
 void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 
   if (GPIO_Pin == PWR_SENSE_Pin) {
-    reset = 1;
-      hiwdg.Init.Reload = 1;
-      HAL_IWDG_Init(&hiwdg);
+      NVIC_SystemReset();
+//    reset = 1;
+//      hiwdg.Init.Reload = 1;
+//      HAL_IWDG_Init(&hiwdg);
+
+//      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+//      vTaskNotifyGiveFromISR(pwrTaskHandle, &xHigherPriorityTaskWoken);
+//      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
 }
 extern DMA_HandleTypeDef hdma_tim16_ch1;

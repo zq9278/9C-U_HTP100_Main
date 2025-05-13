@@ -16,21 +16,21 @@ void STATE_POWER_5V_Update(void) {
 void close_mianAPP(void){
     currentState = STATE_OFF;
     HeatPWM(0); // 关闭加热PWM
+   taskENTER_CRITICAL();  // ✅进入临界区，禁止上下文切换
     if (PressHandle != NULL) {
-        vTaskDelete(PressHandle);
-        PressHandle = NULL;  // 避免再次访问无效句柄
+        xTaskNotifyGive(PressHandle); // 通知任务自己退出
     }
     if (HeatHandle != NULL) {
-        vTaskDelete(HeatHandle);
-        HeatHandle = NULL;  // 避免再次访问无效句柄
+        xTaskNotifyGive(HeatHandle); // 通知任务自己退出
     }
     if (motor_homeHandle == NULL) {
-        if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle) == pdPASS) {
+        //osDelay(1000);
+        if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle) == pdPASS) {
         } else {
             LOG("Failed to create motor_home task.\r\n");
         }
     } else {
         LOG("motor_home task already exists.\r\n");
     }
-
+  taskEXIT_CRITICAL();   // ✅退出临界区
 }
