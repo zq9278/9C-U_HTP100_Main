@@ -11,7 +11,6 @@ uint8_t heat_finish = 0, press_finish = 0, auto_finish = 0;
 extern prepare_data my_prepare_data;
 extern uint8_t soft_button;
 uint16_t save_prepare, set_prepare;
-
 void UART1_CMDHandler(recept_data_p msg) {
    // LOG("into CMD handle\n");
     if (msg == NULL) {
@@ -58,13 +57,8 @@ void UART1_CMDHandler(recept_data_p msg) {
             HeatPWM(1);                    // 启动加热PWM
             HeatPID.integral = 0;
             HeatPID.setpoint = 37 + temperature_compensation;
-            if (HeatHandle == NULL) {
-                if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) {
-                } else {
-                    LOG("Failed to create heat task.\r\n");
-                }
-            } else {
-                LOG("heat task already exists.\r\n");
+            if (HeatHandle != NULL) {
+                vTaskResume(HeatHandle);
             }
             break;
             /* 屏幕加热停止 */
@@ -72,8 +66,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             if ((currentState == STATE_HEAT) || (currentState == STATE_PRE_HEAT)) {
                 HeatPWM(0); // 启动加热PWM
                 if (HeatHandle != NULL) {
-                    vTaskDelete(HeatHandle);
-                    HeatHandle = NULL;  // 避免再次访问无效句柄
+                    xTaskNotifyGive(HeatHandle); // 通知任务自己退出
                 }
                 if ((heat_finish == 0) &&
                     (currentState ==
@@ -103,16 +96,15 @@ void UART1_CMDHandler(recept_data_p msg) {
                     emergency_stop = 1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
                 }
                 if (PressHandle != NULL) {
-                    vTaskDelete(PressHandle);
-                    PressHandle = NULL;  // 避免再次访问无效句柄
+                    xTaskNotifyGive(PressHandle); // 通知任务自己挂起
                 }
                 if (motor_homeHandle == NULL) {
-                    if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle) == pdPASS) {
+                    if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle)== pdPASS) {
                     } else {
-                        LOG("Failed to create motor_home task.\r\n");
+                        LOG("Failed to create motor_homeHandle task.\r\n");
                     }
                 } else {
-                    LOG("motor_home task already exists.\r\n");
+                    LOG("motor_homeHandle task already exists.\r\n");
                 }
             }
             currentState = STATE_OFF; // 从挤压停止回到关闭状态
@@ -127,22 +119,17 @@ void UART1_CMDHandler(recept_data_p msg) {
             HeatPID.integral = 0;
             HeatPID.setpoint = 37 + temperature_compensation;
             MotorPID.setpoint = data;
-            if (HeatHandle == NULL) {
-                if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) {
-                } else {
-                    LOG("Failed to create HeatHandle task.\r\n");
-                }
-            } else {
-                LOG("HeatHandle task already exists.\r\n");
+            if (HeatHandle != NULL) {
+                vTaskResume(HeatHandle);
             }
             break;
             /* 屏幕自动模式停止 */
         case 0x1038:
+
             if (currentState == STATE_PRE_AUTO) {
-                HeatPWM(0); // 加热PWM
+                HeatPWM(0); // 关闭加热PWM
                 if (HeatHandle != NULL) {
-                    vTaskDelete(HeatHandle);
-                    HeatHandle = NULL;  // 避免再次访问无效句柄
+                    xTaskNotifyGive(HeatHandle); // 通知任务自己退出
                 }
             }
             if (currentState == STATE_AUTO) {
@@ -152,9 +139,7 @@ void UART1_CMDHandler(recept_data_p msg) {
                     emergency_stop = 1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
                 }
             }
-
             currentState = STATE_OFF; // 从自动模式回到关闭状态
-
             break;
         case 0x1040:
             soft_button = 1;
@@ -382,12 +367,12 @@ void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
     switch (cmd_type) {
         case 0x5aa5: { // 命令类型 0x9000 - 处理 UART1 数据
             LOG("into 5A A5\n");
-            UART1_CMDHandler(received_data->buffer);
+            UART1_CMDHandler((recept_data *)received_data->buffer);
 
             break;
         }
         case 0x6aa6: { // 命令类型 0x6aa6 - 处理 UART1 数据
-            UART1_CMDHandler_prepare(received_data->buffer);
+            UART1_CMDHandler_prepare((prepare_data *)received_data->buffer);
 
             break;
         }
@@ -433,7 +418,7 @@ void ScreenUpdateForce(float value) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // 帧尾
     pData.end_low = 0xff;  // 帧尾
-    USART2_DMA_Send(&pData, sizeof(pData));
+    USART2_DMA_Send((uint8_t *) &pData, sizeof(pData));
 
 }
 
@@ -454,7 +439,7 @@ void ScreenUpdateTemperature(float value) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // 帧尾
     pData.end_low = 0xff;  // 帧尾
-    USART2_DMA_Send(&pData, sizeof(pData));
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 
 }
 
@@ -469,7 +454,7 @@ void ScreenUpdateSOC(float value) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // 帧尾
     pData.end_low = 0xff;  // 帧尾
-    USART2_DMA_Send(&pData, sizeof(pData));
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 
 }
 
@@ -483,7 +468,7 @@ void ScreenWorkModeQuit(void) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // 帧尾
     pData.end_low = 0xff;  // 帧尾
-    USART2_DMA_Send(&pData, sizeof(pData));
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 
 }
 
@@ -498,7 +483,7 @@ void EYE_checkout(float data) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // 帧尾
     pData.end_low = 0xff;  // 帧尾
-    USART2_DMA_Send(&pData, sizeof(pData));
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 
 }
 
@@ -516,7 +501,7 @@ void ScreenTimerStart(void) {
 //    taskENTER_CRITICAL();
 //    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
 //    taskEXIT_CRITICAL();
-    USART2_DMA_Send(&pData, sizeof(pData));
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 }
 void ScreenTimerStop(void) {
 
@@ -532,7 +517,7 @@ void ScreenTimerStop(void) {
 //    taskENTER_CRITICAL();
 //    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
 //    taskEXIT_CRITICAL();
-    USART2_DMA_Send(&pData, sizeof(pData));
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 }
 void NEW_EYE(void) {
 
@@ -548,7 +533,7 @@ void NEW_EYE(void) {
 //    taskENTER_CRITICAL();
 //    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
 //    taskEXIT_CRITICAL();
-    USART2_DMA_Send(&pData, sizeof(pData));
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 }
 void Eye_twitching_invalid(void) {
 
@@ -564,7 +549,7 @@ void Eye_twitching_invalid(void) {
 //    taskENTER_CRITICAL();
 //    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
 //    taskEXIT_CRITICAL();
-    USART2_DMA_Send(&pData, sizeof(pData));
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 }
 
 void Eye_twitching_invalid_master(prepare_data_p myprepare_data) {
@@ -589,7 +574,7 @@ void ScreenWorkMode_count(float count) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff; // 帧尾
     pData.end_low = 0xff;  // 帧尾
-    USART2_DMA_Send(&pData, sizeof(pData));
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 }
 
 void Serial_data_stream_parsing(uart_data *frameData) {
@@ -615,7 +600,7 @@ void Serial_data_stream_parsing(uart_data *frameData) {
                     uint16_t received_crc = (frameData->buffer[j - 2] | (frameData->buffer[j - 1] << 8));
                     uint16_t calculated_crc = Calculate_CRC(&frameData->buffer[i], frame_size - 4); // 不包含CRC和帧尾
                     if (calculated_crc == received_crc) {
-                        command_parsing(&frameData->buffer[i]);
+                        command_parsing((uart_data *)&frameData->buffer[i]);
 for(uint16_t i = 0; i < frameData->length; i++) {
                              //LOG("%02X ", frameData->buffer[i]);
                          }

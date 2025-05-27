@@ -147,8 +147,8 @@ standard names. */
 
 /* USER CODE BEGIN 2 */
 /* Definitions needed when configGENERATE_RUN_TIME_STATS is on */
-#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()  // ²»ÐèÒª¶îÍâ³õÊ¼»¯
-#define portGET_RUN_TIME_COUNTER_VALUE() (xTaskGetTickCount() * 10)  // Ã¿¸ötick´ú±í10¸ö¡°ÐéÄâÊ±¼äµ¥Î»¡±
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()  // ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½
+#define portGET_RUN_TIME_COUNTER_VALUE() (xTaskGetTickCount() * 10)  // Ã¿ï¿½ï¿½tickï¿½ï¿½ï¿½ï¿½10ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½äµ¥Î»ï¿½ï¿½
 /* USER CODE END 2 */
 
 /* USER CODE BEGIN Defines */

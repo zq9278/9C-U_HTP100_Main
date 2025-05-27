@@ -279,17 +279,17 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
 /* USER CODE BEGIN 1 */
 
 void I2C1_HardwareReset(void) {
-  __HAL_RCC_I2C1_CLK_DISABLE();// 关闭 I2C 时钟
-  //osDelay(10);// 短暂延时
-  __HAL_RCC_I2C1_CLK_ENABLE(); // 重新使能 I2C 时钟
-  HAL_I2C_DeInit(&hi2c1);// 重新初始化 I2C 外设
+  __HAL_RCC_I2C1_CLK_DISABLE();// 锟截憋拷 I2C 时锟斤拷
+  //osDelay(10);// 锟斤拷锟斤拷锟斤拷时
+  __HAL_RCC_I2C1_CLK_ENABLE(); // 锟斤拷锟斤拷使锟斤拷 I2C 时锟斤拷
+  HAL_I2C_DeInit(&hi2c1);// 锟斤拷锟铰筹拷始锟斤拷 I2C 锟斤拷锟斤拷
   HAL_I2C_Init(&hi2c1);
 }
 void I2C2_HardwareReset(void) {
-  __HAL_RCC_I2C2_CLK_DISABLE();// 关闭 I2C 时钟
-  //osDelay(10);// 短暂延时
-  __HAL_RCC_I2C2_CLK_ENABLE(); // 重新使能 I2C 时钟
-  HAL_I2C_DeInit(&hi2c2);// 重新初始化 I2C 外设
+  __HAL_RCC_I2C2_CLK_DISABLE();// 锟截憋拷 I2C 时锟斤拷
+  //osDelay(10);// 锟斤拷锟斤拷锟斤拷时
+  __HAL_RCC_I2C2_CLK_ENABLE(); // 锟斤拷锟斤拷使锟斤拷 I2C 时锟斤拷
+  HAL_I2C_DeInit(&hi2c2);// 锟斤拷锟铰筹拷始锟斤拷 I2C 锟斤拷锟斤拷
   HAL_I2C_Init(&hi2c2);
 }
 

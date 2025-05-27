@@ -114,6 +114,75 @@ static void bq_CONFIG_subclass89(void);
 static uint32_t bq_ConfigRead(void);
 static uint32_t bq_Rdarg(uint16_t *volt, int16_t *avgCur, uint16_t *soc, uint16_t *fcc);
 uint16_t bq_ITPOR(void);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#include <stdbool.h>
+#define BQ27441_I2C_ADDRESS    (0x55 << 1)
+#define BQ27441_DEVICE_ID      0x0421
+
+// Control Subcommands
+#define BQ27441_CONTROL_DEVICE_TYPE   0x0001
+#define BQ27441_CONTROL_SEALED        0x0020
+#define BQ27441_CONTROL_UNSEAL        0x8000
+#define BQ27441_CONTROL_SET_CFGUPDATE 0x0013
+#define BQ27441_CONTROL_SOFT_RESET    0x0042
+
+// Commands
+#define BQ27441_COMMAND_VOLTAGE       0x04
+#define BQ27441_COMMAND_AVG_CURRENT   0x10
+#define BQ27441_COMMAND_SOC           0x2C
+#define BQ27441_COMMAND_FLAGS         0x06
+
+// Extended Data
+#define BQ27441_EXTENDED_CONTROL      0x61
+#define BQ27441_EXTENDED_DATACLASS    0x3E
+#define BQ27441_EXTENDED_DATABLOCK    0x3F
+#define BQ27441_EXTENDED_CHECKSUM     0x60
+#define BQ27441_EXTENDED_BLOCKDATA    0x40
+
+// Class IDs
+#define BQ27441_ID_STATE              82
+#define BQ27441_ID_RACOMP             89
+
+
+bool BQ27441_Init_STR(I2C_HandleTypeDef *hi2c);
+bool BQ27441_Unseal(void);
+bool BQ27441_EnterConfigMode(void);
+bool BQ27441_ExitConfigMode(void);
+
+bool BQ27441_WriteExtended(uint8_t classID, uint8_t offset, const uint8_t *data, uint8_t len);
+uint8_t BQ27441_ReadExtended(uint8_t classID, uint8_t offset);
+
+uint16_t BQ27441_ReadVoltage(void);
+uint16_t BQ27441_ReadSOC(void);
+int16_t  BQ27441_ReadAverageCurrent(void);
+void BQ27441_DEMO(void);
+void BQ27441_VerifyConfig(void);
+void BQ27441_PrintRaTable(void);
+
 #endif
 
 

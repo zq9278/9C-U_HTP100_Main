@@ -1,7 +1,7 @@
 
 #include "main.h"
-#define LOW_BATTERY_SOC 3200
-#define WORKING_BATTERY_SOC    3300  // 提醒用户电压
+#define LOW_BATTERY_SOC 3300
+#define WORKING_BATTERY_SOC    3350  // 提醒用户电压
 uint8_t BQ27441_TempData[2];
 
 // 3300mAh 的电池参数
@@ -556,7 +556,7 @@ void BatteryMonitor_Run(void)
         case BATTERY_CONFIRM_SHUTDOWN:
             LOG("[Battery] [CONFIRM_SHUTDOWN] 连续低电确认，执行关机逻辑...\n");
             // 执行关机动作，比如
-             BQ25895_Write(0x09, 0x64); // 示例：写寄存器关机
+            // BQ25895_Write(0x09, 0x64); // 示例：写寄存器关机
 //            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);//关闭屏幕
 //            close_mianAPP();
             batteryMonitor.state = BATTERY_SHUTDOWN;
@@ -577,12 +577,13 @@ void BatteryMonitor_Run(void)
 
 void battery_status_update_bq27441(void) {
   BQ27441_MultiRead_DMA(&BQ27441);
-    //LOG("BQ27441: Voltage=%d mV, Temperature=%d C, AvgCurrent=%d mA, SOC=%d%%, FullChargeCapacity=%d mAh\n", BQ27441.Voltage, BQ27441.Temperature, BQ27441.AvgCurrent, BQ27441.SOC, BQ27441.FullChargeCapacity);
+   // LOG("BQ27441: Voltage=%d mV, Temperature=%d C, AvgCurrent=%d mA, SOC=%d%%, FullChargeCapacity=%d mAh\n", BQ27441.Voltage, BQ27441.Temperature, BQ27441.AvgCurrent, BQ27441.SOC, BQ27441.FullChargeCapacity);
   //low_battery = (BQ27441.SOC < 30) && (BQ27441.SOC != 0);
   low_battery = (BQ27441.SOC < 30) ;
-    fully_charged=(BQ27441.SOC>=99);
+    fully_charged=(BQ27441.SOC==100);
     float battery = (float)BQ27441.SOC;
     //ScreenUpdateSOC(battery);
+    //LOG("BQ27441: SOC=%d%%\n", BQ27441.SOC);
     if(battery_flag_400ms){
         battery_flag_400ms=0;
         if (lastBatteryValue == 0 || fabs(battery - lastBatteryValue) <= 10.0f) {
@@ -653,19 +654,19 @@ uint16_t BQ27441_ReadFlags() {
 }
 
 
-// 解封 BQ27441
-void BQ27441_Unseal() {
-    uint8_t data[2];
-
-// 发送第一部分密钥
-    data[0] = 0x00; data[1] = 0x80;  // 0x8000
-    BQ27441_Write_IT(0x00, data, 2);
-
-// 发送第二部分密钥
-    BQ27441_Write_IT(0x00, data, 2);
-    LOG("发送第二部分解封密钥: 0x8000\n");
-
-}
+//// 解封 BQ27441
+//void BQ27441_Unseal() {
+//    uint8_t data[2];
+//
+//// 发送第一部分密钥
+//    data[0] = 0x00; data[1] = 0x80;  // 0x8000
+//    BQ27441_Write_IT(0x00, data, 2);
+//
+//// 发送第二部分密钥
+//    BQ27441_Write_IT(0x00, data, 2);
+//    LOG("发送第二部分解封密钥: 0x8000\n");
+//
+//}
 
 // 进入配置更新模式
 void BQ27441_SetConfigUpdate() {
@@ -949,7 +950,7 @@ void main_app1(void) {
 const uint16_t Designcapacity = (uint16_t)(DESIGN_CAPACITY_MAH);  // 3000mAh
 const uint16_t DesignEnergy   = (uint16_t)(DESIGN_CAPACITY_MAH * (NOMINAL_VOLTAGE_MV / 1000.0));  // 计算mWh
 const uint16_t terminatevoltage = 3000;  // 系统最低工作电压 3000mV
-const uint16_t loadselect = 0x81;  // 负载模式 (0x81: 功率模式, 0x01: 电流模式)
+const uint16_t loadselect = 0x81;  // 负载模式 (0x81: 功率模式, 0x01: 电流模式
 
 // **充电控制参数**
 const uint16_t Taperrate = (uint16_t)((DESIGN_CAPACITY_MAH * 10) / TAPER_CURRENT_MA);
@@ -992,8 +993,8 @@ uint32_t bq_MemoryWrite(uint8_t subaddr, uint16_t data )
 {
     uint8_t Mdata=(data>>8);
     uint8_t Ldata=(data&0xFF);
-            HAL_I2C_Mem_Write(&hi2c1,BQ2744_ADDRESS,subaddr,I2C_MEMADD_SIZE_8BIT,&Mdata,1,0xff);
-    return HAL_I2C_Mem_Write(&hi2c1,BQ2744_ADDRESS,subaddr+1,I2C_MEMADD_SIZE_8BIT,&Ldata,1,0xff);
+            HAL_I2C_Mem_Write(&hi2c1,BQ2744_ADDRESS,subaddr,I2C_MEMADD_SIZE_8BIT,&Ldata,1,0xff);
+    return HAL_I2C_Mem_Write(&hi2c1,BQ2744_ADDRESS,subaddr+1,I2C_MEMADD_SIZE_8BIT,&Mdata,1,0xff);
 }
 /********************************************************
 *********************************************************/
@@ -1059,7 +1060,7 @@ void  bq_Read_Ta_and_Qmax(void)
 		bq_read(buf, 0x40+i, 1);
 		Ra_table[i] = buf[0]; //高低位交换
 	}
-      
+
 
         Frack_Num++;
         tbuf[0]=Frack_Num>>24;
@@ -1487,3 +1488,204 @@ read_DesignCapacity();
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+static I2C_HandleTypeDef *_bq_i2c = &hi2c1;
+
+static HAL_StatusTypeDef i2c_write(uint8_t reg, uint8_t *data, uint8_t len) {
+    return HAL_I2C_Mem_Write(_bq_i2c, BQ27441_I2C_ADDRESS, reg, I2C_MEMADD_SIZE_8BIT, data, len, 100);
+}
+
+static HAL_StatusTypeDef i2c_read(uint8_t reg, uint8_t *data, uint8_t len) {
+    return HAL_I2C_Mem_Read(_bq_i2c, BQ27441_I2C_ADDRESS, reg, I2C_MEMADD_SIZE_8BIT, data, len, 100);
+}
+
+static uint16_t read_word(uint8_t reg) {
+    uint8_t buf[2];
+    i2c_read(reg, buf, 2);
+    return (buf[1] << 8) | buf[0];
+}
+
+bool BQ27441_Init_STR(I2C_HandleTypeDef *hi2c) {
+    _bq_i2c = hi2c;
+    uint16_t devID = read_word(0x00);
+    return devID == BQ27441_DEVICE_ID;
+}
+
+bool BQ27441_Unseal(void) {
+    uint8_t key[2] = {0x00, 0x80};
+    i2c_write(0x00, key, 2);
+    i2c_write(0x00, key, 2);
+    return true;
+}
+
+bool BQ27441_EnterConfigMode(void) {
+    uint8_t cmd[2] = {0x13, 0x00};
+    return i2c_write(0x00, cmd, 2) == HAL_OK;
+}
+
+bool BQ27441_ExitConfigMode(void) {
+    uint8_t cmd[2] = {0x42, 0x00};
+    return i2c_write(0x00, cmd, 2) == HAL_OK;
+}
+
+bool BQ27441_WriteExtended(uint8_t classID, uint8_t offset, const uint8_t *data, uint8_t len) {
+    uint8_t checksum = 0, tmp[32] = {0};
+    i2c_write(BQ27441_EXTENDED_CONTROL, (uint8_t[]){0x00}, 1);
+    i2c_write(BQ27441_EXTENDED_DATACLASS, &classID, 1);
+    i2c_write(BQ27441_EXTENDED_DATABLOCK, (uint8_t[]){0x00}, 1);
+    i2c_read(BQ27441_EXTENDED_BLOCKDATA, tmp, 32);
+
+    for (uint8_t i = 0; i < len; i++)
+        i2c_write(BQ27441_EXTENDED_BLOCKDATA + offset + i, (uint8_t *)&data[i], 1);
+
+    i2c_read(BQ27441_EXTENDED_BLOCKDATA, tmp, 32);
+    for (uint8_t i = 0; i < 32; i++) checksum += tmp[i];
+    checksum = 0xFF - checksum;
+
+    return i2c_write(BQ27441_EXTENDED_CHECKSUM, &checksum, 1) == HAL_OK;
+}
+
+//uint8_t BQ27441_ReadExtended(uint8_t classID, uint8_t offset) {
+//    uint8_t value;
+//    i2c_write(BQ27441_EXTENDED_CONTROL, (uint8_t[]){0x00}, 1);
+//    i2c_write(BQ27441_EXTENDED_DATACLASS, &classID, 1);
+//    i2c_write(BQ27441_EXTENDED_DATABLOCK, (uint8_t[]){0x00}, 1);
+//    i2c_read(BQ27441_EXTENDED_BLOCKDATA + offset, &value, 1);
+//    return value;
+//}
+uint8_t BQ27441_ReadExtended(uint8_t classID, uint8_t offset) {
+    uint8_t value = 0;
+
+    i2c_write(BQ27441_EXTENDED_CONTROL, (uint8_t[]){0x00}, 1);     // 0x61 <- 0x00
+    i2c_write(BQ27441_EXTENDED_DATACLASS, &classID, 1);            // 0x3E <- classID
+    i2c_write(BQ27441_EXTENDED_DATABLOCK, (uint8_t[]){0x00}, 1);   // 0x3F <- 0x00
+
+    HAL_Delay(2);  // 等待 block 数据刷新
+
+    i2c_read(BQ27441_EXTENDED_BLOCKDATA + offset, &value, 1);      // 从 block 区偏移读取
+    return value;
+}
+
+
+uint16_t BQ27441_ReadVoltage(void) {
+    return read_word(BQ27441_COMMAND_VOLTAGE);
+}
+
+uint16_t BQ27441_ReadSOC(void) {
+    return read_word(BQ27441_COMMAND_SOC);
+}
+
+int16_t BQ27441_ReadAverageCurrent(void) {
+    return (int16_t) read_word(BQ27441_COMMAND_AVG_CURRENT);
+}
+uint16_t BQ27441_ReadQmax(void) {
+    uint8_t lsb = BQ27441_ReadExtended(BQ27441_ID_STATE, 0);
+    uint8_t msb = BQ27441_ReadExtended(BQ27441_ID_STATE, 1);
+    return (msb << 8) | lsb;
+}
+void BQ27441_DEMO(void) {
+    uint16_t flags = read_word(BQ27441_COMMAND_FLAGS);
+    if ((flags & 0x20) == 0) {
+        LOG("? 非首次上电，跳过配置（Flags=0x%04X）\n", flags);
+        return;
+    }
+    if (!BQ27441_Unseal()) {
+        LOG(" 解封失败\n");
+        return;
+    }
+    LOG(" 解封成功\n");
+
+    if (!BQ27441_EnterConfigMode()) {
+        LOG(" 进入配置模式失败\n");
+        return;
+    }
+    LOG(" 已进入配置模式\n");
+
+    uint8_t capacity[2] = { 3300 & 0xFF, 3300 >> 8 };
+    if (!BQ27441_WriteExtended(BQ27441_ID_STATE, 10, capacity, 2)) {
+        LOG(" 写入 DesignCapacity 失败\n");
+        return;
+    }
+    LOG(" 写入 DesignCapacity: 3300 mAh\n");
+
+    uint16_t energy = 12000;
+    uint8_t energy_buf[2] = { energy & 0xFF, energy >> 8 };
+    if (!BQ27441_WriteExtended(BQ27441_ID_STATE, 12, energy_buf, 2)) {
+        LOG(" 写入 DesignEnergy 失败\n");
+        return;
+    }
+    LOG(" 写入 DesignEnergy: 12000 mWh\n");
+
+    uint16_t terminate_voltage = 3200;
+    uint8_t tv_buf[2] = { terminate_voltage & 0xFF, terminate_voltage >> 8 };
+    if (!BQ27441_WriteExtended(BQ27441_ID_STATE, 16, tv_buf, 2)) {
+        LOG(" 写入 TerminateVoltage 失败\n");
+        return;
+    }
+    LOG(" 写入 TerminateVoltage: 3000 mV\n");
+
+    uint16_t taper_rate = 330;
+    uint8_t taper_buf[2] = { taper_rate & 0xFF, taper_rate >> 8 };
+    if (!BQ27441_WriteExtended(BQ27441_ID_STATE, 27, taper_buf, 2)) {
+        LOG(" 写入 TaperRate 失败\n");
+        return;
+    }
+    LOG(" 写入 TaperRate: 330\n");
+
+    if (!BQ27441_ExitConfigMode()) {
+        LOG(" 退出配置模式失败\n");
+        return;
+    }
+    LOG(" BQ27441 电池配置完成！\n");
+}
+
+void BQ27441_VerifyConfig(void) {
+    uint16_t designCap = BQ27441_ReadExtended(BQ27441_ID_STATE, 10) |
+                         (BQ27441_ReadExtended(BQ27441_ID_STATE, 11) << 8);
+    uint16_t designEnergy = BQ27441_ReadExtended(BQ27441_ID_STATE, 12) |
+                            (BQ27441_ReadExtended(BQ27441_ID_STATE, 13) << 8);
+    uint16_t termVolt = BQ27441_ReadExtended(BQ27441_ID_STATE, 16) |
+                        (BQ27441_ReadExtended(BQ27441_ID_STATE, 17) << 8);
+    uint16_t taperRate = BQ27441_ReadExtended(BQ27441_ID_STATE, 27) |
+                         (BQ27441_ReadExtended(BQ27441_ID_STATE, 28) << 8);
+
+    LOG(" 验证配置：\n");
+    LOG("  DesignCapacity   = %d mAh\n", designCap);
+    LOG("  DesignEnergy     = %d mWh\n", designEnergy);
+    LOG("  TerminateVoltage = %d mV\n", termVolt);
+    LOG("  TaperRate        = %d\n", taperRate);
+}
+
+void BQ27441_ApplyGoldenImage(void) {
+    const uint8_t qmax[2] = { 0xE4, 0x0C }; // Qmax = 3300
+    const uint8_t ra_table[15] = {
+            0x66, 0x66, 0x63, 0x6B, 0x48,
+            0x3B, 0x3E, 0x3F, 0x35, 0x2F,
+            0x3C, 0x46, 0x8C, 0x71, 0x24
+    };
+
+    LOG(" 写入 Golden Qmax 和 Ra 表\n");
+    BQ27441_WriteExtended(BQ27441_ID_STATE, 0x00, qmax, 2);
+    BQ27441_WriteExtended(BQ27441_ID_RACOMP, 0x00, ra_table, sizeof(ra_table));
+    LOG("Golden Image 写入完成\n");
+}
+
+void BQ27441_PrintRaTable(void) {
+    //LOG("当前芯片内置 Ra 表：\n");
+    for (uint8_t i = 0; i < 15; i++) {
+        uint8_t lsb = BQ27441_ReadExtended(BQ27441_ID_RACOMP, i * 2);
+        uint8_t msb = BQ27441_ReadExtended(BQ27441_ID_RACOMP, i * 2 + 1);
+        uint16_t ra = (msb << 8) | lsb;
+        //LOG("0x%02X,",ra);
+    }
+    //LOG("当前 Qmax=%d mAh\n", BQ27441_ReadQmax());
+}

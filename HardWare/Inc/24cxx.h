@@ -37,5 +37,11 @@ uint32_t AT24CXX_ReadOrWriteZero(uint16_t startAddr);
 void AT24CXX_WriteUInt16(uint16_t WriteAddr, uint16_t value);
 uint16_t EYE_AT24CXX_Read(uint16_t startAddr);
 HAL_StatusTypeDef EYE_AT24CXX_Write(uint16_t WriteAddr, uint16_t value) ;
+
+HAL_StatusTypeDef EYE_AT24CXX_WriteByte(uint16_t addr, uint8_t data);
+uint8_t EYE_AT24CXX_ReadByte(uint16_t addr, HAL_StatusTypeDef* status_out);
+HAL_StatusTypeDef EYE_AT24CXX_WriteUInt16(uint16_t addr, uint16_t value);
+uint16_t EYE_AT24CXX_ReadUInt16(uint16_t addr);
+
 void AD24C01_Factory_formatted(void);
 #endif

@@ -62,7 +62,7 @@ void HardFault_Handler_C(uint32_t *stacked_args) {
     uint32_t pc  = stacked_args[6];
     uint32_t psr = stacked_args[7];
 
-    LOG("? [HardFault] ÏµÍ³±ÀÀ££¡Òì³£¼Ä´æÆ÷ÈçÏÂ£º\r\n");
+    LOG("? [HardFault] ÏµÍ³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ì³£ï¿½Ä´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â£ï¿½\r\n");
     LOG(" R0  = 0x%08lX\r\n", r0);
     LOG(" R1  = 0x%08lX\r\n", r1);
     LOG(" R2  = 0x%08lX\r\n", r2);
@@ -72,10 +72,10 @@ void HardFault_Handler_C(uint32_t *stacked_args) {
     LOG(" PC  = 0x%08lX\r\n", pc);
     LOG(" PSR = 0x%08lX\r\n", psr);
 
-    // Èç¹ûÄãÏëÔÝÍ£µ÷ÊÔÆ÷£¬¿ÉÒÔ¼ÓÉÏ¶ÏµãÖ¸Áî
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½Ï¶Ïµï¿½Ö¸ï¿½ï¿½
     __asm volatile("BKPT #0");
 
-    // Í£×¡ÏµÍ³£¬µÈ´ýµ÷ÊÔ
+    // Í£×¡ÏµÍ³ï¿½ï¿½ï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½
     while (1);
 }
 
@@ -311,9 +311,12 @@ void I2C1_IRQHandler(void)
   /* USER CODE BEGIN I2C1_IRQn 0 */
 
   /* USER CODE END I2C1_IRQn 0 */
-  if (hi2c1.Instance->ISR & (I2C_FLAG_BERR | I2C_FLAG_ARLO | I2C_FLAG_OVR)) {
+  if (hi2c1.Instance->ISR & (I2C_FLAG_BERR | I2C_FLAG_ARLO | I2C_FLAG_OVR))
+  {
     HAL_I2C_ER_IRQHandler(&hi2c1);
-  } else {
+  }
+  else
+  {
     HAL_I2C_EV_IRQHandler(&hi2c1);
   }
   /* USER CODE BEGIN I2C1_IRQn 1 */
@@ -329,9 +332,12 @@ void I2C2_IRQHandler(void)
   /* USER CODE BEGIN I2C2_IRQn 0 */
 
   /* USER CODE END I2C2_IRQn 0 */
-  if (hi2c2.Instance->ISR & (I2C_FLAG_BERR | I2C_FLAG_ARLO | I2C_FLAG_OVR)) {
+  if (hi2c2.Instance->ISR & (I2C_FLAG_BERR | I2C_FLAG_ARLO | I2C_FLAG_OVR))
+  {
     HAL_I2C_ER_IRQHandler(&hi2c2);
-  } else {
+  }
+  else
+  {
     HAL_I2C_EV_IRQHandler(&hi2c2);
   }
   /* USER CODE BEGIN I2C2_IRQn 1 */
@@ -382,30 +388,30 @@ void USART2_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-//extern osSemaphoreId_t BUTTON_SEMAPHOREHandle; // °´¼üÐÅºÅÁ¿¾ä±ú
+//extern osSemaphoreId_t BUTTON_SEMAPHOREHandle; // ï¿½ï¿½ï¿½ï¿½ï¿½Åºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
  void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
  {
-    if (GPIO_Pin == SW_CNT_Pin) {  // ¼ì²éÊÇ·ñÊÇÄ¿±ê°´¼ü
+    if (GPIO_Pin == SW_CNT_Pin) {  // ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Ä¿ï¿½ê°´ï¿½ï¿½
          BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-         // ÔÚÖÐ¶ÏÖÐÊÍ·ÅÐÅºÅÁ¿£¬Í¨ÖªÈÎÎñ°´¼ü°´ÏÂ
+         // ï¿½ï¿½ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½Í·ï¿½ï¿½Åºï¿½ï¿½ï¿½ï¿½ï¿½Í¨Öªï¿½ï¿½ï¿½ñ°´¼ï¿½ï¿½ï¿½ï¿½ï¿½
          xSemaphoreGiveFromISR(BUTTON_SEMAPHOREHandle,&xHigherPriorityTaskWoken);
-         // Èç¹ûÐèÒªÇÐ»»ÉÏÏÂÎÄ£¬Ôòµ÷ÓÃ´Ëº¯Êý
-         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);//ÊÇ·ñÌø³öÖÐ¶ÏisrÁ¢¼´Ö´ÐÐ¸ü¸ßÓÅÏÈ¼¶µÄÈÎÎñ
+         // ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½ï¿½ï¿½ï¿½Ã´Ëºï¿½ï¿½ï¿½
+         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);//ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½isrï¿½ï¿½ï¿½ï¿½Ö´ï¿½Ð¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
      }
  }
 
 //extern osTimerId_t butttonHandle;
 //void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
 //  if (GPIO_Pin == SW_CNT_Pin) {
-//    // ³¢ÊÔÍ£Ö¹¶¨Ê±Æ÷£¨Èç¹ûÒÑÔËÐÐ£©
+//    // ï¿½ï¿½ï¿½ï¿½Í£Ö¹ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð£ï¿½
 //    //osTimerStop(butttonHandle);
-//    // Æô¶¯¶¨Ê±Æ÷
+//    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½
 //    osTimerStart(butttonHandle, 5);
 //    xTimerStartFromISR
 //  }
 //}
 
-volatile uint32_t last_button_press_time_PWR = 0; // ¼ÇÂ¼ÉÏ´Î°´¼ü°´ÏÂµÄÊ±¼ä´Á
+volatile uint32_t last_button_press_time_PWR = 0; // ï¿½ï¿½Â¼ï¿½Ï´Î°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½Ê±ï¿½ï¿½ï¿½
 extern uint8_t reset;
 void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 
@@ -439,8 +445,8 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 
 
 }
-extern volatile uint8_t i2c_dma_read_complete;  // ¶ÁÍê³É±êÖ¾
-extern volatile uint8_t i2c_dma_write_complete; // Ð´Íê³É±êÖ¾
+extern volatile uint8_t i2c_dma_read_complete;  // ï¿½ï¿½ï¿½ï¿½É±ï¿½Ö¾
+extern volatile uint8_t i2c_dma_write_complete; // Ð´ï¿½ï¿½É±ï¿½Ö¾
 
 //void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 //    if (hi2c->Instance == hi2c1.Instance) {
@@ -449,7 +455,7 @@ extern volatile uint8_t i2c_dma_write_complete; // Ð´Íê³É±êÖ¾
 //        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 //    }
 //    if (hi2c->Instance == hi2c2.Instance) {
-//        i2c_dma_read_complete = 1;  // ±ê¼Ç DMA ´«ÊäÍê³É
+//        i2c_dma_read_complete = 1;  // ï¿½ï¿½ï¿½ DMA ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //    }
 //}
 //
@@ -460,7 +466,7 @@ extern volatile uint8_t i2c_dma_write_complete; // Ð´Íê³É±êÖ¾
 //        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 //    }
 //    if (hi2c->Instance == hi2c2.Instance) {
-//        i2c_dma_write_complete = 1;  // ±ê¼Ç DMA ´«ÊäÍê³É
+//        i2c_dma_write_complete = 1;  // ï¿½ï¿½ï¿½ DMA ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //    }
 //
 //}
@@ -494,17 +500,17 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xSemaphoreGiveFromISR(xI2CCompleteSem, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        __HAL_RCC_I2C1_CLK_DISABLE();// ¹Ø±Õ I2C Ê±ÖÓ
-        //osDelay(10);// ¶ÌÔÝÑÓÊ±
-        __HAL_RCC_I2C1_CLK_ENABLE(); // ÖØÐÂÊ¹ÄÜ I2C Ê±ÖÓ
-        HAL_I2C_DeInit(&hi2c1);// ÖØÐÂ³õÊ¼»¯ I2C ÍâÉè
+        __HAL_RCC_I2C1_CLK_DISABLE();// ï¿½Ø±ï¿½ I2C Ê±ï¿½ï¿½
+        //osDelay(10);// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±
+        __HAL_RCC_I2C1_CLK_ENABLE(); // ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½ I2C Ê±ï¿½ï¿½
+        HAL_I2C_DeInit(&hi2c1);// ï¿½ï¿½ï¿½Â³ï¿½Ê¼ï¿½ï¿½ I2C ï¿½ï¿½ï¿½ï¿½
         HAL_I2C_Init(&hi2c1);
     }
 //    if (hi2c->Instance == hi2c2.Instance) {
-//        __HAL_RCC_I2C2_CLK_DISABLE();// ¹Ø±Õ I2C Ê±ÖÓ
-//        //osDelay(10);// ¶ÌÔÝÑÓÊ±
-//        __HAL_RCC_I2C2_CLK_ENABLE(); // ÖØÐÂÊ¹ÄÜ I2C Ê±ÖÓ
-//        HAL_I2C_DeInit(&hi2c2);// ÖØÐÂ³õÊ¼»¯ I2C ÍâÉè
+//        __HAL_RCC_I2C2_CLK_DISABLE();// ï¿½Ø±ï¿½ I2C Ê±ï¿½ï¿½
+//        //osDelay(10);// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±
+//        __HAL_RCC_I2C2_CLK_ENABLE(); // ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½ I2C Ê±ï¿½ï¿½
+//        HAL_I2C_DeInit(&hi2c2);// ï¿½ï¿½ï¿½Â³ï¿½Ê¼ï¿½ï¿½ I2C ï¿½ï¿½ï¿½ï¿½
 //        HAL_I2C_Init(&hi2c2);
 //    }
     if (hi2c->Instance == hi2c2.Instance) {
@@ -513,8 +519,8 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
             vTaskNotifyGiveFromISR(i2c2_recovery_task_handle, &xHigherPriorityTaskWoken);
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         } else {
-            // µ÷ÊÔÐÅÏ¢£¨½¨Òé¼ÓÉÏ£©
-            LOG("´íÎó£º»Ö¸´ÈÎÎñ¾ä±úÎ´³õÊ¼»¯£¡\n");
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï£ï¿½
+            LOG("ï¿½ï¿½ï¿½ó£º»Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½\n");
         }
     }
 
@@ -522,7 +528,7 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 
 
 // ============================
-// DMA Íê³É»Øµ÷º¯Êý
+// DMA ï¿½ï¿½É»Øµï¿½ï¿½ï¿½ï¿½ï¿½
 // ============================
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
     if (hspi->Instance == SPI2) {
@@ -534,7 +540,7 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
 extern volatile uint8_t SPI_RxComplete;
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
     if (hspi->Instance == SPI1) {
-        SPI_RxComplete = 1; // ÉèÖÃ½ÓÊÕÍê³É±êÖ¾
+        SPI_RxComplete = 1; // ï¿½ï¿½ï¿½Ã½ï¿½ï¿½ï¿½ï¿½ï¿½É±ï¿½Ö¾
     }
     if (hspi->Instance == SPI2) {
         hspi2.State = HAL_SPI_STATE_READY;

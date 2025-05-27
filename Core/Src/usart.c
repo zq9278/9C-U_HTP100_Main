@@ -24,12 +24,12 @@
 #include "stm32g0xx_hal.h"
 #include "stm32g0xx_hal_uart.h"
 
-uart_data uart2_data; // DMA╜╙╩╒╗║│х╟°гм╙├╙┌┤ц╖┼╜╙╩╒╡╜╡─╩¤╛▌
-//extern osMessageQueueId_t UART_DMA_IDLE_RECEPT_QUEUEHandle; // ╜╙╩╒═ъ│╔╧√╧в╢╙┴╨
+uart_data uart2_data; // DMAя┐╜я┐╜я┐╜╒╗я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜┌┤я┐╜┼╜я┐╜я┐╜╒╡я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜
+//extern osMessageQueueId_t UART_DMA_IDLE_RECEPT_QUEUEHandle; // я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜╧вя┐╜я┐╜я┐╜я┐╜
 
 
-uart_data uart_rx_data_t[UART_BUFFER_QUANTITY]; // ╦л╗║│х╩¤╛▌┤ц┤в
-volatile uint8_t uart_buff_ctrl = 0; // ╗║│х╟°╦ў╥¤
+uart_data uart_rx_data_t[UART_BUFFER_QUANTITY]; // ╦ля┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜▌┤ц┤в
+volatile uint8_t uart_buff_ctrl = 0; // я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart1;
@@ -295,18 +295,18 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 
 /* USER CODE BEGIN 1 */
 
-// ┤о┐┌┐╒╧╨╓╨╢╧╗╪╡ў║п╩¤
+// я┐╜я┐╜я┐╜┌┐я┐╜я┐╜я┐╜я┐╜╨╢╧╗╪╡я┐╜я┐╜я┐╜я┐╜я┐╜
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
     if (huart->Instance == USART2) {
         HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
         uart_data *pUartData = &uart_rx_data_t[uart_buff_ctrl];
         pUartData->length = Size;
-        // ╖в╦═╜╙╩╒╩¤╛▌╡╜╢╙┴╨
+        // я┐╜я┐╜я┐╜═╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜▌╡я┐╜я┐╜я┐╜я┐╜я┐╜
         xQueueSendFromISR(UART_DMA_IDLE_RECEPT_QUEUEHandle, &pUartData, NULL);
-        // ╟╨╗╗╗║│х╟°╦ў╥¤
+        // я┐╜╨╗я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜
         uart_buff_ctrl++;
         uart_buff_ctrl %= UART_BUFFER_QUANTITY;
-        // ╓╪╨┬╞Ї╢пDMA╜╙╩╒
+        // я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜DMAя┐╜я┐╜я┐╜я┐╜
         HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_rx_data_t[uart_buff_ctrl].buffer, UART_RX_BUFFER_SIZE);
     }
 
@@ -314,33 +314,33 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART2) {
     uint32_t error = HAL_UART_GetError(huart);
-    // ╕∙╛▌┤э╬є└р╨═┤ж└э
+    // я┐╜я┐╜я┐╜▌┤я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜═┤я┐╜я┐╜я┐╜
     if (error & HAL_UART_ERROR_ORE) {
-      printf("UART ╥ч│Ў┤э╬є\n");
-      __HAL_UART_CLEAR_OREFLAG(huart); // ╟х│¤╥ч│Ў▒ъ╓╛
+      printf("UART я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜\n");
+      __HAL_UART_CLEAR_OREFLAG(huart); // я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜╓╛
       while (__HAL_UART_GET_FLAG(huart, UART_FLAG_RXNE)) {
-        (huart->Instance->RDR & 0xFF); // ╢┴╚б╜╙╩╒╝─┤ц╞ў╥╘╟х┐╒╗║│х╟°
+        (huart->Instance->RDR & 0xFF); // я┐╜я┐╜╚бя┐╜я┐╜я┐╜╒╝─┤я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜╒╗я┐╜я┐╜я┐╜я┐╜я┐╜
       }
     }
     if (error & HAL_UART_ERROR_FE) {
-      printf("UART ╓б┤э╬є\n");
-      __HAL_UART_CLEAR_FEFLAG(huart); // ╟х│¤╓б┤э╬є▒ъ╓╛
+      printf("UART ╓бя┐╜я┐╜я┐╜я┐╜\n");
+      __HAL_UART_CLEAR_FEFLAG(huart); // я┐╜я┐╜я┐╜╓бя┐╜я┐╜я┐╜я┐╜я┐╜╓╛
     }
     if (error & HAL_UART_ERROR_NE) {
-      printf("UART ╘ы╔∙┤э╬є\n");
-      __HAL_UART_CLEAR_NEFLAG(huart); // ╟х│¤╘ы╔∙┤э╬є▒ъ╓╛
+      printf("UART я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜\n");
+      __HAL_UART_CLEAR_NEFLAG(huart); // я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜╓╛
     }
     if (error & HAL_UART_ERROR_DMA) {
-      printf("UART DMA ┤э╬є\n");
+      printf("UART DMA я┐╜я┐╜я┐╜я┐╜\n");
       HAL_DMA_Abort(huart->hdmarx); // ═г╓╣ DMA
     }
-    // ╓╪╓├ UART ═т╔ш╫┤╠м
+    // я┐╜я┐╜я┐╜я┐╜ UART я┐╜я┐╜я┐╜я┐╜╫┤╠м
    // MX_USART2_UART_Init();
-    // │в╩╘╓╪╨┬╞Ї╢п DMA ╜╙╩╒
+    // я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜ DMA я┐╜я┐╜я┐╜я┐╜
     if (HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart2_data.buffer, sizeof(uart2_data.buffer)) == HAL_OK) {
-      printf("╓╪╨┬╞Ї╢п DMA ╜╙╩╒│╔╣ж\n");
+      printf("я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜ DMA я┐╜я┐╜я┐╜╒│╔╣я┐╜\n");
     } else {
-      printf("╓╪╨┬╞Ї╢п DMA ╜╙╩╒╩з░▄\n");
+      printf("я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜я┐╜ DMA я┐╜я┐╜я┐╜я┐╜╩зя┐╜я┐╜\n");
     }
   }
 }

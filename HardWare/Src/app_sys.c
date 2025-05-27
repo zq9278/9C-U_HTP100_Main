@@ -14,23 +14,27 @@ void STATE_POWER_5V_Update(void) {
 };
 }
 void close_mianAPP(void){
-    currentState = STATE_OFF;
-    HeatPWM(0); // 关闭加热PWM
+    ScreenWorkModeQuit();
+    ScreenTimerStop();
    taskENTER_CRITICAL();  // ✅进入临界区，禁止上下文切换
-    if (PressHandle != NULL) {
-        xTaskNotifyGive(PressHandle); // 通知任务自己退出
+
+
+    currentState = STATE_OFF;
+//    HeatPWM(0); // 关闭加热PWM
+    if (PressHandle != NULL && eTaskGetState(PressHandle) != eSuspended) {
+        xTaskNotifyGive(PressHandle);
     }
-    if (HeatHandle != NULL) {
-        xTaskNotifyGive(HeatHandle); // 通知任务自己退出
+    if (HeatHandle != NULL && eTaskGetState(HeatHandle) != eSuspended) {
+        xTaskNotifyGive(HeatHandle);
     }
     if (motor_homeHandle == NULL) {
-        //osDelay(1000);
-        if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle) == pdPASS) {
+        if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle)== pdPASS) {
         } else {
-            LOG("Failed to create motor_home task.\r\n");
+            LOG("Failed to create motor_homeHandle task.\r\n");
         }
     } else {
-        LOG("motor_home task already exists.\r\n");
+        LOG("motor_homeHandle task already exists.\r\n");
     }
+
   taskEXIT_CRITICAL();   // ✅退出临界区
 }

@@ -176,9 +176,9 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-volatile uint8_t flag_5ms = 0;  // 5ms ±êÖ¾Î»
-volatile uint8_t flag_10ms = 0; // 10ms ±êÖ¾Î»
-volatile uint16_t counter_ms = 0; // ºÁÃë¼ÆÊıÆ÷
+volatile uint8_t flag_5ms = 0;  // 5ms ï¿½ï¿½Ö¾Î»
+volatile uint8_t flag_10ms = 0; // 10ms ï¿½ï¿½Ö¾Î»
+volatile uint16_t counter_ms = 0; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 /* USER CODE END 4 */
 
 /**
@@ -194,25 +194,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6) {
+  if (htim->Instance == TIM6)
+  {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
 if (htim == &htim17) {
-        counter_ms++; // ºÁÃë¼ÆÊıÆ÷µİÔö
+        counter_ms++; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-        // Ã¿ 5ms ÉèÖÃÒ»´Î±êÖ¾Î»
+        // Ã¿ 5ms ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Î±ï¿½Ö¾Î»
         if (counter_ms % 6 == 0) {
             flag_5ms = 1;
             
         }
-        // Ã¿ 10ms ÉèÖÃÒ»´Î±êÖ¾Î»
+        // Ã¿ 10ms ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Î±ï¿½Ö¾Î»
         if (counter_ms % 10 == 0) {
             flag_10ms = 1;
            
         }
 
-        // // ·ÀÖ¹¼ÆÊıÆ÷Òç³ö£¨ÔÚ 1s ºó¹éÁã£©
+        // // ï¿½ï¿½Ö¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 1s ï¿½ï¿½ï¿½ï¿½ã£©
         // if (counter_ms >= 1000) {
         //     counter_ms = 0;
         // }

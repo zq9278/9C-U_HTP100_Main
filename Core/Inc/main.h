@@ -36,7 +36,7 @@ extern "C" {
 #include "task.h"
 #include "cmsis_os.h"
 #include "queue.h"
-#include "semphr.h"  // ÓëÐÅºÅÁ¿Ïà¹ØµÄ API
+#include "semphr.h"  // ï¿½ï¿½ï¿½Åºï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ API
 #include "communication.h"
 #include "Button.h"
 #include "pid.h"

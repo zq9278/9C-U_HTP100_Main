@@ -35,39 +35,46 @@ void UART_RECEPT_Task(void *argument) {
 }
 
 void Heat_Task(void *argument) {
-    LOG("heat_start");
-    Kalman_Init(&kf, 0.1f, 1.0f);  // Q: 越小越平滑, R: 越小越信任测量
-    for (;;) {
-        // 1. 检查退出通知
-        if (ulTaskNotifyTake(pdTRUE, 0) > 0) {
-            LOG("[Heat] 收到退出通知，准备释放资源并退出...\n");
-            // 2. 如果持有互斥锁，释放它
-            if (xSemaphoreGetMutexHolder(i2c2_mutex) == xTaskGetCurrentTaskHandle()) {
-                xSemaphoreGive(i2c2_mutex);
-                LOG("[Heat] 已释放 i2c2_mutex\n");
-            }
-            // 3. 执行必要清理后退出
-            HeatHandle = NULL;  // 避免再次访问无效句柄
-            vTaskDelete(NULL); // 任务优雅退出
-        }
 
-        EyeTmp = TmpRaw2Ture();
-        if (tempature_flag_400ms) {
-            tempature_flag_400ms = 0;
-            if (EyeTmp != 0.0f) {
-                ScreenUpdateTemperature(EyeTmp-temperature_compensation);
+    for (;;) {
+        LOG("heat_start");
+        Kalman_Init(&kf, 0.1f, 1.0f);  // Q: 越小越平滑, R: 越小越信任测量
+        while (1){
+            // 1. 检查退出通知
+            if ((ulTaskNotifyTake(pdTRUE, 0) > 0)||(EYE_status==0)) {
+                currentState = STATE_OFF;
+                HeatPWM(0); // 关闭加热PWM
+                LOG("[Heat] 收到退出通知，准备释放资源并退出...\n");
+                // 2. 如果持有互斥锁，释放它
+                if (xSemaphoreGetMutexHolder(i2c2_mutex) == xTaskGetCurrentTaskHandle()) {
+                    xSemaphoreGive(i2c2_mutex);
+                    LOG("[Heat] 已释放 i2c2_mutex\n");
+                }
+                // 3. 执行必要清理后退出
+                break;  // 跳出 inner while，回到外层 for 循环重新启动
+
             }
-        }
+
+            EyeTmp = TmpRaw2Ture();
+            if (tempature_flag_400ms) {
+                tempature_flag_400ms = 0;
+                if (EyeTmp != 0.0f) {
+                    ScreenUpdateTemperature(EyeTmp-temperature_compensation);
+                }
+            }
 //        HeatPID.integral_max = 40;
 //        if ((EyeTmp>=38)&&(EyeTmp<=41.5)){
 //            HeatPID.Ki=1;
 //            HeatPID.integral_max = 100;
 //        }
-        Heat_PWM = PID_Compute(&HeatPID, EyeTmp);
-        HeatPWMSet((uint8_t) Heat_PWM);
-        vTaskDelay(pdMS_TO_TICKS(100));
+            Heat_PWM = PID_Compute(&HeatPID, EyeTmp);
+            HeatPWMSet((uint8_t) Heat_PWM);
+            vTaskDelay(pdMS_TO_TICKS(100));
 
+        }
+        vTaskSuspend(NULL);  // 自己先挂起
     }
+
 }
 
 void Press_Task(void *argument) {
@@ -80,17 +87,17 @@ void Press_Task(void *argument) {
         weight0 = ADS1220_ReadPressure();           // 读取初始压力值
         while (1) {
             // 1. 检查退出通知
-            if (ulTaskNotifyTake(pdTRUE, 0) > 0) {
+            if ((ulTaskNotifyTake(pdTRUE, 0) > 0)||(EYE_status==0)) {
                 LOG("[Press_Task] 收到退出通知，准备释放资源并退出...\n");
+                currentState = STATE_OFF;
                 // 2. 如果持有互斥锁，释放它
                 // 3. 执行必要清理后退出
-                PressHandle = NULL;  // 避免再次访问无效句柄
-                vTaskDelete(NULL); // 任务优雅退出
+                break;  // 跳出 inner while，回到外层 for 循环重新启动
             }
             PressureControl();
             osDelay(50);
         }
-
+        vTaskSuspend(NULL);  // 自己先挂起
     }
     /* USER CODE END Press_Task */
 }
@@ -127,6 +134,7 @@ uint16_t Voltage;
         bq25895_reinitialize_if_vbus_inserted();//充电器插入检测
         UpdateChargeState_bq25895();
         battery_status_update_bq27441();
+        BQ27441_PrintRaTable();
         UpdateState(emergency_stop, charging, low_battery, fully_charged, working);
         UpdateLightState(ChargeState);
         STATE_POWER_5V_Update();
@@ -134,23 +142,14 @@ uint16_t Voltage;
     }
 }
 
-
 void Motor_go_home_task(void *argument) {
     vTaskDelay(100);//TMC5130_Init();不在同一个线程，需要等待tmc5130复位
     for (;;) {
         printf("motor go home\n");
-        // 1. 检查退出通知
-        if (ulTaskNotifyTake(pdTRUE, 0) > 0) {
-            LOG("[Motor_go_home_task] 收到退出通知，准备释放资源并退出...\n");
-            // 2. 如果持有互斥锁，释放它
-            // 3. 执行必要清理后退出
-            vTaskDelete(NULL); // 任务优雅退出
-        }
-
         ADS1220_StopConversion();
         MotorChecking();
-        motor_homeHandle = NULL;  // 在删除前或后清空句柄
-        vTaskDelete(NULL);
+        motor_homeHandle=NULL;
+        vTaskDelete(NULL);  // 自己先挂起
 
     }
 }
@@ -160,29 +159,52 @@ void Device_Check_Task(void *pvParameters) {
     Device_Init();
 
     for (;;) {
-        DeviceStateMachine_Update();
-        osDelay(100);
+         //Test_EYE_AT24CXX_ReadWrite_FullCycle();
+         DeviceStateMachine_Update();
+//        EYE_status=1.0;
+//        EYE_checkout(EYE_status);
+        osDelay(50);
+        const UBaseType_t maxTasks = 10;  // 根据实际任务数量修改
+        TaskStatus_t taskStatusArray[maxTasks];
+        UBaseType_t taskCount;
+        uint32_t totalRunTime;
+
+//        // 获取所有任务信息
+//        taskCount = uxTaskGetSystemState(taskStatusArray, maxTasks, &totalRunTime);
+//
+//        LOG("任务名        句柄       状态 优先级 栈余量 栈大小\r\n");
+//
+//        for (UBaseType_t i = 0; i < taskCount; i++) {
+//            TaskStatus_t *ts = &taskStatusArray[i];
+//            LOG("%-12s %p    %lu    %lu    %lu    %lu\r\n",
+//                   ts->pcTaskName,
+//                   ts->xHandle,
+//                   (unsigned long)ts->eCurrentState,
+//                   (unsigned long)ts->uxCurrentPriority,
+//                   (unsigned long)ts->usStackHighWaterMark,
+//                   (unsigned long)ts->usStackHighWaterMark * sizeof(StackType_t));  // 栈剩余字节数
+//        }
     }
 }
 
 
 
 extern I2C_HandleTypeDef hi2c2;
+
 void I2C2_RecoveryTask(void *param) {
     for (;;) {
         // 一直等待通知信号（错误发生）
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        close_mianAPP();
-        LOG("[恢复任务] I2C2 错误发生，开始重建资源...\n");
-        // 3. 重建 I2C 外设
-        __HAL_RCC_I2C2_CLK_DISABLE();
-        __HAL_RCC_I2C2_CLK_ENABLE();
-        HAL_I2C_DeInit(&hi2c2);
-        HAL_I2C_Init(&hi2c2);
-        // 4. 可选：重建 I2C2 的 DMA（如果你用了 HAL_DMA_Init）
-        // HAL_DMA_DeInit(&hdma_i2c2_rx); // 可选
-        // HAL_DMA_Init(&hdma_i2c2_rx);   // 可选
-        LOG("[恢复任务] I2C2 资源重建完成！\n");
+//        LOG("[恢复任务] I2C2 错误发生，开始重建资源...\n");
+//        // 3. 重建 I2C 外设
+//        __HAL_RCC_I2C2_CLK_DISABLE();
+//        __HAL_RCC_I2C2_CLK_ENABLE();
+//        HAL_I2C_DeInit(&hi2c2);
+//        HAL_I2C_Init(&hi2c2);
+//        // 4. 可选：重建 I2C2 的 DMA（如果你用了 HAL_DMA_Init）
+//        // HAL_DMA_DeInit(&hdma_i2c2_rx); // 可选
+//        // HAL_DMA_Init(&hdma_i2c2_rx);   // 可选
+//        LOG("[恢复任务] I2C2 资源重建完成！\n");
     }
 }
 void PowerOnDelayTask(void *pvParameters)
@@ -254,7 +276,10 @@ void Main(void) {
 
     AT24CXX_Init();
    // BQ27441_Init();
-    main_app();
+    //main_app();
+    BQ27441_DEMO();
+    osDelay(1000);
+    BQ27441_VerifyConfig();
     BQ25895_Init();
     PWM_WS2812B_Init();
     ADS1220_Init(); // 初始化ADS1220
@@ -263,13 +288,14 @@ void Main(void) {
     TMP112_Init();
 
 
-    xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 6, &UART_RECEPTHandle);
-    xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 4, &Button_StateHandle);
+    xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 10, &UART_RECEPTHandle);
+    xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 9, &Button_StateHandle);
     xTaskCreate(APP_task, "APP", 256, NULL, 3, &APPHandle);
-    xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle);
-    xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 2, &deviceCheckHandle);
-    vTaskSuspend(deviceCheckHandle);
-    xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 128, NULL, 2, &i2c2_recovery_task_handle);
+    xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
+    if(xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 7, &deviceCheckHandle)==pdPASS){vTaskSuspend(deviceCheckHandle);} ;
+    if(xTaskCreate(Press_Task, "Press", 256, NULL, 3, &PressHandle)==pdPASS){vTaskSuspend(PressHandle);};
+    if(xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle)==pdPASS){vTaskSuspend(HeatHandle);};
+    xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 128, NULL, 8, &i2c2_recovery_task_handle);
     //xTaskCreate(PowerOnDelayTask, "PowerOnDelay", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
     //xTaskCreate(PowerReboot_Task, "PowerReboot", 128, NULL,  8, pwrTaskHandle);
 

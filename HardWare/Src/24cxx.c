@@ -231,65 +231,125 @@ void Heating_film_Check(void) {
   }
 }
 extern char *i2c2_mutex_owner; // 当前持有锁的函数/任务名
-uint16_t EYE_AT24CXX_Read(uint16_t startAddr) {
-    uint8_t buffer[2];
+//uint16_t EYE_AT24CXX_Read(uint16_t startAddr) {
+//    uint8_t buffer[2];
+//    HAL_StatusTypeDef status;
+//
+//    // 1. 获取 I2C2 的互斥锁，最长等待 100ms
+//    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+//        LOG("EYE_AT24CXX_Read：获取 I2C2 互斥锁失败！\n");
+//        return 0xFFFF; // 错误返回
+//    }
+//    // 2. 启动 I2C2 的 DMA 读操作
+//    status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, startAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2);
+//    if (status != HAL_OK) {
+//        LOG("EYE_AT24CXX_Read：DMA 启动失败，状态码：%d\n", status);
+//        xSemaphoreGive(i2c2_mutex);
+//        return 0xFFFF;
+//    }
+//    // 3. 等待 DMA 读取完成（回调中释放 xI2C2CompleteSem）
+//    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+//        LOG("EYE_AT24CXX_Read：DMA 读取超时！\n");
+//        xSemaphoreGive(i2c2_mutex);
+//        return 0xFFFF;
+//    }
+//    // 4. 释放互斥锁
+//    xSemaphoreGive(i2c2_mutex);
+//    // 5. 合成并返回结果
+//    return (uint16_t)((buffer[0] << 8) | buffer[1]);
+//}
+//HAL_StatusTypeDef EYE_AT24CXX_Write(uint16_t WriteAddr, uint16_t value) {
+//    uint8_t buffer[2];
+//    HAL_StatusTypeDef status;
+//
+//    buffer[0] = (uint8_t)(value >> 8);
+//    buffer[1] = (uint8_t)(value & 0xFF);
+//
+//    // 1. 获取 I2C 互斥锁（永久等待）
+//    if (xSemaphoreTake(i2c2_mutex, 100) != pdTRUE) {
+//        LOG("获取 I2C2 互斥锁失败！\n");
+//        return HAL_ERROR;
+//    }
+//
+//    // 2. 清空旧的信号量状态，避免残留
+//    xSemaphoreTake(I2C2_DMA_Sem, 0);
+//    // 3. 尝试启动 DMA
+//    status = HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, WriteAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2);
+//    if (status != HAL_OK) {
+//        LOG("DMA 启动失败！设备可能已断开？状态码: %d\n", status);
+//        xSemaphoreGive(i2c2_mutex);
+//        return HAL_ERROR;
+//    }
+//    // 4. 等待 DMA 完成信号（100ms）
+//    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+//        LOG("EYE_AT24CXX_Write：DMA 写入超时！设备可能已拔出！\n");
+//        xSemaphoreGive(i2c2_mutex);
+//        return HAL_TIMEOUT;
+//    }
+//    // 5. 释放互斥锁
+//    xSemaphoreGive(i2c2_mutex);
+//    return HAL_OK;
+//}
+HAL_StatusTypeDef EYE_AT24CXX_WriteByte(uint16_t addr, uint8_t data)
+{
     HAL_StatusTypeDef status;
 
-    // 1. 获取 I2C2 的互斥锁，最长等待 100ms
-    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
-        LOG("EYE_AT24CXX_Read：获取 I2C2 互斥锁失败！\n");
-        return 0xFFFF; // 错误返回
-    }
-    // 2. 启动 I2C2 的 DMA 读操作
-    status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, startAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2);
-    if (status != HAL_OK) {
-        LOG("EYE_AT24CXX_Read：DMA 启动失败，状态码：%d\n", status);
-        xSemaphoreGive(i2c2_mutex);
-        return 0xFFFF;
-    }
-    // 3. 等待 DMA 读取完成（回调中释放 xI2C2CompleteSem）
-    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
-        LOG("EYE_AT24CXX_Read：DMA 读取超时！\n");
-        xSemaphoreGive(i2c2_mutex);
-        return 0xFFFF;
-    }
-    // 4. 释放互斥锁
-    xSemaphoreGive(i2c2_mutex);
-    // 5. 合成并返回结果
-    return (uint16_t)((buffer[0] << 8) | buffer[1]);
-}
-HAL_StatusTypeDef EYE_AT24CXX_Write(uint16_t WriteAddr, uint16_t value) {
-    uint8_t buffer[2];
-    HAL_StatusTypeDef status;
-
-    buffer[0] = (uint8_t)(value >> 8);
-    buffer[1] = (uint8_t)(value & 0xFF);
-
-    // 1. 获取 I2C 互斥锁（永久等待）
-    if (xSemaphoreTake(i2c2_mutex, 100) != pdTRUE) {
-        LOG("获取 I2C2 互斥锁失败！\n");
-        return HAL_ERROR;
-    }
-
-    // 2. 清空旧的信号量状态，避免残留
+    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) return HAL_ERROR;
     xSemaphoreTake(I2C2_DMA_Sem, 0);
-    // 3. 尝试启动 DMA
-    status = HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, WriteAddr, I2C_MEMADD_SIZE_8BIT, buffer, 2);
-    if (status != HAL_OK) {
-        LOG("DMA 启动失败！设备可能已断开？状态码: %d\n", status);
+
+    status = HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, addr, I2C_MEMADD_SIZE_8BIT, &data, 1);
+    if (status != HAL_OK || xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
         xSemaphoreGive(i2c2_mutex);
         return HAL_ERROR;
     }
-    // 4. 等待 DMA 完成信号（100ms）
-    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
-        LOG("EYE_AT24CXX_Write：DMA 写入超时！设备可能已拔出！\n");
-        xSemaphoreGive(i2c2_mutex);
-        return HAL_TIMEOUT;
-    }
-    // 5. 释放互斥锁
+
     xSemaphoreGive(i2c2_mutex);
+    osDelay(5); // 等待写入完成
     return HAL_OK;
 }
+
+uint8_t EYE_AT24CXX_ReadByte(uint16_t addr, HAL_StatusTypeDef* status_out)
+{
+    HAL_StatusTypeDef status;
+    uint8_t data = 0;
+
+    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+        *status_out = HAL_ERROR;
+        return 0x00;
+    }
+
+    xSemaphoreTake(I2C2_DMA_Sem, 0);
+    status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, addr, I2C_MEMADD_SIZE_8BIT, &data, 1);
+    if (status != HAL_OK || xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+        xSemaphoreGive(i2c2_mutex);
+        *status_out = HAL_ERROR;
+        return 0x00;
+    }
+
+    xSemaphoreGive(i2c2_mutex);
+    *status_out = HAL_OK;
+    return data;
+}
+HAL_StatusTypeDef EYE_AT24CXX_WriteUInt16(uint16_t addr, uint16_t value)
+{
+    HAL_StatusTypeDef status;
+
+    status = EYE_AT24CXX_WriteByte(addr, value >> 8); // 高字节
+    if (status != HAL_OK) return status;
+
+    status = EYE_AT24CXX_WriteByte(addr + 1, value & 0xFF); // 低字节
+    return status;
+}
+
+uint16_t EYE_AT24CXX_ReadUInt16(uint16_t addr)
+{
+    HAL_StatusTypeDef dummy;
+    uint8_t high = EYE_AT24CXX_ReadByte(addr, &dummy);
+    uint8_t low  = EYE_AT24CXX_ReadByte(addr + 1, &dummy);
+    return ((uint16_t)high << 8) | low;
+}
+
+
 
 
 prepare_data my_prepare_data;
