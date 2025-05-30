@@ -50,9 +50,10 @@ void Heat_Task(void *argument) {
                     xSemaphoreGive(i2c2_mutex);
                     LOG("[Heat] 已释放 i2c2_mutex\n");
                 }
+                ScreenWorkModeQuit();
+                ScreenTimerStop();
                 // 3. 执行必要清理后退出
                 break;  // 跳出 inner while，回到外层 for 循环重新启动
-
             }
 
             EyeTmp = TmpRaw2Ture();
@@ -90,6 +91,8 @@ void Press_Task(void *argument) {
             if ((ulTaskNotifyTake(pdTRUE, 0) > 0)||(EYE_status==0)) {
                 LOG("[Press_Task] 收到退出通知，准备释放资源并退出...\n");
                 currentState = STATE_OFF;
+                ScreenWorkModeQuit();
+                ScreenTimerStop();
                 // 2. 如果持有互斥锁，释放它
                 // 3. 执行必要清理后退出
                 break;  // 跳出 inner while，回到外层 for 循环重新启动
@@ -154,36 +157,36 @@ void Motor_go_home_task(void *argument) {
     }
 }
 // 检测任务函数
-void Device_Check_Task(void *pvParameters) {
+void Device_Check_Task(void *argument) {
     xTimerStart(eye_is_existHandle, 0);
     Device_Init();
-
     for (;;) {
+        HAL_GPIO_TogglePin(LED0_GPIO_Port,  LED0_Pin);
          //Test_EYE_AT24CXX_ReadWrite_FullCycle();
          DeviceStateMachine_Update();
 //        EYE_status=1.0;
 //        EYE_checkout(EYE_status);
-        osDelay(50);
+        osDelay(30);
         const UBaseType_t maxTasks = 10;  // 根据实际任务数量修改
         TaskStatus_t taskStatusArray[maxTasks];
         UBaseType_t taskCount;
         uint32_t totalRunTime;
 
 //        // 获取所有任务信息
-//        taskCount = uxTaskGetSystemState(taskStatusArray, maxTasks, &totalRunTime);
-//
-//        LOG("任务名        句柄       状态 优先级 栈余量 栈大小\r\n");
-//
-//        for (UBaseType_t i = 0; i < taskCount; i++) {
-//            TaskStatus_t *ts = &taskStatusArray[i];
-//            LOG("%-12s %p    %lu    %lu    %lu    %lu\r\n",
-//                   ts->pcTaskName,
-//                   ts->xHandle,
-//                   (unsigned long)ts->eCurrentState,
-//                   (unsigned long)ts->uxCurrentPriority,
-//                   (unsigned long)ts->usStackHighWaterMark,
-//                   (unsigned long)ts->usStackHighWaterMark * sizeof(StackType_t));  // 栈剩余字节数
-//        }
+        taskCount = uxTaskGetSystemState(taskStatusArray, maxTasks, &totalRunTime);
+
+        LOG("任务名        句柄       状态 优先级 栈余量 栈大小\r\n");
+
+        for (UBaseType_t i = 0; i < taskCount; i++) {
+            TaskStatus_t *ts = &taskStatusArray[i];
+            LOG("%-12s %p    %lu    %lu    %lu    %lu\r\n",
+                   ts->pcTaskName,
+                   ts->xHandle,
+                   (unsigned long)ts->eCurrentState,
+                   (unsigned long)ts->uxCurrentPriority,
+                   (unsigned long)ts->usStackHighWaterMark,
+                   (unsigned long)ts->usStackHighWaterMark * sizeof(StackType_t));  // 栈剩余字节数
+        }
     }
 }
 
@@ -191,23 +194,27 @@ void Device_Check_Task(void *pvParameters) {
 
 extern I2C_HandleTypeDef hi2c2;
 
-void I2C2_RecoveryTask(void *param) {
+void I2C2_RecoveryTask(void *argument) {
     for (;;) {
         // 一直等待通知信号（错误发生）
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-//        LOG("[恢复任务] I2C2 错误发生，开始重建资源...\n");
-//        // 3. 重建 I2C 外设
-//        __HAL_RCC_I2C2_CLK_DISABLE();
-//        __HAL_RCC_I2C2_CLK_ENABLE();
-//        HAL_I2C_DeInit(&hi2c2);
-//        HAL_I2C_Init(&hi2c2);
-//        // 4. 可选：重建 I2C2 的 DMA（如果你用了 HAL_DMA_Init）
-//        // HAL_DMA_DeInit(&hdma_i2c2_rx); // 可选
-//        // HAL_DMA_Init(&hdma_i2c2_rx);   // 可选
-//        LOG("[恢复任务] I2C2 资源重建完成！\n");
+        vTaskSuspend(deviceCheckHandle);
+        __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_STOPF);
+        LOG("[恢复任务] I2C2 错误发生，开始重建资源...\n");
+        // 3. 重建 I2C 外设
+        __HAL_RCC_I2C2_CLK_DISABLE();
+        __HAL_RCC_I2C2_CLK_ENABLE();
+        HAL_I2C_DeInit(&hi2c2);
+        HAL_I2C_Init(&hi2c2);
+        // 4. 可选：重建 I2C2 的 DMA（如果你用了 HAL_DMA_Init）
+        // HAL_DMA_DeInit(&hdma_i2c2_rx); // 可选
+        // HAL_DMA_Init(&hdma_i2c2_rx);   // 可选
+        LOG("[恢复任务] I2C2 资源重建完成！\n");
+        osDelay(10);
+        vTaskResume(deviceCheckHandle);
     }
 }
-void PowerOnDelayTask(void *pvParameters)
+void PowerOnDelayTask(void *argument)
 {
 //    AD24C01_Factory_formatted();//如果flash没有初始化，则初始化
 //    // 上电后延迟1秒
@@ -290,12 +297,12 @@ void Main(void) {
 
     xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 10, &UART_RECEPTHandle);
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 9, &Button_StateHandle);
-    xTaskCreate(APP_task, "APP", 256, NULL, 3, &APPHandle);
+    xTaskCreate(APP_task, "APP", 256, NULL, 11, &APPHandle);
     xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
     if(xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 7, &deviceCheckHandle)==pdPASS){vTaskSuspend(deviceCheckHandle);} ;
     if(xTaskCreate(Press_Task, "Press", 256, NULL, 3, &PressHandle)==pdPASS){vTaskSuspend(PressHandle);};
     if(xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle)==pdPASS){vTaskSuspend(HeatHandle);};
-    xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 128, NULL, 8, &i2c2_recovery_task_handle);
+    //xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 128, NULL, 8, &i2c2_recovery_task_handle);
     //xTaskCreate(PowerOnDelayTask, "PowerOnDelay", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
     //xTaskCreate(PowerReboot_Task, "PowerReboot", 128, NULL,  8, pwrTaskHandle);
 

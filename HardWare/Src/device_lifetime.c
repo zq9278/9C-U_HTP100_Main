@@ -168,15 +168,15 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
         LOG("错误：I2C互斥锁未初始化！\n");
         return HAL_ERROR;
     }
-    if (xSemaphoreTake(i2c2_mutex, 200) == pdTRUE) {
+    if (xSemaphoreTake(i2c2_mutex, 100) == pdTRUE) {
         for (uint8_t i = 0; i < retries; i++) {
-            result = HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr, 1, 200);
+            result = HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr, 1, 100);
             if (result == HAL_OK) {
                 xSemaphoreGive(i2c2_mutex);
                 i2c2_mutex_owner = NULL;
                 return HAL_OK;
             }
-            osDelay(10);
+            osDelay(3);
         }
         xSemaphoreGive(i2c2_mutex);
         return HAL_ERROR;
@@ -194,12 +194,12 @@ void DeviceStateMachine_Update(void) {
     switch (device_ctx.state) {
         case DEVICE_STATE_DISCONNECTED:
             if (online) {
-                LOG("Normal: 检测到设备接入\n");
+
                 device_ctx.connected = true;
 
                 uint16_t mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
                 LOG("Debug: EYE_MARK_MAP 读取值 = 0x%04X\n", mark);
-                osDelay(100);
+                osDelay(10);
                 device_ctx.started_usage = (mark != 0xFFFF);
                 LOG("Debug: started_usage = %d（0表示新设备，1表示已使用设备）\n", device_ctx.started_usage);
 
@@ -215,9 +215,9 @@ void DeviceStateMachine_Update(void) {
                     device_ctx.state = DEVICE_STATE_EXPIRED;
                     xTimerStop(eye_is_existHandle, 0);
                     EYE_status = 0;
-                    return;
+                    break;
                 }
-
+                LOG("Normal: 检测到设备接入\n");
                 // 若是新设备，进行 A/B 段校正写回
                 if (!device_ctx.started_usage) {
                     if (device_ctx.time_a_left == 0xFFFF || device_ctx.time_a_left > DEVICE_LIFETIME_A_DEFAULT) {
@@ -320,6 +320,11 @@ void DeviceStateMachine_Update(void) {
                 xTimerStop(eye_is_existHandle, 0);
                 EYE_status = 0;
             }
+            if (i2c2_recovery_task_handle != NULL) {
+                xTaskNotifyGive(i2c2_recovery_task_handle);
+            } else {
+                LOG("DEVICE_STATE_EXPIRED: IIC恢复任务-句柄未初始化！`\n");
+            }
             break;
 
 
@@ -330,4 +335,7 @@ void DeviceStateMachine_Update(void) {
 
     // 实时发送设备状态（0 或 1）
     EYE_checkout((float)EYE_status);
+    if (EYE_status==0.0f) {
+        currentState = STATE_OFF;
+    }
 }

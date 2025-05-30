@@ -182,7 +182,8 @@ int16_t  BQ27441_ReadAverageCurrent(void);
 void BQ27441_DEMO(void);
 void BQ27441_VerifyConfig(void);
 void BQ27441_PrintRaTable(void);
-
+void BQ27441_ApplyGoldenImage(void);
+bool BQ27441_EnableIT(void);
 #endif
 
 

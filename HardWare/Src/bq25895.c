@@ -133,7 +133,7 @@ float read_battery_voltage(uint8_t *BQ25895Reg) {
 uint8_t CHRG_STAT;
 ChargeState_t ChargeState = STATE_POWER_ON;
 uint8_t charging, working, fully_charged, low_battery, emergency_stop;
-
+static int charge_action_done = 0;
 void UpdateChargeState_bq25895(void) {
     BQ25895_MultiRead(BQ25895Reg);
 //  float battery=read_battery_voltage(BQ25895Reg);
@@ -148,9 +148,15 @@ void UpdateChargeState_bq25895(void) {
     switch (CHRG_STAT) {
         case 1: // Pre-charge
         case 2: // Fast Charging
-            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);//关闭屏幕
-            close_mianAPP();
-            vTaskSuspend(deviceCheckHandle);
+            if (!charge_action_done) {  // 只执行一次
+                HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET); // 关闭屏幕
+                close_mianAPP();
+                vTaskSuspend(deviceCheckHandle);
+                charge_action_done = 1;  // 标记已处理
+            }
+//            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);//关闭屏幕
+//            close_mianAPP();
+//            vTaskSuspend(deviceCheckHandle);
             if (fully_charged == 0) {// 即将充满时刻，会在2和3状态来回切换
                 charging = 1;
                 fully_charged = 0;
@@ -167,12 +173,14 @@ void UpdateChargeState_bq25895(void) {
             fully_charged = 1;
             charging = 0;
             working = 0;
+            charge_action_done = 0; // 状态切换，允许下次再执行一次
             break;
         case 0: // Not Charging
             HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//开启屏幕
             working = 1;
             charging = 0;
             fully_charged = 0;
+            charge_action_done = 0; // 状态切换，允许下次再执行一次
             break;
     }
 }

@@ -294,11 +294,11 @@ HAL_StatusTypeDef EYE_AT24CXX_WriteByte(uint16_t addr, uint8_t data)
 {
     HAL_StatusTypeDef status;
 
-    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) return HAL_ERROR;
+    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) != pdTRUE) return HAL_ERROR;
     xSemaphoreTake(I2C2_DMA_Sem, 0);
 
     status = HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, addr, I2C_MEMADD_SIZE_8BIT, &data, 1);
-    if (status != HAL_OK || xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+    if (status != HAL_OK || xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(200)) != pdTRUE) {
         xSemaphoreGive(i2c2_mutex);
         return HAL_ERROR;
     }
@@ -308,27 +308,59 @@ HAL_StatusTypeDef EYE_AT24CXX_WriteByte(uint16_t addr, uint8_t data)
     return HAL_OK;
 }
 
+//uint8_t EYE_AT24CXX_ReadByte(uint16_t addr, HAL_StatusTypeDef* status_out)
+//{
+//    HAL_StatusTypeDef status;
+//    uint8_t data = 0;
+//
+//    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+//        *status_out = HAL_ERROR;
+//        return 0x00;
+//    }
+//
+//    xSemaphoreTake(I2C2_DMA_Sem, 0);
+//    status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, addr, I2C_MEMADD_SIZE_8BIT, &data, 1);
+//    if (status != HAL_OK || xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+//        xSemaphoreGive(i2c2_mutex);
+//        *status_out = HAL_ERROR;
+//        return 0x00;
+//    }
+//
+//    xSemaphoreGive(i2c2_mutex);
+//    *status_out = HAL_OK;
+//    return data;
+//}
 uint8_t EYE_AT24CXX_ReadByte(uint16_t addr, HAL_StatusTypeDef* status_out)
 {
     HAL_StatusTypeDef status;
     uint8_t data = 0;
+    int retry = 1; // 重试次数
 
-    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
-        *status_out = HAL_ERROR;
-        return 0x00;
+    for (int i = 0; i < retry; ++i) {
+        if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+            status = HAL_ERROR;
+            LOG("[EYE_AT24CXX_ReadByte] 第%d次重试: 获取i2c2_mutex失败\n", i+1);
+        } else {
+            xSemaphoreTake(I2C2_DMA_Sem, 0);
+            status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, addr, I2C_MEMADD_SIZE_8BIT, &data, 1);
+            if (status != HAL_OK) {
+                LOG("[EYE_AT24CXX_ReadByte] 第%d次重试: HAL_I2C_Mem_Read_DMA失败, status=%d\n", i+1, status);
+            }
+            if (status == HAL_OK && xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) == pdTRUE) {
+                xSemaphoreGive(i2c2_mutex);
+                *status_out = HAL_OK;
+                return data;
+            } else {
+                LOG("[EYE_AT24CXX_ReadByte] 第%d次重试: DMA信号量超时或I2C错误\n", i+1);
+            }
+            xSemaphoreGive(i2c2_mutex);
+        }
+        // 失败后延时再试
+        osDelay(5);
     }
-
-    xSemaphoreTake(I2C2_DMA_Sem, 0);
-    status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, addr, I2C_MEMADD_SIZE_8BIT, &data, 1);
-    if (status != HAL_OK || xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
-        xSemaphoreGive(i2c2_mutex);
-        *status_out = HAL_ERROR;
-        return 0x00;
-    }
-
-    xSemaphoreGive(i2c2_mutex);
-    *status_out = HAL_OK;
-    return data;
+    LOG("[EYE_AT24CXX_ReadByte] 所有重试失败, addr=0x%X\n", addr);
+    *status_out = HAL_ERROR;
+    return 0x00;
 }
 HAL_StatusTypeDef EYE_AT24CXX_WriteUInt16(uint16_t addr, uint16_t value)
 {

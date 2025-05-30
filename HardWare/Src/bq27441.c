@@ -577,7 +577,7 @@ void BatteryMonitor_Run(void)
 
 void battery_status_update_bq27441(void) {
   BQ27441_MultiRead_DMA(&BQ27441);
-   // LOG("BQ27441: Voltage=%d mV, Temperature=%d C, AvgCurrent=%d mA, SOC=%d%%, FullChargeCapacity=%d mAh\n", BQ27441.Voltage, BQ27441.Temperature, BQ27441.AvgCurrent, BQ27441.SOC, BQ27441.FullChargeCapacity);
+    //LOG("BQ27441: Voltage=%d mV, Temperature=%d C, AvgCurrent=%d mA, SOC=%d%%, FullChargeCapacity=%d mAh\n", BQ27441.Voltage, BQ27441.Temperature, BQ27441.AvgCurrent, BQ27441.SOC, BQ27441.FullChargeCapacity);
   //low_battery = (BQ27441.SOC < 30) && (BQ27441.SOC != 0);
   low_battery = (BQ27441.SOC < 30) ;
     fully_charged=(BQ27441.SOC==100);
@@ -1610,6 +1610,8 @@ void BQ27441_DEMO(void) {
     }
     LOG(" 已进入配置模式\n");
 
+    BQ27441_ApplyGoldenImage();
+
     uint8_t capacity[2] = { 3300 & 0xFF, 3300 >> 8 };
     if (!BQ27441_WriteExtended(BQ27441_ID_STATE, 10, capacity, 2)) {
         LOG(" 写入 DesignCapacity 失败\n");
@@ -1631,7 +1633,7 @@ void BQ27441_DEMO(void) {
         LOG(" 写入 TerminateVoltage 失败\n");
         return;
     }
-    LOG(" 写入 TerminateVoltage: 3000 mV\n");
+    LOG(" 写入 TerminateVoltage: 3200 mV\n");
 
     uint16_t taper_rate = 330;
     uint8_t taper_buf[2] = { taper_rate & 0xFF, taper_rate >> 8 };
@@ -1645,6 +1647,7 @@ void BQ27441_DEMO(void) {
         LOG(" 退出配置模式失败\n");
         return;
     }
+    BQ27441_EnableIT();
     LOG(" BQ27441 电池配置完成！\n");
 }
 
@@ -1667,10 +1670,13 @@ void BQ27441_VerifyConfig(void) {
 
 void BQ27441_ApplyGoldenImage(void) {
     const uint8_t qmax[2] = { 0xE4, 0x0C }; // Qmax = 3300
-    const uint8_t ra_table[15] = {
-            0x66, 0x66, 0x63, 0x6B, 0x48,
-            0x3B, 0x3E, 0x3F, 0x35, 0x2F,
-            0x3C, 0x46, 0x8C, 0x71, 0x24
+//    const uint8_t ra_table[15] = {
+//            0x66, 0x66, 0x63, 0x6b, 0x48, 0x3b, 0x3e, 0x3f, 0x35, 0x2f, 0x3c, 0x46, 0x8c, 0x171, 0x24c
+//    };
+    const uint8_t ra_table[30] = {
+            0x66,0x00, 0x66,0x00, 0x63,0x00, 0x6b,0x00, 0x48,0x00,
+            0x3b,0x00, 0x3e,0x00, 0x3f,0x00, 0x35,0x00, 0x2f,0x00,
+            0x3c,0x00, 0x46,0x00, 0x8c,0x00, 0x71,0x01, 0x4c,0x02
     };
 
     LOG(" 写入 Golden Qmax 和 Ra 表\n");
@@ -1688,4 +1694,8 @@ void BQ27441_PrintRaTable(void) {
         //LOG("0x%02X,",ra);
     }
     //LOG("当前 Qmax=%d mAh\n", BQ27441_ReadQmax());
+}
+bool BQ27441_EnableIT(void) {
+    uint8_t enableIT[2] = { 0x21, 0x00 };  // Enable IT subcmd
+    return i2c_write(0x00, enableIT, 2) == HAL_OK;
 }

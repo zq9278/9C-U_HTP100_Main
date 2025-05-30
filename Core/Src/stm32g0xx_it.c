@@ -310,6 +310,7 @@ void I2C1_IRQHandler(void)
 {
   /* USER CODE BEGIN I2C1_IRQn 0 */
 
+
   /* USER CODE END I2C1_IRQn 0 */
   if (hi2c1.Instance->ISR & (I2C_FLAG_BERR | I2C_FLAG_ARLO | I2C_FLAG_OVR))
   {
@@ -514,14 +515,14 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 //        HAL_I2C_Init(&hi2c2);
 //    }
     if (hi2c->Instance == hi2c2.Instance) {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        if (i2c2_recovery_task_handle != NULL) {
-            vTaskNotifyGiveFromISR(i2c2_recovery_task_handle, &xHigherPriorityTaskWoken);
-            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        } else {
-            // ������Ϣ��������ϣ�
-            LOG("���󣺻ָ�������δ��ʼ����\n");
-        }
+//        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+//        if (i2c2_recovery_task_handle != NULL) {
+//            vTaskNotifyGiveFromISR(i2c2_recovery_task_handle, &xHigherPriorityTaskWoken);
+//            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+//        } else {
+//            // ������Ϣ��������ϣ�
+//            LOG("���󣺻ָ�������δ��ʼ����\n");
+//        }
     }
 
 }
