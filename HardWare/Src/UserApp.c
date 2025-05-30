@@ -302,7 +302,7 @@ void Main(void) {
     if(xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 7, &deviceCheckHandle)==pdPASS){vTaskSuspend(deviceCheckHandle);} ;
     if(xTaskCreate(Press_Task, "Press", 256, NULL, 3, &PressHandle)==pdPASS){vTaskSuspend(PressHandle);};
     if(xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle)==pdPASS){vTaskSuspend(HeatHandle);};
-    //xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 128, NULL, 8, &i2c2_recovery_task_handle);
+    xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 128, NULL, 8, &i2c2_recovery_task_handle);
     //xTaskCreate(PowerOnDelayTask, "PowerOnDelay", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
     //xTaskCreate(PowerReboot_Task, "PowerReboot", 128, NULL,  8, pwrTaskHandle);
 
