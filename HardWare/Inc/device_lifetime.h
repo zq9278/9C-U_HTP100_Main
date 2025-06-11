@@ -7,8 +7,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "main.h"
-#define EYE_MARK_MAP 0x0E
-#define DEVICE_LIFETIME_A_DEFAULT  600000000
+#define EYE_MARK_MAP 0x01
+#define DEVICE_LIFETIME_A_DEFAULT  180
 #define DEVICE_LIFETIME_B_DEFAULT  360
 //#define DEVICE_LIFETIME_A_DEFAULT  18000
 //#define DEVICE_LIFETIME_B_DEFAULT  36000

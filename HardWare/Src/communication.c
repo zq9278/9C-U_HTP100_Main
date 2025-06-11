@@ -11,6 +11,22 @@ uint8_t heat_finish = 0, press_finish = 0, auto_finish = 0;
 extern prepare_data my_prepare_data;
 extern uint8_t soft_button;
 uint16_t save_prepare, set_prepare;
+uint8_t factory_mode = 0;
+/* <<<<<<<<<<<<<<  ? Windsurf Command ? >>>>>>>>>>>>>>>> */
+/**
+ * @brief Handles UART1 commands by processing the received message and executing corresponding actions.
+ *
+ * This function processes incoming messages received via UART1, determines the command type from the message,
+ * and performs actions based on the command type. It handles various command types such as starting/stopping
+ * heating, pressing, and auto modes, updating task statuses, and managing emergency stops. The function also
+ * communicates with other components through data queues and semaphores.
+ *
+ * @param msg Pointer to the received message structure of type recept_data_p.
+ *
+ * Note: The function checks for a NULL message pointer and returns early with an error message if the pointer is NULL.
+ */
+
+/* <<<<<<<<<<  c3e7c9e2-cbba-4bb0-8638-581c28d7cc08  >>>>>>>>>>> */
 void UART1_CMDHandler(recept_data_p msg) {
    // LOG("into CMD handle\n");
     if (msg == NULL) {
@@ -22,8 +38,10 @@ void UART1_CMDHandler(recept_data_p msg) {
     // 提取命令类型
     uint16_t cmd_type = ((msg->cmd_type_high) << 8) | (msg->cmd_type_low);
     float data = (float) msg->data;
+    LOG("cmd_type = 0x%04X\n", cmd_type);
     // 根据命令类型切换状态
     switch (cmd_type) {
+
         case 0x8900:
             if (currentState == STATE_HEAT) {
                 heat_finish = 1;
@@ -176,14 +194,22 @@ void UART1_CMDHandler(recept_data_p msg) {
             MotorPID.setpoint = data;
             break;
         case 0x1055:
+            factory_mode = 1;
             currentState = STATE_PRE_AUTO; // 切换到预自动模式
             emergency_stop = 0;
             HeatPWM(1);                    // 启动加热PWM
-            xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle);
-            if (motor_homeHandle != NULL) {
-                vTaskDelete(motor_homeHandle);
-                motor_homeHandle = NULL;  // 避免再次访问无效句柄
-            }//防止操作太快电机没有归位
+            if (HeatHandle != NULL) {
+                vTaskResume(HeatHandle);
+            }
+            //xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle);
+            if (motor_homeHandle == NULL) {
+                if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle)== pdPASS) {
+                } else {
+                    LOG("Failed to create motor_homeHandle task.\r\n");
+                }
+            } else {
+                LOG("motor_homeHandle task already exists.\r\n");
+            }
             break;
               prepare_data my_prepare_data_times;
         case 0x1056:
@@ -220,8 +246,10 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
     my_prepare_data.cmd_type_high = 0x00;
     my_prepare_data.end_high = 0xFF;
     my_prepare_data.end_low = 0xFF;
+    LOG("cmd_type_prepare = 0x%04X\n", cmd_type);
     // 根据命令类型切换状态
     switch (cmd_type) {
+
         case 0x1042://设置预设值具体数值时需要先读取,小箭头
             save_prepare = data;
             switch (save_prepare) {
@@ -366,7 +394,7 @@ void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
     // 解析命令
     switch (cmd_type) {
         case 0x5aa5: { // 命令类型 0x9000 - 处理 UART1 数据
-            LOG("into 5A A5\n");
+
             UART1_CMDHandler((recept_data *)received_data->buffer);
 
             break;
@@ -501,10 +529,13 @@ void ScreenTimerStart(void) {
 //    taskENTER_CRITICAL();
 //    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
 //    taskEXIT_CRITICAL();
+if(factory_mode !=1){
     USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 }
+    //USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+}
 void ScreenTimerStop(void) {
-
+    factory_mode =0;
     static recept_data pData;
     pData.cmd_head_high = 0x5A;
     pData.cmd_head_low = 0xA5;

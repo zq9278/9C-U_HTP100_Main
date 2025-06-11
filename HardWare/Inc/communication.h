@@ -16,6 +16,7 @@
 #define FRAME_HEADER_BYTE2   0xA5 // 帧头第二个字节
 #define FRAME_TAIL_BYTE1     0xFF // 帧尾第一个字节
 #define FRAME_TAIL_BYTE2     0xFF // 帧尾第二个字节
+extern uint8_t factory_mode;
 typedef struct __attribute__((packed))
 {
     uint8_t buffer[UART_REC_LEN]; // the lengh of received array

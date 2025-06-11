@@ -164,32 +164,43 @@ bool  Device_StartUsage(void) {
 // I2C 检测设备是否在线（带互斥锁）
 HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
     HAL_StatusTypeDef result;
+
+    // 判断互斥锁是否已初始化，防止空指针操作
     if (i2c2_mutex == NULL) {
         LOG("错误：I2C互斥锁未初始化！\n");
         return HAL_ERROR;
     }
+
+    // 尝试获取 I2C2 互斥锁，超时时间100个tick
     if (xSemaphoreTake(i2c2_mutex, 100) == pdTRUE) {
+        // 获取到互斥锁，进行设备检查
         for (uint8_t i = 0; i < retries; i++) {
+            // 检查I2C设备是否准备好（即地址有响应）
             result = HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr, 1, 100);
             if (result == HAL_OK) {
+                // 检查通过，释放互斥锁并返回OK
                 xSemaphoreGive(i2c2_mutex);
-                i2c2_mutex_owner = NULL;
+                i2c2_mutex_owner = NULL;  // 可选：清除所有者标记
                 return HAL_OK;
             }
-            osDelay(3);
+            // 未找到设备，延时3ms后重试
+            osDelay(50);
         }
+        // 多次尝试后依旧失败，释放互斥锁并返回错误
         xSemaphoreGive(i2c2_mutex);
         return HAL_ERROR;
     } else {
+        // 获取互斥锁失败，直接返回错误
         LOG("I2C_CheckDevice：获取互斥锁失败！\n");
         return HAL_ERROR;
     }
 }
 
 
+
 // 主状态机轮询更新函数（高频调用）
 void DeviceStateMachine_Update(void) {
-    bool online = (I2C_CheckDevice(0x91, 2) == HAL_OK);
+    bool online = (I2C_CheckDevice(0x91, 5) == HAL_OK);
 
     switch (device_ctx.state) {
         case DEVICE_STATE_DISCONNECTED:
@@ -279,7 +290,10 @@ void DeviceStateMachine_Update(void) {
             }
 
             if (eye_existtime_1s && device_ctx.time_a_left > 0) {
-                device_ctx.time_a_left--;
+                if (factory_mode==0) {
+                    device_ctx.time_a_left--;
+                }
+
                 EYE_AT24CXX_WriteUInt16(0xA0, device_ctx.time_a_left);  // ? 写回 EEPROM，确保断电后仍保留
                 eye_existtime_1s = 0;
                 LOG("Countdown: A段寿命剩余：%d\n", device_ctx.time_a_left);
@@ -301,7 +315,10 @@ void DeviceStateMachine_Update(void) {
                 break;
             }
             if (eye_workingtime_1s && device_ctx.time_b_left > 0) {
-                device_ctx.time_b_left--;
+
+                if (factory_mode==0) {
+                    device_ctx.time_b_left--;
+                }
                 eye_workingtime_1s = 0;
                 LOG("Countdown: B段寿命剩余：%d\n", device_ctx.time_b_left);
             }
@@ -319,15 +336,13 @@ void DeviceStateMachine_Update(void) {
                 device_ctx.state = DEVICE_STATE_DISCONNECTED;
                 xTimerStop(eye_is_existHandle, 0);
                 EYE_status = 0;
-            }
-            if (i2c2_recovery_task_handle != NULL) {
-                xTaskNotifyGive(i2c2_recovery_task_handle);
-            } else {
-                LOG("DEVICE_STATE_EXPIRED: IIC恢复任务-句柄未初始化！`\n");
+                if (i2c2_recovery_task_handle != NULL) {
+                    xTaskNotifyGive(i2c2_recovery_task_handle);
+                } else {
+                    LOG("DEVICE_STATE_EXPIRED: IIC恢复任务-句柄未初始化！`\n");
+                }
             }
             break;
-
-
         default:
             LOG("Woring: 状态机未知状态：%d\n", device_ctx.state);
             break;

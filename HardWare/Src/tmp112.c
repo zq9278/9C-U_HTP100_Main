@@ -147,7 +147,16 @@ KalmanFilter kf;
 float previousEMA = 0.0;  // 之前的平滑值
 int16_t TmpData;
 float TmpRaw2Ture(void)
-{   TMP112_Read(0x00,EyeTmpRaw);
+{       HAL_StatusTypeDef status = TMP112_Read(0x00, EyeTmpRaw);
+    if (status != HAL_OK) {
+        LOG("温度读取失败，返回上一次的EMA或NAN");
+        // 可以选择：
+        // 1. 返回 NAN，代表无效
+        // return NAN;
+
+        // 2. 返回上次的 previousEMA，不更新
+        return previousEMA;
+    }
     TmpData=(EyeTmpRaw[0]<<8) | EyeTmpRaw[1];
     TmpData = TmpData >> 4;
     float tempature=TmpData*0.0625;

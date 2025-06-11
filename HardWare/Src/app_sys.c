@@ -16,9 +16,8 @@ void STATE_POWER_5V_Update(void) {
 void close_mianAPP(void){
     ScreenWorkModeQuit();
     ScreenTimerStop();
+
    taskENTER_CRITICAL();  // ✅进入临界区，禁止上下文切换
-
-
     currentState = STATE_OFF;
 //    HeatPWM(0); // 关闭加热PWM
     if (PressHandle != NULL && eTaskGetState(PressHandle) != eSuspended) {

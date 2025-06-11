@@ -507,22 +507,15 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
         HAL_I2C_DeInit(&hi2c1);// ���³�ʼ�� I2C ����
         HAL_I2C_Init(&hi2c1);
     }
-//    if (hi2c->Instance == hi2c2.Instance) {
-//        __HAL_RCC_I2C2_CLK_DISABLE();// �ر� I2C ʱ��
-//        //osDelay(10);// ������ʱ
-//        __HAL_RCC_I2C2_CLK_ENABLE(); // ����ʹ�� I2C ʱ��
-//        HAL_I2C_DeInit(&hi2c2);// ���³�ʼ�� I2C ����
-//        HAL_I2C_Init(&hi2c2);
-//    }
     if (hi2c->Instance == hi2c2.Instance) {
-//        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-//        if (i2c2_recovery_task_handle != NULL) {
-//            vTaskNotifyGiveFromISR(i2c2_recovery_task_handle, &xHigherPriorityTaskWoken);
-//            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-//        } else {
-//            // ������Ϣ��������ϣ�
-//            LOG("���󣺻ָ�������δ��ʼ����\n");
-//        }
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        if (i2c2_recovery_task_handle != NULL) {
+            vTaskNotifyGiveFromISR(i2c2_recovery_task_handle, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        } else {
+            LOG("DEVICE_STATE_EXPIRED: IIC恢复任务-句柄未初始化！`\n");
+
+        }
     }
 
 }

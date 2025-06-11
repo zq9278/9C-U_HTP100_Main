@@ -409,6 +409,7 @@ void prepare_data_set(void){
   my_prepare_data.value = auto_count;
   Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
   set_prepare = AT24CXX_ReadOrWriteZero(0xFC);
+  //set_prepare = 0;
   my_prepare_data.cmd_type_low = 0xA3;
   my_prepare_data.value = set_prepare;
   Eye_twitching_invalid_master(&my_prepare_data); // 将数据发送到队列
