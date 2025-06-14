@@ -220,6 +220,7 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
         ((last_vbus_status & 0x80) || (last_vbus_status == 0x16))) {
 
         LOG("充电器已拔出，清除初始化标记...\n");
+       // NVIC_SystemReset();
     }
 
     last_vbus_status = vbus_status;  // 更新状态

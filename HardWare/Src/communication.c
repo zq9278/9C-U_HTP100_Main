@@ -70,6 +70,8 @@ void UART1_CMDHandler(recept_data_p msg) {
             break;
             /* 屏幕加热开始 */
         case 0x1041:
+            if(EYE_status == 0)
+            {break;}
             currentState = STATE_PRE_HEAT; // 切换到预加热状态
             emergency_stop = 0;
             HeatPWM(1);                    // 启动加热PWM
@@ -98,6 +100,8 @@ void UART1_CMDHandler(recept_data_p msg) {
             break;
             /* 屏幕挤压开始 */
         case 0x1005:
+            if(EYE_status == 0)
+            {break;}
             currentState = STATE_PRE_PRESS; // 切换到预挤压状态
             emergency_stop = 0;
             // data=((data * 1.0 / 88.4) / 9.8)*1000;
@@ -130,6 +134,8 @@ void UART1_CMDHandler(recept_data_p msg) {
             break;
             /* 屏幕自动模式开始 */
         case 0x1037:
+            if(EYE_status == 0)
+            {break;}
             //printf("1\n");
             currentState = STATE_PRE_AUTO; // 切换到预自动模式
             emergency_stop = 0;

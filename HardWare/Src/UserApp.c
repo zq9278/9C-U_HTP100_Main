@@ -13,6 +13,7 @@ float Heat_PWM, EyeTmp;
 uint8_t flag_200ms;
 uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms, is_charging_flag;
 uart_data *frameData_uart;
+uint8_t i2c2_error_flag = 0;
 
 /* FreeRTOS Handles */
 TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle, i2c2_recovery_task_handle, pwrTaskHandle;
@@ -47,8 +48,12 @@ void Heat_Task(void *argument) {
             //if (ulTaskNotifyTake(pdTRUE, 0) > 0) {
 
             notify = ulTaskNotifyTake(pdTRUE, 0);
-            LOG("ulTaskNotifyTake return: %lu\n", notify);
+            //LOG("ulTaskNotifyTake return: %lu\n", notify);
             if (notify > 0) {
+                if(currentState!=STATE_PRE_HEAT&&currentState!=STATE_PRE_AUTO){
+                    ScreenWorkModeQuit();
+                    ScreenTimerStop();
+                }
                 currentState = STATE_OFF;
                 HeatPWM(0); // 关闭加热PWM
                 LOG("[Heat] 收到退出通知，准备释放资源并退出...\n");
@@ -57,27 +62,27 @@ void Heat_Task(void *argument) {
                     xSemaphoreGive(i2c2_mutex);
                     LOG("[Heat] 已释放 i2c2_mutex\n");
                 }
-                ScreenWorkModeQuit();
-                ScreenTimerStop();
+
                 // 3. 执行必要清理后退出
                 break;  // 跳出 inner while，回到外层 for 循环重新启动
             }
-            if (EYE_status == 1) {
+            if (i2c2_error_flag == 0) {
                 EyeTmp = TmpRaw2Ture();
-            }
-            if (tempature_flag_400ms) {
-                tempature_flag_400ms = 0;
-                if (EyeTmp != 0.0f) {
-                    ScreenUpdateTemperature(EyeTmp - temperature_compensation);
+                if (tempature_flag_400ms) {
+                    tempature_flag_400ms = 0;
+                    if (EyeTmp != 0.0f) {
+                        ScreenUpdateTemperature(EyeTmp - temperature_compensation);
+                    }
                 }
-            }
 //        HeatPID.integral_max = 40;
 //        if ((EyeTmp>=38)&&(EyeTmp<=41.5)){
 //            HeatPID.Ki=1;
 //            HeatPID.integral_max = 100;
 //        }
-            Heat_PWM = PID_Compute(&HeatPID, EyeTmp);
-            HeatPWMSet((uint8_t) Heat_PWM);
+                Heat_PWM = PID_Compute(&HeatPID, EyeTmp);
+                HeatPWMSet((uint8_t) Heat_PWM);
+            }
+
             vTaskDelay(pdMS_TO_TICKS(100));
 
         }
@@ -100,8 +105,10 @@ void Press_Task(void *argument) {
                 //if ((ulTaskNotifyTake(pdTRUE, 0) > 0)||(EYE_status==0)) {
                 LOG("[Press_Task] 收到退出通知，准备释放资源并退出...\n");
                 currentState = STATE_OFF;
-                ScreenWorkModeQuit();
-                ScreenTimerStop();
+                if(currentState!=STATE_PRE_HEAT&&currentState!=STATE_PRE_AUTO){
+                    ScreenWorkModeQuit();
+                    ScreenTimerStop();
+                }
                 // 2. 如果持有互斥锁，释放它
                 // 3. 执行必要清理后退出
                 break;  // 跳出 inner while，回到外层 for 循环重新启动
@@ -173,9 +180,9 @@ void Device_Check_Task(void *argument) {
     for (;;) {
         HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
         //Test_EYE_AT24CXX_ReadWrite_FullCycle();
-        DeviceStateMachine_Update();
-//        EYE_status=1.0;
-//        EYE_checkout(EYE_status);
+        //DeviceStateMachine_Update();
+        EYE_status=1.0;
+        EYE_checkout(EYE_status);
         osDelay(50);
 //        const UBaseType_t maxTasks = 10;  // 根据实际任务数量修改
 //        TaskStatus_t taskStatusArray[maxTasks];
@@ -208,7 +215,7 @@ void I2C2_RecoveryTask(void *argument) {
     for (;;) {
         // 一直等待通知信号（错误发生）
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        EYE_status = 0;
+        i2c2_error_flag = 1;
         //vTaskSuspend(deviceCheckHandle);
         //vTaskSuspend(HeatHandle);
         if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) == pdTRUE) {
@@ -230,7 +237,8 @@ void I2C2_RecoveryTask(void *argument) {
             // 可选：可以等待后重试，或直接continue
         }
         LOG("[恢复任务] I2C2 资源重建完成！\n");
-        //osDelay(10);
+        osDelay(50);
+        i2c2_error_flag = 0;
         //vTaskResume(deviceCheckHandle);
         //vTaskResume(HeatHandle);
     }
@@ -302,9 +310,9 @@ void Main(void) {
     UART_DMA_IDLE_RECEPT_QUEUEHandle = xQueueCreate(3, sizeof(uart_data *));
 
     AT24CXX_Init();
-    // BQ27441_Init();
-    main_app();
-    //BQ27441_DEMO();
+     //BQ27441_Init();
+    //main_app();
+    BQ27441_DEMO();
     osDelay(1000);
     BQ27441_VerifyConfig();
     BQ25895_Init();

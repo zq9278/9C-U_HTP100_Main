@@ -14,8 +14,10 @@ void STATE_POWER_5V_Update(void) {
 };
 }
 void close_mianAPP(void){
-    ScreenWorkModeQuit();
-    ScreenTimerStop();
+    if(currentState!=STATE_PRE_HEAT&&currentState!=STATE_PRE_AUTO){
+        ScreenWorkModeQuit();
+        ScreenTimerStop();
+    }
 
    taskENTER_CRITICAL();  // ✅进入临界区，禁止上下文切换
     currentState = STATE_OFF;

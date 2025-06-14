@@ -4,7 +4,7 @@
 #include "stm32g0xx_hal.h"
 #define CHG_CE(n)			(n?HAL_GPIO_WritePin(CHG_CE_GPIO_Port,CHG_CE_Pin,GPIO_PIN_SET):HAL_GPIO_WritePin(CHG_CE_GPIO_Port,CHG_CE_Pin,GPIO_PIN_RESET))
 #define BQ25895Address	0xd4
-#define I2C_TIMEOUT_MS 100  // 超时时间
+#define I2C_TIMEOUT_MS 200  // 超时时间
 typedef enum {
     STATE_POWER_ON,       // 开机：白色常亮
     STATE_WORKING,        // 工作：白色常亮
