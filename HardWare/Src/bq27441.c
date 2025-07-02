@@ -1,13 +1,13 @@
 
 #include "main.h"
-#define LOW_BATTERY_SOC 3300
-#define WORKING_BATTERY_SOC    3350  // 提醒用户电压
+#define LOW_BATTERY_SOC 3100
+#define WORKING_BATTERY_SOC    3150  // 提醒用户电压
 uint8_t BQ27441_TempData[2];
 BQ27441_typedef BQ27441;
 extern I2C_HandleTypeDef hi2c1;
 #define DESIGN_CAPACITY     3300   // mAh
 #define DESIGN_ENERGY      12210   // mWh
-#define TERMINATE_VOLTAGE  3200    // mV
+#define TERMINATE_VOLTAGE  3100    // mV
 #define TAPER_RATE         330     // 见BQ27441官方推荐，一般=设计容量/10。充满电的电流33mA
 // 推荐在.h文件或本文件顶部定义
 #define RT_TABLE_LEN 30
@@ -160,7 +160,8 @@ uint8_t BQ27441_ReadExtended(uint8_t classID, uint8_t offset) {
 uint16_t BQ27441_ReadQmax(void) {
     uint8_t lsb = BQ27441_ReadExtended(BQ27441_ID_STATE, 0);
     uint8_t msb = BQ27441_ReadExtended(BQ27441_ID_STATE, 1);
-    return (msb << 8) | lsb;
+    //return (msb << 8) | lsb;
+    return (lsb << 8) | msb;
 }
 bool BQ27441_HardwareReset(void) {
     uint8_t cmd[2] = { 0x41, 0x00 };
@@ -168,10 +169,10 @@ bool BQ27441_HardwareReset(void) {
 }
 void BQ27441_DEMO(void) {
     uint16_t flags = read_word(BQ27441_COMMAND_FLAGS);
-//    if ((flags & 0x20) == 0) {
-//        LOG("? 非首次上电，跳过配置（Flags=0x%04X）\n", flags);
-//        return;
-//    }
+    if ((flags & 0x20) == 0) {
+        LOG("? 非首次上电，跳过配置（Flags=0x%04X）\n", flags);
+        return;
+    }
     if (!BQ27441_Unseal()) {
         LOG(" 解封失败\n");
         return;
@@ -210,6 +211,7 @@ void BQ27441_DEMO(void) {
     do { flags1 = read_word(0x06); } while (flags1 & 0x10);
     // BQ27441_EnableIT();
     LOG(" BQ27441 电池配置完成！\n");
+    osDelay(10);
 }
 
 void BQ27441_VerifyConfig(void) {
@@ -485,7 +487,13 @@ void battery_status_update_bq27441(void) {
             BQ27441.percent,
             BQ27441.status
     );
-
+    //LOG( "%d mV\n",BQ27441.Voltage);
+//if(charging_flag==1) {
+//    if ((BQ27441.Voltage < 4200) || (BQ27441.AvgCurrent < 70)) {
+//        LOG("low voltage or current\n");
+//        BQ25895_Init();
+//    }
+//}
     //LOG("BQ27441: Voltage=%d mV, Temperature=%d C, AvgCurrent=%d mA, SOC=%d%%, FullChargeCapacity=%d mAh\n", BQ27441.Voltage, BQ27441.Temperature, BQ27441.AvgCurrent, BQ27441.SOC, BQ27441.FullChargeCapacity);
   //low_battery = (BQ27441.SOC < 30) && (BQ27441.SOC != 0);
   low_battery = (BQ27441.SOC < 30) ;

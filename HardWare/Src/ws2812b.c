@@ -94,22 +94,39 @@ uint8_t breathing_flag = 0; // 标志位，用于控制呼吸灯的开关
 uint32_t GRB_DATA;
  static uint8_t RGB_DATA = 0;
     static uint8_t LEDDir = 0;
+//void UpdateBreathingLight(void) {
+//    if (LEDDir == 0) {
+//      RGB_DATA += 1;
+//      if (RGB_DATA >= 100) {
+//        LEDDir = 1;
+//      }
+//    } else {
+//      RGB_DATA -= 2;
+//      if (RGB_DATA <= 10) {
+//        LEDDir = 0;
+//      }
+//    }
+// GRB_DATA= RGB_DATA * 0x010101; // 等价于 (RGB_DATA << 16) | (RGB_DATA << 8) | RGB_DATA
+//PWM_WS2812B_Write_24Bits(LED_NUM, GRB_DATA);
+// //
+//}
 void UpdateBreathingLight(void) {
     if (LEDDir == 0) {
-      RGB_DATA += 1;
-      if (RGB_DATA >= 100) {
-        LEDDir = 1;
-      }
+        RGB_DATA += 1;
+        if (RGB_DATA >= 100) LEDDir = 1;
     } else {
-      RGB_DATA -= 2;
-      if (RGB_DATA <= 10) {
-        LEDDir = 0;
-      }
+        RGB_DATA -= 1;
+        if (RGB_DATA <= 10)  LEDDir = 0;
     }
- GRB_DATA= RGB_DATA * 0x010101; // 等价于 (RGB_DATA << 16) | (RGB_DATA << 8) | RGB_DATA
-PWM_WS2812B_Write_24Bits(LED_NUM, GRB_DATA);
- //
+
+    // 可选：加个非线性映射增强呼吸感
+    uint8_t brightness = (RGB_DATA * RGB_DATA) / 100;
+
+    // 构造 GRB 数据
+    uint32_t GRB_DATA = (brightness << 16) | (brightness << 8) | brightness; // G,R,B
+    PWM_WS2812B_Write_24Bits(LED_NUM, GRB_DATA);
 }
+
 // 新增一个亮度缩放函数
 uint32_t ScaleColor(uint32_t color, float brightness)
 {
@@ -127,7 +144,11 @@ uint32_t ScaleColor(uint32_t color, float brightness)
 // 修改后的 UpdateLightState
 void UpdateLightState(ChargeState_t state)
 {
-     float brightness=0.1;
+     float brightness=0.5;
+    // ?? 非 CHARGING 状态，关闭呼吸灯定时器
+    if (state != STATE_CHARGING && xTimerIsTimerActive(breathTimer)) {
+        xTimerStop(breathTimer, 10);
+    }
     switch (state) {
         case STATE_POWER_ON:
         case STATE_WORKING:
@@ -147,8 +168,9 @@ void UpdateLightState(ChargeState_t state)
             break;
 
         case STATE_CHARGING:
-            UpdateBreathingLight(); // 这里是呼吸灯动画
-            PWM_WS2812B_Show(LED_NUM);
+//            UpdateBreathingLight(); // 这里是呼吸灯动画
+//            PWM_WS2812B_Show(LED_NUM);
+            xTimerStart(breathTimer, 10); // ? 启动呼吸动画,允许等待10ms
             break;
 
         case STATE_EMERGENCY_STOP:

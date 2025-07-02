@@ -13,7 +13,7 @@ typedef enum {
     STATE_CHARGED,        // 充满电：白色常亮
     STATE_EMERGENCY_STOP  // 急停：黄色常亮
 } ChargeState_t;
-
+extern uint8_t charging_flag;
 void BQ25895_Init(void);
 void BQ25895_Read(uint8_t ReadAddr,uint8_t* pBuffer);
 void BQ25895_MultiRead(uint8_t* pBuffer);
@@ -22,6 +22,7 @@ void UpdateChargeState_bq25895(void);
 HAL_StatusTypeDef BQ25895_Write_IT(uint8_t regAddr, uint8_t WriteData) ;
 void bq25895_reinitialize_if_vbus_inserted(void);
 HAL_StatusTypeDef BQ25895_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t size) ;
+void BQ25895_AutoRecover(void);
 
 		 
 #endif

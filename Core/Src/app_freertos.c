@@ -87,6 +87,7 @@ void MX_FREERTOS_Init(void) {
 void freertos_main_Task(void *argument)
 {
   /* USER CODE BEGIN freertos_main_Task */
+    //osDelay(1000);
     Main();
     vTaskDelete(freertos_mainHandle);
   /* USER CODE END freertos_main_Task */

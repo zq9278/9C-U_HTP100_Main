@@ -16,7 +16,7 @@ uart_data *frameData_uart;
 uint8_t i2c2_error_flag = 0;
 
 /* FreeRTOS Handles */
-TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle, i2c2_recovery_task_handle, pwrTaskHandle;
+TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle, i2c2_recovery_task_handle, pwrTaskHandle,bq25895_recovery_homeHandle;
 QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
 SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore, spi2RxDmaSemaphoreHandle, spi2TxDmaSemaphoreHandle;  // SPI2 DMA 完成信号量;  // 定义日志信号量;
 SemaphoreHandle_t xI2CMutex;       // I2C总线互斥量
@@ -145,12 +145,13 @@ void Button_State_Task(void *argument) {
 
 void APP_task(void *argument) {
     osDelay(1000);//the breath of frequency
+    BQ25895_Init();
     uint16_t Voltage;
 //main_app();
     for (;;) {
         //HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
-        osDelay(20);//the breath of frequency
-        bq25895_reinitialize_if_vbus_inserted();//充电器插入检测
+        osDelay(100);//the breath of frequency
+       // bq25895_reinitialize_if_vbus_inserted();//充电器插入检测
         UpdateChargeState_bq25895();
         battery_status_update_bq27441();
         BQ27441_PrintRaTable();
@@ -180,9 +181,9 @@ void Device_Check_Task(void *argument) {
     for (;;) {
         HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
         //Test_EYE_AT24CXX_ReadWrite_FullCycle();
-        //DeviceStateMachine_Update();
-        EYE_status=1.0;
-        EYE_checkout(EYE_status);
+        DeviceStateMachine_Update();
+//        EYE_status=1.0;
+//        EYE_checkout(EYE_status);
         osDelay(50);
 //        const UBaseType_t maxTasks = 10;  // 根据实际任务数量修改
 //        TaskStatus_t taskStatusArray[maxTasks];
@@ -243,7 +244,18 @@ void I2C2_RecoveryTask(void *argument) {
         //vTaskResume(HeatHandle);
     }
 }
+extern
+void bq25895_recovery_task(void *argument) {
+    for (;;) {
+        // 一直等待通知信号（错误发生）
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
+//        HAL_NVIC_DisableIRQ(EXTI4_15_IRQn);
+//        BQ25895_AutoRecover();
+//        osDelay(10);
+//        HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
+    }
+}
 void PowerOnDelayTask(void *argument) {
 //    AD24C01_Factory_formatted();//如果flash没有初始化，则初始化
 //    // 上电后延迟1秒
@@ -293,6 +305,12 @@ void Main(void) {
                                             ws2812_white_delay_callback);
     ws2812_yellow_delayHandle = xTimerCreate("ws2812_yellow_delay", pdMS_TO_TICKS(400), pdFALSE, NULL,
                                              ws2812_yellow_callback);
+    breathTimer = xTimerCreate("BreathTimer",
+                               pdMS_TO_TICKS(30),   // 每 30ms 调一次
+                               pdTRUE,              // 自动重装
+                               NULL,
+                               BreathingLightCallback);
+    //xTimerStart(breathTimer, 20); // ? 启动呼吸动画
     breath_delayHandle = xTimerCreate("breath_delay", pdMS_TO_TICKS(400), pdFALSE, NULL, breath_delay_Callback);
     motor_grab3sHandle = xTimerCreate("motor_grab3s", pdMS_TO_TICKS(3000), pdFALSE, NULL, motor_grab3s_Callback);
     motor_back_1sHandle = xTimerCreate("motor_back_1s", pdMS_TO_TICKS(1000), pdFALSE, NULL, motor_back_1sCallback);
@@ -310,12 +328,9 @@ void Main(void) {
     UART_DMA_IDLE_RECEPT_QUEUEHandle = xQueueCreate(3, sizeof(uart_data *));
 
     AT24CXX_Init();
-     //BQ27441_Init();
-    //main_app();
     BQ27441_DEMO();
-    osDelay(1000);
     BQ27441_VerifyConfig();
-    BQ25895_Init();
+
     PWM_WS2812B_Init();
     ADS1220_Init(); // 初始化ADS1220
     TMC5130_Init();
@@ -327,6 +342,7 @@ void Main(void) {
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 9, &Button_StateHandle);
     xTaskCreate(APP_task, "APP", 256, NULL, 6, &APPHandle);
     xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
+    xTaskCreate(bq25895_recovery_task, "bq25895_recovery", 128, NULL, 2, &bq25895_recovery_homeHandle);
     if (xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 7, &deviceCheckHandle) == pdPASS) {
         vTaskSuspend(deviceCheckHandle);
     };

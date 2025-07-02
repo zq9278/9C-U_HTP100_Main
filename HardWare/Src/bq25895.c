@@ -5,49 +5,17 @@ uint8_t BQ25895Reg[21];
 extern I2C_HandleTypeDef hi2c1;
 
 void BQ25895_Init(void) {
-    osDelay(10);
     CHG_CE(1);  // 关闭充电使能，准备配置
-
-//    // 0x00 - 输入电流限制设置为 3.25A，关闭 Watchdog
-//    BQ25895_Write(0x00, 0x3F);  // 3A限制 + Watchdog Timer disable
-//
-//    // 0x01 - 禁用 Boost 温度保护,输入电压偏移为 0
-//    BQ25895_Write(0x01, 0xE0);  //
-//
-//    // 0x02 - 关闭 DPDM 检测 + 启用 ADC1s一次，Boost 频率 1.5MHz，关闭输入电流优化算法，关闭 QC 快充握手，关闭 MaxCharge 握手
-//    BQ25895_Write(0x02, 0xC0);  // [7] EN_HIZ=1关闭输入使能时禁用 + EN_ADC=1开启ADC
-//
-//    // 0x04 - 设置充电电流为 2.048A
-//    BQ25895_Write(0x04, 0x20);  // Charge Current = 2048mA
-//
-//    // 0x05 - 设置终止电流为 64mA
-//    BQ25895_Write(0x05, 0xF1);
-//
-//    // 0x06 - 设置充电电压为 4.2V
-//    BQ25895_Write(0x06, 0x5C);  // Charge Voltage = 4.2V
-//
-//    // 0x07 - 禁用充电定时器
-//    BQ25895_Write(0x07, 0x89);  // DIS_TIMER=1
-//
-//    // 0x08 - 保持默认（温度范围控制）
-//
-//    // 0x09 - 不使用 JEITA、OTG、Boost等
-//    BQ25895_Write(0x09, 0x00);
-//    // 0x03 - 设置最小系统电压为 3.5V（VINDPM）
-//    BQ25895_Write(0x03, 0x1A);  // VINDPM = 3.5V
-
-
-
-
-
-    BQ25895_Write(0x02, 0xFC); // 开启ADC
-
-    BQ25895_Write(0x04, 0x20); // 设置充电电流2048mA
-    BQ25895_Write(0x05, 0x11); // 设置充电终止电流为64mA
-    BQ25895_Write(0x07, 0x8D); // 关闭充电定时??
-    BQ25895_Write(0x06, 0x5E);  // 充电电压 4.208V
-    BQ25895_Write(0x00, 0x3F); // 3.25A
-    BQ25895_Write(0x03, 0x1E); // OTG关闭，最小系统电压???置??3.5V
+    //BQ25895_Write(0x14, 0x80); // 写1到REG_RST位，触发软件复位
+    //osDelay(500);
+    //BQ25895_Write(0x02, 0x30); // 开启ADC
+    BQ25895_Write(0x04, 0x40); // 设置充电电流2048mA
+    BQ25895_Write(0x05, 0x10); // 设置充电终止电流为64mA
+    BQ25895_Write(0x07, 0x8D); // 关闭充电定时
+    BQ25895_Write(0x08, 0xe7); // 补偿导线电阻
+    BQ25895_Write(0x00, 0x3F); // 3.25A输入电流限制
+    //BQ25895_Write(0x03, 0x12); // OTG关闭，最小系统电压3.1V
+    osDelay(100);
     CHG_CE(0);  // 打开充电
 }
 
@@ -129,12 +97,66 @@ float read_battery_voltage(uint8_t *BQ25895Reg) {
     // 转换为电压 (mV)
     return vbat_raw * 20.0 / 1000;
 }
+void BQ25895_AutoRecover(void) {
+    BQ25895_MultiRead(BQ25895Reg);  // 一次读取0x00~0x14
+    BQ25895_MultiRead(BQ25895Reg);  // 一次读取0x00~0x14
+//
+    uint8_t reg0b = BQ25895Reg[0x0B];
+   // uint8_t chrg_stat = (reg0b >> 3) & 0x03;
+    uint8_t chrg_stat = (reg0b & 0x18) >> 3;
+
+    if (chrg_stat == 0x03) {
+        LOG(" 充电完成：BQ25895 检测到 Charge Termination Done\n");
+        return;
+    }
+
+    uint8_t reg0c ;
+    BQ25895_Read(0x0C,&reg0c);
+    osDelay(1);
+    BQ25895_Read(0x0C,&reg0c);
+    bool fault = false;
+
+    // 解析故障类型并输出日志
+    if (reg0c & (1 << 3)) {
+        LOG(" 电池故障：BAT_FAULT = 1（电池可能断开或VBAT过高）\n");
+        fault = true;
+    }
+
+    uint8_t chrg_fault = (reg0c >> 4) & 0x03;
+    if (chrg_fault != 0x00) {
+        switch (chrg_fault) {
+            case 0x01:
+                LOG("充电故障：输入电压异常（VBUS或VBAT问题）\n");
+                break;
+            case 0x02:
+                LOG(" 充电故障：过温保护\n");
+                break;
+            case 0x03:
+                LOG(" 充电故障：安全定时器超时\n");
+                break;
+        }
+        fault = true;
+    }
+
+    if (reg0c & (1 << 7)) {
+        LOG(" 看门狗超时：WATCHDOG_FAULT = 1（需要定期I2C通信或关闭看门狗）\n");
+        fault = true;
+    }
+
+    // 如果存在故障，尝试重启充电逻辑
+    if (1) {
+        BQ25895_Init();
+        LOG(" 充电已重新启用\n");
+    }
+}
+
 
 uint8_t CHRG_STAT;
 ChargeState_t ChargeState = STATE_POWER_ON;
 uint8_t charging, working, fully_charged, low_battery, emergency_stop;
 static int charge_action_done = 0;
 void UpdateChargeState_bq25895(void) {
+
     BQ25895_MultiRead(BQ25895Reg);
 //  float battery=read_battery_voltage(BQ25895Reg);
 //  vTaskDelay(100);
@@ -183,24 +205,21 @@ void UpdateChargeState_bq25895(void) {
             charge_action_done = 0; // 状态切换，允许下次再执行一次
             break;
     }
+    uint8_t PG_STAT = (BQ25895Reg[0x0B] >> 2) & 0x01;
+
+    if (PG_STAT) {
+        LOG(" PG_STAT = 1，VBUS 电源正常（Power Good）\n");
+//        if ((BQ27441.Voltage < 4170)&&( BQ27441.AvgCurrent<100)&&(fully_charged==0)) {//&&(0<BQ27441.AvgCurrent )
+//            LOG("low voltage or current\n");
+//            BQ25895_Init();
+//        }
+    } else {
+        LOG(" PG_STAT = 0，VBUS 输入异常或未连接\n");
+    }
+
 }
 
-//void bq25895_reinitialize_if_vbus_inserted(void) {
-//    if (is_charging_flag){
-//        is_charging_flag=0;
-//        static uint8_t last_vbus_status = 0x00;
-//        // 读取 VBUS 状态寄存器 0x0B
-//        uint8_t vbus_status ;
-//        BQ25895_Read(0x0B,&vbus_status);
-//        // 检测 VBUS 是否插入 (Bit7 = 1 表示插入)
-//        if (((vbus_status & 0x80) || (vbus_status == 0x16)) && !(last_vbus_status & 0x80)) {
-//            BQ25895_Init(); // 重新初始化
-//            LOG("充电器已插入，重新初始化 bq25895...\n");
-//
-//        }
-//        last_vbus_status = vbus_status;
-//    }
-//}
+uint8_t charging_flag = 0;
 void bq25895_reinitialize_if_vbus_inserted(void) {
     static uint8_t last_vbus_status = 0x00;  // 存储上一次的 VBUS 状态
     uint8_t vbus_status;
@@ -212,7 +231,8 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
         !((last_vbus_status & 0x80) || (last_vbus_status == 0x16))) {
         LOG("充电器已插入，重新初始化 bq25895...\n");
 
-        BQ25895_Init();
+//        BQ25895_Init();
+        charging_flag=1;
     }
 
     // 检测 VBUS 拔出 (仅当状态从插入 -> 拔出时执行)
@@ -220,41 +240,9 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
         ((last_vbus_status & 0x80) || (last_vbus_status == 0x16))) {
 
         LOG("充电器已拔出，清除初始化标记...\n");
+        charging_flag=0;
        // NVIC_SystemReset();
     }
 
     last_vbus_status = vbus_status;  // 更新状态
 }
-
-
-//    uint8_t reg00, reg0D;
-//    BQ25895_Read(0x00, &reg00);
-//    BQ25895_Read(0x0D, &reg0D);
-//    LOG("IINLIM (输入电流): 0x%02X, VINDPM (输入电压): 0x%02X\n", reg00, reg0D);
-//    uint8_t reg0B, reg0C;
-//    BQ25895_Read(0x0B, &reg0B);
-//    BQ25895_Read(0x0C, &reg0C);
-//    LOG("VBUS状态: 0x%02X, 充电状态: 0x%02X\n", reg0B, reg0C);
-//    uint8_t reg02, reg0E;
-//    BQ25895_Read(0x02, &reg02);
-//    BQ25895_Read(0x0E, &reg0E);
-//    LOG("温度调节: 0x%02X, 热保护状态: 0x%02X\n", reg02, reg0E);
-//    uint8_t reg03;
-//    BQ25895_Read(0x03, &reg03);
-//    LOG("充电控制: 0x%02X\n", reg03);
-//    uint8_t reg11;
-//    BQ25895_Read(0x11, &reg11);
-//    LOG("VBUS 电压: 0x%02X\n", reg11);
-//    uint8_t reg09, reg0Ba;
-//    BQ25895_Read(0x03, &reg09);
-//    BQ25895_Read(0x0B, &reg0Ba);
-//
-//    if (!(reg09 & 0x30)) {  // 如果充电被禁用
-//        LOG("充电被意外关闭，重新开启充电...\n");
-//        BQ25895_Write(0x03, 0x30);  // 重新启动充电
-//    }
-//
-//    if (!(reg0Ba & 0x80)) {  // 如果 VBUS 掉线
-//        LOG("VBUS 断开，等待重新插入...\n");
-//    }
-//}

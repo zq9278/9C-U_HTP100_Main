@@ -33,7 +33,7 @@ typedef struct {
     uint8_t percent;  // ÊÙÃü°Ù·Ö±È£¨0x20£©
     uint8_t status;   // ×´Ì¬Âë£¨0x21£©
 } BQ27441_typedef;
-
+extern BQ27441_typedef BQ27441;
 void I2C_Semaphore_Init(void);
 void battery_status_update_bq27441(void);
 void BATCheckDIS(void);

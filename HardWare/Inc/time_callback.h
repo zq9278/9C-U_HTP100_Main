@@ -4,7 +4,7 @@
 #ifndef TIME_CALLBACK_H
 #define TIME_CALLBACK_H
 #include "main.h"
-extern TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,serialTimeoutTimerHandle,IIC_EYETimeoutTimerHandle,eye_is_existHandle;
+extern TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,serialTimeoutTimerHandle,IIC_EYETimeoutTimerHandle,eye_is_existHandle,breathTimer;
 void ws2812_white_delay_callback(TimerHandle_t xTimer);
 void ws2812_yellow_callback(TimerHandle_t xTimer);
 void breath_delay_Callback(TimerHandle_t xTimer);
@@ -17,5 +17,5 @@ void SerialTimeout_Callback(TimerHandle_t xTimer);
 void IIC_EYETimeout_Callback(TimerHandle_t xTimer);
 extern uint8_t serialTimeoutFlag;
 void eye_is_exist_callback(TimerHandle_t xTimer);//—€∂‹ºÏ≤‚ ±º‰
-
+void BreathingLightCallback(TimerHandle_t xTimer);
 #endif //SLK_01_V1_0_TIME_CALLBACK_H

@@ -27,7 +27,7 @@ extern uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms,is_cha
 extern uart_data *frameData_uart;
 //extern IWDG_HandleTypeDef hiwdg;
 /* FreeRTOS ¾ä±ú */
-extern TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, AD24C01Handle,motor_homeHandle,deviceCheckHandle,i2c2_recovery_task_handle,pwrTaskHandle;
+extern TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, AD24C01Handle,motor_homeHandle,deviceCheckHandle,i2c2_recovery_task_handle,pwrTaskHandle,bq25895_recovery_homeHandle;
 extern QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
 extern SemaphoreHandle_t BUTTON_SEMAPHOREHandle,logSemaphore,usart2_dmatxSemaphore,spi2RxDmaSemaphoreHandle,spi2TxDmaSemaphoreHandle,xI2CMutex,xI2CCompleteSem,i2c2_mutex,I2C2_DMA_Sem;
 /* Task function prototypes */

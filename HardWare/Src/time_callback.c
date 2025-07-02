@@ -3,7 +3,7 @@
 //
 
 #include "time_callback.h"
-TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,serialTimeoutTimerHandle,IIC_EYETimeoutTimerHandle,eye_is_existHandle;
+TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,serialTimeoutTimerHandle,IIC_EYETimeoutTimerHandle,eye_is_existHandle,breathTimer;;
 void ws2812_white_delay_callback(TimerHandle_t xTimer) {
 
     Flag_400ms = 1;
@@ -59,4 +59,25 @@ void eye_is_exist_callback(TimerHandle_t xTimer) {//眼盾检测时间
     else if(EYE_working_Flag){//眼盾在工作，先读30的寿命，不够就加， 超过就发送眼盾失败数据
 
     }
+}
+
+static int16_t breath_val = 0;
+static int8_t breath_dir = 1;
+void BreathingLightCallback(TimerHandle_t xTimer)
+{
+    breath_val += breath_dir * 1;
+
+    if (breath_val >= 100) {
+        breath_val = 100;
+        breath_dir = -1;
+    } else if (breath_val <= 30) {
+        breath_val = 30;
+        breath_dir = 1;
+    }
+
+    uint8_t brightness = (breath_val * breath_val) / 100;
+
+    uint32_t GRB = (brightness << 16) | (brightness << 8) | brightness;
+    PWM_WS2812B_Write_24Bits(LED_NUM, GRB);
+    PWM_WS2812B_Show(LED_NUM);
 }

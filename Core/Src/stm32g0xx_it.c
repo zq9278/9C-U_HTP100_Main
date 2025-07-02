@@ -399,6 +399,16 @@ void USART2_IRQHandler(void)
          // �����Ҫ�л������ģ�����ô˺���
          portYIELD_FROM_ISR(xHigherPriorityTaskWoken);//�Ƿ������ж�isr����ִ�и������ȼ�������
      }
+     if (GPIO_Pin == CHG_INT_Pin) {
+         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+         if (bq25895_recovery_homeHandle != NULL) {
+             vTaskNotifyGiveFromISR(bq25895_recovery_homeHandle, &xHigherPriorityTaskWoken);
+             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+         } else {
+             LOG(" bq25895_recovery恢复任务-句柄未初始化！`\n");
+
+         }
+     }
  }
 
 //extern osTimerId_t butttonHandle;
@@ -417,7 +427,7 @@ extern uint8_t reset;
 void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin) {
 
   if (GPIO_Pin == PWR_SENSE_Pin) {
-      NVIC_SystemReset();
+     // NVIC_SystemReset();
 //    reset = 1;
 //      hiwdg.Init.Reload = 1;
 //      HAL_IWDG_Init(&hiwdg);
