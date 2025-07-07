@@ -6,13 +6,14 @@ extern I2C_HandleTypeDef hi2c1;
 
 void BQ25895_Init(void) {
     CHG_CE(1);  // 关闭充电使能，准备配置
-    //BQ25895_Write(0x14, 0x80); // 写1到REG_RST位，触发软件复位
-    //osDelay(500);
+//    BQ25895_Write(0x14, 0x80); // 写1到REG_RST位，触发软件复位
+//    osDelay(500);
     //BQ25895_Write(0x02, 0x30); // 开启ADC
     BQ25895_Write(0x04, 0x40); // 设置充电电流2048mA
     BQ25895_Write(0x05, 0x10); // 设置充电终止电流为64mA
     BQ25895_Write(0x07, 0x8D); // 关闭充电定时
-    BQ25895_Write(0x08, 0xe7); // 补偿导线电阻
+    //BQ25895_Write(0x08, 0xe7); // 补偿导线电阻
+    BQ25895_Write(0x08, 0xF3); // 补偿导线电阻
     BQ25895_Write(0x00, 0x3F); // 3.25A输入电流限制
     //BQ25895_Write(0x03, 0x12); // OTG关闭，最小系统电压3.1V
     osDelay(100);
@@ -231,7 +232,7 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
         !((last_vbus_status & 0x80) || (last_vbus_status == 0x16))) {
         LOG("充电器已插入，重新初始化 bq25895...\n");
 
-//        BQ25895_Init();
+        BQ25895_Init();
         charging_flag=1;
     }
 
@@ -241,7 +242,7 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
 
         LOG("充电器已拔出，清除初始化标记...\n");
         charging_flag=0;
-       // NVIC_SystemReset();
+        NVIC_SystemReset();
     }
 
     last_vbus_status = vbus_status;  // 更新状态

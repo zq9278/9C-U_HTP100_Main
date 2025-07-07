@@ -1,22 +1,29 @@
 
 #include "main.h"
-#define LOW_BATTERY_SOC 3100
+#define LOW_BATTERY_SOC 3150
 #define WORKING_BATTERY_SOC    3150  // 提醒用户电压
 uint8_t BQ27441_TempData[2];
 BQ27441_typedef BQ27441;
 extern I2C_HandleTypeDef hi2c1;
-#define DESIGN_CAPACITY     3300   // mAh
-#define DESIGN_ENERGY      12210   // mWh
-#define TERMINATE_VOLTAGE  3100    // mV
+#define DESIGN_CAPACITY     2450   // mAh
+//#define DESIGN_ENERGY      12210   // mWh
+#define DESIGN_ENERGY      9065   // mWh
+#define TERMINATE_VOLTAGE  3400    // mV
 #define TAPER_RATE         330     // 见BQ27441官方推荐，一般=设计容量/10。充满电的电流33mA
 // 推荐在.h文件或本文件顶部定义
 #define RT_TABLE_LEN 30
 
+//const uint8_t RT_TABLE[30] = {
+//        0x00,0x66, 0x00,0x66, 0x00,0x63, 0x00,0x6B, 0x00,0x48,
+//        0x00,0x3B, 0x00,0x3E, 0x00,0x3F, 0x00,0x35, 0x00,0x2F,
+//        0x00,0x3C, 0x00,0x46, 0x00,0x8C, 0x01,0x71, 0x02,0x4C
+//};
 const uint8_t RT_TABLE[30] = {
-        0x00,0x66, 0x00,0x66, 0x00,0x63, 0x00,0x6B, 0x00,0x48,
-        0x00,0x3B, 0x00,0x3E, 0x00,0x3F, 0x00,0x35, 0x00,0x2F,
-        0x00,0x3C, 0x00,0x46, 0x00,0x8C, 0x01,0x71, 0x02,0x4C
+        0x00,0xD0, 0x00,0xD0, 0x00,0xCE, 0x00,0xE2, 0x00,0x9D,
+        0x00,0x83, 0x00,0x8D, 0x00,0x90, 0x00,0x7A, 0x00,0x6D,
+        0x00,0x89, 0x00,0xA3, 0x01,0x43, 0x03,0x52, 0x05,0x4C
 };
+//0xCC00,0xCC00,0xC600,0xD600,0x9000,0x7600,0x7C00,0x7E00,0x6A00,0x5E00,0x7800,0x8C00,0x1801,0xE202,0x9804 12223
 static I2C_HandleTypeDef *_bq_i2c = &hi2c1;
 
 static HAL_StatusTypeDef i2c_write(uint8_t reg, uint8_t *data, uint8_t len) {
@@ -105,6 +112,9 @@ bool BQ27441_WriteStateBlock_All(void) {
 //    block[0] = (0x00);
 //    block[1] = (0x40);
 //    // DesignCapacity (0x0A/0x0B)
+    block[0] = (0x2f);
+    block[1] = (0xbf);
+
     block[11] = (DESIGN_CAPACITY & 0xFF);
     block[10] = (DESIGN_CAPACITY&0xff00) >> 8;
 
@@ -194,11 +204,11 @@ void BQ27441_DEMO(void) {
         return;
     }
 //    // 在CFGUPDATE模式下调用
-//    if (!BQ27441_WriteRaTable(RT_TABLE, RT_TABLE_LEN)) {
-//        LOG("写入RT表失败！\n");
-//    } else {
-//        LOG("写入RT表成功！\n");
-//    }
+    if (!BQ27441_WriteRaTable(RT_TABLE, RT_TABLE_LEN)) {
+        LOG("写入RT表失败！\n");
+    } else {
+        LOG("写入RT表成功！\n");
+    }
     LOG(" 写入所有设计参数完成\n");
     // 退出配置模式
     if (!BQ27441_ExitConfigMode()) {

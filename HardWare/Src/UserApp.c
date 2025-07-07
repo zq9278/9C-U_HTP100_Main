@@ -151,7 +151,7 @@ void APP_task(void *argument) {
     for (;;) {
         //HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
         osDelay(100);//the breath of frequency
-       // bq25895_reinitialize_if_vbus_inserted();//充电器插入检测
+       bq25895_reinitialize_if_vbus_inserted();//充电器插入检测
         UpdateChargeState_bq25895();
         battery_status_update_bq27441();
         BQ27441_PrintRaTable();
