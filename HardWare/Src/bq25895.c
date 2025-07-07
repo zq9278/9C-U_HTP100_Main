@@ -19,7 +19,6 @@ void BQ25895_Init(void) {
     osDelay(100);
     CHG_CE(0);  // ´ò¿ª³äµç
 }
-
 void BQ25895_Read(uint8_t ReadAddr, uint8_t *pBuffer) {
     BQ25895_Read_IT(ReadAddr, pBuffer, 1);
 }
