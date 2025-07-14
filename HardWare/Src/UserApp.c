@@ -154,7 +154,7 @@ void APP_task(void *argument) {
        bq25895_reinitialize_if_vbus_inserted();//≥‰µÁ∆˜≤Â»ÎºÏ≤‚
         UpdateChargeState_bq25895();
         battery_status_update_bq27441();
-        BQ27441_PrintRaTable();
+        //BQ27441_PrintRaTable();
         UpdateState(emergency_stop, charging, low_battery, fully_charged, working);
         UpdateLightState(ChargeState);
         STATE_POWER_5V_Update();

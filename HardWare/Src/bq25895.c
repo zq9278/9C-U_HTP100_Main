@@ -209,13 +209,13 @@ void UpdateChargeState_bq25895(void) {
     uint8_t PG_STAT = (BQ25895Reg[0x0B] >> 2) & 0x01;
 
     if (PG_STAT) {
-        LOG(" PG_STAT = 1，VBUS 电源正常（Power Good）\n");
+        //LOG(" PG_STAT = 1，VBUS 电源正常（Power Good）\n");
 //        if ((BQ27441.Voltage < 4170)&&( BQ27441.AvgCurrent<100)&&(fully_charged==0)) {//&&(0<BQ27441.AvgCurrent )
 //            LOG("low voltage or current\n");
 //            BQ25895_Init();
 //        }
     } else {
-        LOG(" PG_STAT = 0，VBUS 输入异常或未连接\n");
+        //LOG(" PG_STAT = 0，VBUS 输入异常或未连接\n");
     }
 
 }
