@@ -179,10 +179,10 @@ bool BQ27441_HardwareReset(void) {
 }
 void BQ27441_DEMO(void) {
     uint16_t flags = read_word(BQ27441_COMMAND_FLAGS);
-    if ((flags & 0x20) == 0) {
-        LOG("? 非首次上电，跳过配置（Flags=0x%04X）\n", flags);
-        return;
-    }
+//    if ((flags & 0x20) == 0) {
+//        LOG("? 非首次上电，跳过配置（Flags=0x%04X）\n", flags);
+//        return;
+//    }
     if (!BQ27441_Unseal()) {
         LOG(" 解封失败\n");
         return;
