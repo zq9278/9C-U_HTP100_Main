@@ -519,9 +519,12 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
     }
     if (hi2c->Instance == hi2c2.Instance) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xSemaphoreGiveFromISR(I2C2_DMA_Sem, &xHigherPriorityTaskWoken); // 释放阻塞任务
+
+        LOG("I2C2 错误回调触发: 0x%08lX", HAL_I2C_GetError(&hi2c2));
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         if (i2c2_recovery_task_handle != NULL) {
             vTaskNotifyGiveFromISR(i2c2_recovery_task_handle, &xHigherPriorityTaskWoken);
-            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         } else {
             LOG("DEVICE_STATE_EXPIRED: IIC恢复任务-句柄未初始化！`\n");
 

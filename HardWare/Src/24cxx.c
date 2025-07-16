@@ -134,30 +134,76 @@ void AT24C02_WriteAllBytes(uint8_t value) {
     HAL_Delay(5); // 每次写入后延时
   }
 }
-void AT24C02_WriteAllBytes_eye(uint8_t value) {
-    static uint8_t read_buffer[256];  // 读取结果
+//void AT24C02_WriteAllBytes_eye(uint8_t value) {
+//    static uint8_t read_buffer[256];  // 读取结果
+//    for (uint16_t addr = 0; addr < 256; addr++) {
+//        uint8_t data = value;  // 如果需要不同的数据，可以调整此处
+//        HAL_I2C_Mem_Write(&hi2c2, 0xA0, addr, I2C_MEMADD_SIZE_8BIT, &data, 1, 100);
+//        HAL_Delay(5);  // 增加延迟，确保写入完成
+//    }
+//
+//    // 使用 DMA 读取整片 EEPROM
+//    HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA0, 0x00, I2C_MEMADD_SIZE_8BIT, read_buffer, 256);
+//
+//    // 等待 DMA 读取完成
+//    while (!i2c_dma_read_complete)
+//    {
+//        osDelay(1);  // **短暂延迟，避免占用 CPU**
+//    }
+//
+//    //osDelay(1000);
+//    // 打印 EEPROM 读取数据
+//    LOG("EEPROM 读取数据:\n");
+//    for (uint16_t i = 2; i < 3; i++) {
+//        LOG("Addr: 0x%02X, Data: 0x%02X\n", i, read_buffer[i]);
+//    }
+//}
+
+
+
+ void AT24C02_WriteAllBytes_eye(uint8_t value) {
+    static uint8_t read_buffer[256];
+
+    // 写入所有字节（使用轮询写入）
     for (uint16_t addr = 0; addr < 256; addr++) {
-        uint8_t data = value;  // 如果需要不同的数据，可以调整此处
-        HAL_I2C_Mem_Write(&hi2c2, 0xA0, addr, I2C_MEMADD_SIZE_8BIT, &data, 1, 100);
-        HAL_Delay(5);  // 增加延迟，确保写入完成
+        uint8_t data = value;
+        if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(300)) == pdTRUE) {
+            HAL_I2C_Mem_Write(&hi2c2, 0xA0, addr, I2C_MEMADD_SIZE_8BIT, &data, 1, 100);
+            xSemaphoreGive(i2c2_mutex);
+            osDelay(5);  // 写完等待 EEPROM 内部写周期完成
+        } else {
+            LOG("写入锁超时 at addr 0x%02X\n", addr);
+        }
     }
 
-    // 使用 DMA 读取整片 EEPROM
-    HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA0, 0x00, I2C_MEMADD_SIZE_8BIT, read_buffer, 256);
+// 读取整块 EEPROM（使用 DMA + 信号量）
+     if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(300)) == pdTRUE) {
+         if (HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA0, 0x00, I2C_MEMADD_SIZE_8BIT, read_buffer, 256) == HAL_OK) {
+             if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(300)) == pdTRUE) {
+                 LOG("EEPROM DMA读取成功\n");
+             } else {
+                 LOG("EEPROM DMA读取超时\n");
+             }
+         } else {
+             LOG("EEPROM DMA读取启动失败\n");
+         }
 
-    // 等待 DMA 读取完成
-    while (!i2c_dma_read_complete)
-    {
-        osDelay(1);  // **短暂延迟，避免占用 CPU**
-    }
+         xSemaphoreGive(i2c2_mutex);
+     } else {
+         LOG("读取锁超时，无法读取EEPROM\n");
+     }
 
-    //osDelay(1000);
-    // 打印 EEPROM 读取数据
+
+    // 验证读取内容（只打印部分）
     LOG("EEPROM 读取数据:\n");
-    for (uint16_t i = 2; i < 3; i++) {
+    for (uint16_t i = 1; i < 255; i++) {
         LOG("Addr: 0x%02X, Data: 0x%02X\n", i, read_buffer[i]);
     }
 }
+
+
+
+
 // 向AT24C02的所有地址写入相同的值
 //    void AT24C02_WriteAllBytes_eye(uint8_t value) {
 //    for (uint16_t addr = 0; addr < 256; addr++) {

@@ -12,6 +12,7 @@ extern I2C_HandleTypeDef hi2c1;
 #define TAPER_RATE         330     // 见BQ27441官方推荐，一般=设计容量/10。充满电的电流33mA
 // 推荐在.h文件或本文件顶部定义
 #define RT_TABLE_LEN 30
+#define LOG_SWITCH_OF_BQ27441
 
 //const uint8_t RT_TABLE[30] = {
 //        0x00,0x66, 0x00,0x66, 0x00,0x63, 0x00,0x6B, 0x00,0x48,
@@ -109,11 +110,11 @@ bool BQ27441_WriteStateBlock_All(void) {
     // ---- 2. 先读出原始block[32] ----
     i2c_read(BQ27441_EXTENDED_BLOCKDATA, block, 32);
     // ---- 3. 写入关键参数 ----
-//    block[0] = (0x00);
-//    block[1] = (0x40);
+    block[0] = 0x32;
+    block[1] = 0x04;
 //    // DesignCapacity (0x0A/0x0B)
-    block[0] = (0x04);
-    block[1] = (0x32);
+//    block[0] = 0x04;
+//    block[1] = 0x32;
 
     block[11] = (DESIGN_CAPACITY & 0xFF);
     block[10] = (DESIGN_CAPACITY&0xff00) >> 8;
@@ -179,10 +180,10 @@ bool BQ27441_HardwareReset(void) {
 }
 void BQ27441_DEMO(void) {
     uint16_t flags = read_word(BQ27441_COMMAND_FLAGS);
-//    if ((flags & 0x20) == 0) {
-//        LOG("? 非首次上电，跳过配置（Flags=0x%04X）\n", flags);
-//        return;
-//    }
+    if ((flags & 0x20) == 0) {
+        LOG("? 非首次上电，跳过配置（Flags=0x%04X）\n", flags);
+        return;
+    }
     if (!BQ27441_Unseal()) {
         LOG(" 解封失败\n");
         return;
@@ -242,6 +243,7 @@ void BQ27441_VerifyConfig(void) {
 }
 
 void BQ27441_PrintRaTable(void) {
+#ifdef  LOG_SWITCH_OF_BQ27441
     //LOG("当前芯片内置 Ra 表：\n");
     for (uint8_t i = 0; i < 15; i++) {
         uint8_t lsb = BQ27441_ReadExtended(BQ27441_ID_RACOMP, i * 2);
@@ -250,6 +252,7 @@ void BQ27441_PrintRaTable(void) {
         LOG("0x%02X,",ra);
     }
     LOG("当前 Qmax=%d mAh\n", BQ27441_ReadQmax());
+#endif
 }
 bool BQ27441_EnableIT(void) {
     uint8_t enableIT[2] = { 0x20, 0x00 };  // Enable IT subcmd
@@ -465,38 +468,40 @@ void BatteryMonitor_Run(void)
 
 void battery_status_update_bq27441(void) {
   BQ27441_MultiRead_DMA(&BQ27441);
-//    LOG(
-//            "BQ27441 状态：\n"
-//            "  电池电压 = %d mV\n"
-//            "  电池温度 = %.1f ℃\n"
-//            "  状态标志 = 0x%04X\n"
-//            "  标称可用容量(无负载下) = %d mAh\n"
-//            "  满可用容量（充满总容量，无负载） = %d mAh\n"
-//            "  实际剩余容量（当前负载下） = %d mAh\n"
-//            "  实际满充容量（当前负载下） = %d mAh\n"
-//            "  平均电流 = %d mA\n"
-//            "  待机电流 = %d mA\n"
-//            "  最大负载电流 = %d mA\n"
-//            "  平均功率 = %d mW\n"
-//            "  当前电量 = %d %%\n"
-//            "  芯片内部温度 = %.1f ℃\n"
-//            "  电池健康度 = %d %%（状态码：0x%02X）\n",
-//            BQ27441.Voltage,
-//            (BQ27441.Temperature * 0.1f) - 273.15f,
-//            BQ27441.Flags,
-//            BQ27441.NomAvailableCap,
-//            BQ27441.FullAvailableCap,
-//            BQ27441.RemainingCap,
-//            BQ27441.FullChargeCap,
-//            BQ27441.AvgCurrent,
-//            BQ27441.StandbyCurrent,
-//            BQ27441.MaxLoadCurrent,
-//            BQ27441.AvgPower,
-//            BQ27441.SOC,
-//            (BQ27441.InternalTemp * 0.1f) - 273.15f,
-//            BQ27441.percent,
-//            BQ27441.status
-//    );
+#ifdef  LOG_SWITCH_OF_BQ27441
+    LOG(
+            "BQ27441 状态：\n"
+            "  电池电压 = %d mV\n"
+            "  电池温度 = %.1f ℃\n"
+            "  状态标志 = 0x%04X\n"
+            "  标称可用容量(无负载下) = %d mAh\n"
+            "  满可用容量（充满总容量，无负载） = %d mAh\n"
+            "  实际剩余容量（当前负载下） = %d mAh\n"
+            "  实际满充容量（当前负载下） = %d mAh\n"
+            "  平均电流 = %d mA\n"
+            "  待机电流 = %d mA\n"
+            "  最大负载电流 = %d mA\n"
+            "  平均功率 = %d mW\n"
+            "  当前电量 = %d %%\n"
+            "  芯片内部温度 = %.1f ℃\n"
+            "  电池健康度 = %d %%（状态码：0x%02X）\n",
+            BQ27441.Voltage,
+            (BQ27441.Temperature * 0.1f) - 273.15f,
+            BQ27441.Flags,
+            BQ27441.NomAvailableCap,
+            BQ27441.FullAvailableCap,
+            BQ27441.RemainingCap,
+            BQ27441.FullChargeCap,
+            BQ27441.AvgCurrent,
+            BQ27441.StandbyCurrent,
+            BQ27441.MaxLoadCurrent,
+            BQ27441.AvgPower,
+            BQ27441.SOC,
+            (BQ27441.InternalTemp * 0.1f) - 273.15f,
+            BQ27441.percent,
+            BQ27441.status
+    );
+#endif
     //LOG( "%d mV\n",BQ27441.Voltage);
 //if(charging_flag==1) {
 //    if ((BQ27441.Voltage < 4200) || (BQ27441.AvgCurrent < 70)) {
@@ -507,7 +512,7 @@ void battery_status_update_bq27441(void) {
     //LOG("BQ27441: Voltage=%d mV, Temperature=%d C, AvgCurrent=%d mA, SOC=%d%%, FullChargeCapacity=%d mAh\n", BQ27441.Voltage, BQ27441.Temperature, BQ27441.AvgCurrent, BQ27441.SOC, BQ27441.FullChargeCapacity);
   //low_battery = (BQ27441.SOC < 30) && (BQ27441.SOC != 0);
   low_battery = (BQ27441.SOC < 10) ;
-    fully_charged=(BQ27441.SOC > 95);
+    fully_charged=(BQ27441.SOC > 98);
     float battery = (float)BQ27441.SOC;
     //ScreenUpdateSOC(battery);
     //LOG("BQ27441: SOC=%d%%\n", BQ27441.SOC);
@@ -521,4 +526,3 @@ void battery_status_update_bq27441(void) {
     }
     BatteryMonitor_Run();
   }
-

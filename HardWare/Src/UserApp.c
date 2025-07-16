@@ -14,7 +14,7 @@ uint8_t flag_200ms;
 uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms, is_charging_flag;
 uart_data *frameData_uart;
 uint8_t i2c2_error_flag = 0;
-
+//#define DEBUG_LOG
 /* FreeRTOS Handles */
 TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle, i2c2_recovery_task_handle, pwrTaskHandle,bq25895_recovery_homeHandle;
 QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
@@ -67,6 +67,9 @@ void Heat_Task(void *argument) {
                 break;  // 跳出 inner while，回到外层 for 循环重新启动
             }
             if (i2c2_error_flag == 0) {
+#ifdef DEBUG_LOG
+                LOG("Read_tmp112/n");
+#endif
                 EyeTmp = TmpRaw2Ture();
                 if (tempature_flag_400ms) {
                     tempature_flag_400ms = 0;
@@ -154,7 +157,7 @@ void APP_task(void *argument) {
        bq25895_reinitialize_if_vbus_inserted();//充电器插入检测
         UpdateChargeState_bq25895();
         battery_status_update_bq27441();
-        //BQ27441_PrintRaTable();
+        BQ27441_PrintRaTable();
         UpdateState(emergency_stop, charging, low_battery, fully_charged, working);
         UpdateLightState(ChargeState);
         STATE_POWER_5V_Update();
@@ -184,7 +187,7 @@ void Device_Check_Task(void *argument) {
         DeviceStateMachine_Update();
 //        EYE_status=1.0;
 //        EYE_checkout(EYE_status);
-        osDelay(50);
+        osDelay(100);
 //        const UBaseType_t maxTasks = 10;  // 根据实际任务数量修改
 //        TaskStatus_t taskStatusArray[maxTasks];
 //        UBaseType_t taskCount;
@@ -212,38 +215,76 @@ void Device_Check_Task(void *argument) {
 extern I2C_HandleTypeDef hi2c2;
 extern DMA_HandleTypeDef hdma_i2c2_rx;
 
+// void I2C2_RecoveryTask(void *argument) {
+//     for (;;) {
+//         // 一直等待通知信号（错误发生）
+//         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+//         i2c2_error_flag = 1;
+//         //vTaskSuspend(deviceCheckHandle);
+//         //vTaskSuspend(HeatHandle);
+//         if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) == pdTRUE) {
+//             __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_STOPF);
+//             //LOG("[恢复任务] I2C2 错误发生，开始重建资源...\n");
+//
+//             __HAL_RCC_I2C2_CLK_DISABLE();
+//             __HAL_RCC_I2C2_CLK_ENABLE();
+//             HAL_I2C_DeInit(&hi2c2);
+//             HAL_I2C_Init(&hi2c2);
+//             // 可选：重建 I2C2 的 DMA
+//             HAL_DMA_DeInit(&hdma_i2c2_rx);
+//             HAL_DMA_Init(&hdma_i2c2_rx);
+//
+//             //LOG("[恢复任务] I2C2 资源重建完成！\n");
+//             xSemaphoreGive(i2c2_mutex); // === 释放互斥锁 ===
+//         } else {
+//             LOG("[恢复任务] 获取I2C2互斥锁失败，跳过重建，稍后重试\n");
+//             // 可选：可以等待后重试，或直接continue
+//         }
+//         LOG("[恢复任务] I2C2 资源重建完成！\n");
+//         osDelay(50);
+//         i2c2_error_flag = 0;
+//         //vTaskResume(deviceCheckHandle);
+//         //vTaskResume(HeatHandle);
+//     }
+// }
+
 void I2C2_RecoveryTask(void *argument) {
     for (;;) {
         // 一直等待通知信号（错误发生）
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        i2c2_error_flag = 1;
-        //vTaskSuspend(deviceCheckHandle);
-        //vTaskSuspend(HeatHandle);
-        if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) == pdTRUE) {
-            __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_STOPF);
-            //LOG("[恢复任务] I2C2 错误发生，开始重建资源...\n");
 
+        i2c2_error_flag = 1;
+
+
+        // 清除 I2C 错误标志以保持总线正常
+        if (xSemaphoreTake(i2c2_mutex, portMAX_DELAY) == pdTRUE) {
+            __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_BERR);  // 清除总线错误标志
+            __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_ARLO);  // 清除仲裁丢失标志（如果有）
+
+            // 重新启用时钟和 I2C 控制器
             __HAL_RCC_I2C2_CLK_DISABLE();
             __HAL_RCC_I2C2_CLK_ENABLE();
+
+            // 重新初始化 I2C2
             HAL_I2C_DeInit(&hi2c2);
             HAL_I2C_Init(&hi2c2);
-            // 可选：重建 I2C2 的 DMA
+
+            // 可选：如果有 DMA，重新初始化 DMA
             HAL_DMA_DeInit(&hdma_i2c2_rx);
             HAL_DMA_Init(&hdma_i2c2_rx);
 
-            //LOG("[恢复任务] I2C2 资源重建完成！\n");
-            xSemaphoreGive(i2c2_mutex); // === 释放互斥锁 ===
-        } else {
-            LOG("[恢复任务] 获取I2C2互斥锁失败，跳过重建，稍后重试\n");
-            // 可选：可以等待后重试，或直接continue
+            xSemaphoreGive(i2c2_mutex);  // 释放互斥锁
         }
-        LOG("[恢复任务] I2C2 资源重建完成！\n");
-        osDelay(50);
+
+        LOG("[恢复任务] I2C2 总线恢复完成！\n");
+
+        // 等待一段时间再重试
+        osDelay(400);
         i2c2_error_flag = 0;
-        //vTaskResume(deviceCheckHandle);
-        //vTaskResume(HeatHandle);
     }
 }
+
+
 extern
 void bq25895_recovery_task(void *argument) {
     for (;;) {
@@ -335,11 +376,11 @@ void Main(void) {
     ADS1220_Init(); // 初始化ADS1220
     TMC5130_Init();
     HeatInit();
-    TMP112_Init();
+    //TMP112_Init();
 
 
     xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 10, &UART_RECEPTHandle);
-    xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 9, &Button_StateHandle);
+    xTaskCreate(Button_State_Task, "Button_State", 128, NULL, 9, &Button_StateHandle);
     xTaskCreate(APP_task, "APP", 256, NULL, 6, &APPHandle);
     xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
     xTaskCreate(bq25895_recovery_task, "bq25895_recovery", 128, NULL, 2, &bq25895_recovery_homeHandle);
