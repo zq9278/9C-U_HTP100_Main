@@ -188,65 +188,14 @@ void Device_Check_Task(void *argument) {
 //        EYE_status=1.0;
 //        EYE_checkout(EYE_status);
         osDelay(100);
-//        const UBaseType_t maxTasks = 10;  // 根据实际任务数量修改
-//        TaskStatus_t taskStatusArray[maxTasks];
-//        UBaseType_t taskCount;
-//        uint32_t totalRunTime;
 
-//        // 获取所有任务信息
-//        taskCount = uxTaskGetSystemState(taskStatusArray, maxTasks, &totalRunTime);
-//
-//        LOG("任务名        句柄       状态 优先级 栈余量 栈大小\r\n");
-//
-//        for (UBaseType_t i = 0; i < taskCount; i++) {
-//            TaskStatus_t *ts = &taskStatusArray[i];
-//            LOG("%-12s %p    %lu    %lu    %lu    %lu\r\n",
-//                   ts->pcTaskName,
-//                   ts->xHandle,
-//                   (unsigned long)ts->eCurrentState,
-//                   (unsigned long)ts->uxCurrentPriority,
-//                   (unsigned long)ts->usStackHighWaterMark,
-//                   (unsigned long)ts->usStackHighWaterMark * sizeof(StackType_t));  // 栈剩余字节数
-//        }
+
     }
 }
 
 
 extern I2C_HandleTypeDef hi2c2;
 extern DMA_HandleTypeDef hdma_i2c2_rx;
-
-// void I2C2_RecoveryTask(void *argument) {
-//     for (;;) {
-//         // 一直等待通知信号（错误发生）
-//         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-//         i2c2_error_flag = 1;
-//         //vTaskSuspend(deviceCheckHandle);
-//         //vTaskSuspend(HeatHandle);
-//         if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) == pdTRUE) {
-//             __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_STOPF);
-//             //LOG("[恢复任务] I2C2 错误发生，开始重建资源...\n");
-//
-//             __HAL_RCC_I2C2_CLK_DISABLE();
-//             __HAL_RCC_I2C2_CLK_ENABLE();
-//             HAL_I2C_DeInit(&hi2c2);
-//             HAL_I2C_Init(&hi2c2);
-//             // 可选：重建 I2C2 的 DMA
-//             HAL_DMA_DeInit(&hdma_i2c2_rx);
-//             HAL_DMA_Init(&hdma_i2c2_rx);
-//
-//             //LOG("[恢复任务] I2C2 资源重建完成！\n");
-//             xSemaphoreGive(i2c2_mutex); // === 释放互斥锁 ===
-//         } else {
-//             LOG("[恢复任务] 获取I2C2互斥锁失败，跳过重建，稍后重试\n");
-//             // 可选：可以等待后重试，或直接continue
-//         }
-//         LOG("[恢复任务] I2C2 资源重建完成！\n");
-//         osDelay(50);
-//         i2c2_error_flag = 0;
-//         //vTaskResume(deviceCheckHandle);
-//         //vTaskResume(HeatHandle);
-//     }
-// }
 
 void I2C2_RecoveryTask(void *argument) {
     for (;;) {
@@ -330,6 +279,39 @@ void PowerReboot_Task(void *argument) {
 //
 //        }
 }
+#define LOG_TASK_INOF_DEBUG
+void TaskMonitor_Task(void *argument)
+{
+    for (;;)
+    {
+
+#ifdef LOG_TASK_INOF_DEBUG
+        const UBaseType_t maxTasks = 20;  // 根据实际任务数量修改
+        TaskStatus_t taskStatusArray[maxTasks];
+        UBaseType_t taskCount;
+        uint32_t totalRunTime;
+
+        // 获取所有任务信息
+        taskCount = uxTaskGetSystemState(taskStatusArray, maxTasks, &totalRunTime);
+
+        LOG("任务名        句柄       状态 优先级 栈余量 栈大小\r\n");
+
+        for (UBaseType_t i = 0; i < taskCount; i++) {
+            TaskStatus_t *ts = &taskStatusArray[i];
+            LOG("%-12s %p    %lu    %lu    %lu    %lu\r\n",
+                   ts->pcTaskName,
+                   ts->xHandle,
+                   (unsigned long)ts->eCurrentState,
+                   (unsigned long)ts->uxCurrentPriority,
+                   (unsigned long)ts->usStackHighWaterMark,
+                   (unsigned long)ts->usStackHighWaterMark * sizeof(StackType_t));  // 栈剩余字节数
+        }
+
+#endif
+        vTaskDelay(1000);
+    }
+}
+
 
 
 void Main(void) {
@@ -380,7 +362,7 @@ void Main(void) {
 
 
     xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 10, &UART_RECEPTHandle);
-    xTaskCreate(Button_State_Task, "Button_State", 128, NULL, 9, &Button_StateHandle);
+    xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 9, &Button_StateHandle);
     xTaskCreate(APP_task, "APP", 256, NULL, 6, &APPHandle);
     xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
     xTaskCreate(bq25895_recovery_task, "bq25895_recovery", 128, NULL, 2, &bq25895_recovery_homeHandle);
@@ -389,7 +371,8 @@ void Main(void) {
     };
     if (xTaskCreate(Press_Task, "Press", 256, NULL, 3, &PressHandle) == pdPASS) { vTaskSuspend(PressHandle); };
     if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) { vTaskSuspend(HeatHandle); };
-    xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 128, NULL, 11, &i2c2_recovery_task_handle);
+    xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 256, NULL, 11, &i2c2_recovery_task_handle);
+    xTaskCreate(TaskMonitor_Task, "TaskMonitor", 512, NULL, 1, NULL);
     //xTaskCreate(PowerOnDelayTask, "PowerOnDelay", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
     //xTaskCreate(PowerReboot_Task, "PowerReboot", 128, NULL,  8, pwrTaskHandle);
 
