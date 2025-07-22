@@ -19,10 +19,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "usart.h"
-
+#include "communication.h"
 /* USER CODE BEGIN 0 */
 #include "stm32g0xx_hal.h"
 #include "stm32g0xx_hal_uart.h"
+#include "UserApp.h"
 
 uart_data uart2_data; // DMA���ջ����������ڴ�Ž��յ�������
 //extern osMessageQueueId_t UART_DMA_IDLE_RECEPT_QUEUEHandle; // ���������Ϣ����
@@ -316,31 +317,31 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
     uint32_t error = HAL_UART_GetError(huart);
     // ���ݴ������ʹ���
     if (error & HAL_UART_ERROR_ORE) {
-      printf("UART �������\n");
+      LOG("UART �������\n");
       __HAL_UART_CLEAR_OREFLAG(huart); // ��������־
       while (__HAL_UART_GET_FLAG(huart, UART_FLAG_RXNE)) {
         (huart->Instance->RDR & 0xFF); // ��ȡ���ռĴ�������ջ�����
       }
     }
     if (error & HAL_UART_ERROR_FE) {
-      printf("UART ֡����\n");
+      LOG("UART ֡����\n");
       __HAL_UART_CLEAR_FEFLAG(huart); // ���֡�����־
     }
     if (error & HAL_UART_ERROR_NE) {
-      printf("UART ��������\n");
+      LOG("UART ��������\n");
       __HAL_UART_CLEAR_NEFLAG(huart); // ������������־
     }
     if (error & HAL_UART_ERROR_DMA) {
-      printf("UART DMA ����\n");
+      LOG("UART DMA ����\n");
       HAL_DMA_Abort(huart->hdmarx); // ֹͣ DMA
     }
     // ���� UART ����״̬
    // MX_USART2_UART_Init();
     // ������������ DMA ����
     if (HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart2_data.buffer, sizeof(uart2_data.buffer)) == HAL_OK) {
-      printf("�������� DMA ���ճɹ�\n");
+      LOG("�������� DMA ���ճɹ�\n");
     } else {
-      printf("�������� DMA ����ʧ��\n");
+      LOG("�������� DMA ����ʧ��\n");
     }
   }
 }

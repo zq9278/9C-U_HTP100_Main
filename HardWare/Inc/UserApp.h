@@ -3,7 +3,9 @@
 //
 #ifndef __UserApp
 #define __UserApp
-
+#include "bq25895.h"
+#include "pid.h"
+#include "communication.h"
 
 #include "FreeRTOS.h"
 #include "task.h"

@@ -7,7 +7,7 @@
 #ifndef __BUTTON_H
 #define __BUTTON_H
 #include "stm32g0xx_hal.h"
-// 定义系统状态
+// ????????
 typedef enum {
     STATE_OFF,
     STATE_PRE_HEAT,

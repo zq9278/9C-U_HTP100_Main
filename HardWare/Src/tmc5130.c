@@ -1,7 +1,11 @@
 
 #include "main.h"
 #include <stdint.h>
-
+#include "tmc5130.h"
+#include "pid.h"
+#include "ads1220.h"
+#include "UserApp.h"
+#include "time_callback.h"
 /*motor*/
 uint32_t MotorSpeed = 0x4000;
 

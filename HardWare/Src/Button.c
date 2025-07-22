@@ -6,7 +6,15 @@
  */
 
 #include "main.h"
-
+#include "interface_uart.h"
+#include "Button.h"
+#include "pid.h"
+#include "communication.h"
+#include "device_lifetime.h"
+#include "heat.h"
+#include "tmp112.h"
+#include "UserApp.h"
+#include "tmc5130.h"
 //extern osEventFlagsId_t PRESS_ONHandle;
 //extern osEventFlagsId_t HEAT_ONHandle;
 //extern osMessageQueueId_t HEAT_DATAHandle;

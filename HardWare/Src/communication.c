@@ -1,6 +1,16 @@
 
 #include "main.h"
 #include <stdint.h>
+#include "communication.h"
+#include "pid.h"
+#include "interface_uart.h"
+#include "Button.h"
+#include "24cxx.h"
+#include "tmp112.h"
+#include "heat.h"
+#include "UserApp.h"
+#include "app_sys.h"
+#include "time_callback.h"
 
 //extern TaskHandle_t HeatHandle;
 //extern volatile SystemState_t currentState;
@@ -30,7 +40,7 @@ uint8_t factory_mode = 0;
 void UART1_CMDHandler(recept_data_p msg) {
    // LOG("into CMD handle\n");
     if (msg == NULL) {
-        printf("Error: msg is NULL!\n");
+        LOG("Error: msg is NULL!\n");
         return;
     }
 
@@ -136,7 +146,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         case 0x1037:
             if(EYE_status == 0)
             {break;}
-            //printf("1\n");
+            //LOG("1\n");
             currentState = STATE_PRE_AUTO; // 切换到预自动模式
             emergency_stop = 0;
             HeatPWM(1);                    // 启动加热PWM
@@ -387,7 +397,7 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
 
 void command_parsing(uart_data *received_data) { // 区分调试命令和屏幕工作命令
 //    a++;
-//    printf("a=%u\n",a);
+//    LOG("a=%u\n",a);
     // 确认帧尾是否合法
     // if (received_data->buffer[received_data->length - 2] != 0xFF ||
     //     received_data->buffer[received_data->length - 1] != 0xFF) {
@@ -616,7 +626,7 @@ void ScreenWorkMode_count(float count) {
 
 void Serial_data_stream_parsing(uart_data *frameData) {
     if (frameData == NULL) {
-        printf("Error: Invalid frameData pointer or size\n");
+        LOG("Error: Invalid frameData pointer or size\n");
     }
     for (uint16_t i = 0; i < frameData->length - 1; i++) {
         // if (frameData->buffer[i] == FRAME_HEADER_BYTE1 && i + 1 < frameData->length && frameData->buffer[i + 1] == FRAME_HEADER_BYTE2) {
@@ -630,7 +640,7 @@ void Serial_data_stream_parsing(uart_data *frameData) {
                     frameData->buffer[j + 1] == FRAME_TAIL_BYTE2) {
                     uint16_t frame_size = j - i + 2;
                     if (frame_size > UART_RX_BUFFER_SIZE) {
-                        printf("Error: Frame size exceeds buffer limit\n");
+                        LOG("Error: Frame size exceeds buffer limit\n");
                         break;
                     }
                     // 计算CRC并校验
@@ -641,9 +651,9 @@ void Serial_data_stream_parsing(uart_data *frameData) {
 for(uint16_t i = 0; i < frameData->length; i++) {
                              //LOG("%02X ", frameData->buffer[i]);
                          }
-                         printf("\n");
+                         LOG("\n");
                     } else {
-                        printf("Error: CRC mismatch\n");
+                        LOG("Error: CRC mismatch\n");
                     }
                     // 跳过已解析的帧数据，避免重复解析
                     i = j + 1;

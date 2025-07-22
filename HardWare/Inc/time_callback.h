@@ -4,6 +4,7 @@
 #ifndef TIME_CALLBACK_H
 #define TIME_CALLBACK_H
 #include "main.h"
+#include "UserApp.h"
 extern TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,serialTimeoutTimerHandle,IIC_EYETimeoutTimerHandle,eye_is_existHandle,breathTimer;
 void ws2812_white_delay_callback(TimerHandle_t xTimer);
 void ws2812_yellow_callback(TimerHandle_t xTimer);

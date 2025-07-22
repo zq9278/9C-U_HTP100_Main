@@ -11,6 +11,8 @@
 
 
 #include "main.h"
+#include "iic.h"
+#include "delay.h"
 // 宏定义控制SDA和SCL引脚
 #define I2C_SDA_H(i2c) HAL_GPIO_WritePin((i2c)->SDA_Port, (i2c)->SDA_Pin, GPIO_PIN_SET)
 #define I2C_SDA_L(i2c) HAL_GPIO_WritePin((i2c)->SDA_Port, (i2c)->SDA_Pin, GPIO_PIN_RESET)

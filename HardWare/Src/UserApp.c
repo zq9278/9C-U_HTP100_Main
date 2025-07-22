@@ -1,6 +1,18 @@
 
 #include "UserApp.h"
-
+#include "interface_uart.h"
+#include "24cxx.h"
+#include "tmp112.h"
+#include "Button.h"
+#include "heat.h"
+#include "ads1220.h"
+#include "tmc5130.h"
+#include "device_lifetime.h"
+#include "bq25895.h"
+#include "bq27441.h"
+#include "time_callback.h"
+#include "ws2812b.h"
+#include "app_sys.h"
 extern uint8_t white_delay, yellow_delay, breathing_flag;
 uint8_t Flag_400ms = 1;
 float weight0 = 0;
@@ -27,6 +39,7 @@ SemaphoreHandle_t xI2CCompleteSem; // 传输完成信号量
 
 
 void UART_RECEPT_Task(void *argument) {
+    (void)argument;
     for (;;) {
         if (xQueueReceive(UART_DMA_IDLE_RECEPT_QUEUEHandle, &frameData_uart, portMAX_DELAY) == pdTRUE) {
             Serial_data_stream_parsing(frameData_uart);
@@ -38,6 +51,7 @@ void UART_RECEPT_Task(void *argument) {
 uint32_t notify = 0;
 
 void Heat_Task(void *argument) {
+    (void)argument;
 
     for (;;) {
         LOG("heat_start");
@@ -95,9 +109,10 @@ void Heat_Task(void *argument) {
 }
 
 void Press_Task(void *argument) {
+    (void)argument;
 
     for (;;) {
-        printf("Press started\n");
+        LOG("Press started\n");
         ADS1220_StartConversion();  // 启动转换
         osDelay(20);//防止ADC芯片没反应过来
         Discard_dirty_data();
@@ -125,6 +140,7 @@ void Press_Task(void *argument) {
 }
 
 void Button_State_Task(void *argument) {
+    (void)argument;
     /* USER CODE BEGIN Button_State_Task */
     /* Infinite loop */
     for (;;) {
@@ -147,9 +163,9 @@ void Button_State_Task(void *argument) {
 }
 
 void APP_task(void *argument) {
+    (void)argument;
     osDelay(1000);//the breath of frequency
     BQ25895_Init();
-    uint16_t Voltage;
 //main_app();
     for (;;) {
         //HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
@@ -166,9 +182,10 @@ void APP_task(void *argument) {
 }
 
 void Motor_go_home_task(void *argument) {
+    (void)argument;
     vTaskDelay(100);//TMC5130_Init();不在同一个线程，需要等待tmc5130复位
     for (;;) {
-        printf("motor go home\n");
+        LOG("motor go home\n");
         ADS1220_StopConversion();
         MotorChecking();
         motor_homeHandle = NULL;
@@ -179,6 +196,7 @@ void Motor_go_home_task(void *argument) {
 
 // 检测任务函数
 void Device_Check_Task(void *argument) {
+    (void)argument;
     xTimerStart(eye_is_existHandle, 0);
     Device_Init();
     for (;;) {
@@ -198,6 +216,7 @@ extern I2C_HandleTypeDef hi2c2;
 extern DMA_HandleTypeDef hdma_i2c2_rx;
 
 void I2C2_RecoveryTask(void *argument) {
+    (void)argument;
     for (;;) {
         // 一直等待通知信号（错误发生）
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -236,6 +255,7 @@ void I2C2_RecoveryTask(void *argument) {
 
 extern
 void bq25895_recovery_task(void *argument) {
+    (void)argument;
     for (;;) {
         // 一直等待通知信号（错误发生）
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -247,6 +267,7 @@ void bq25895_recovery_task(void *argument) {
     }
 }
 void PowerOnDelayTask(void *argument) {
+    (void)argument;
 //    AD24C01_Factory_formatted();//如果flash没有初始化，则初始化
 //    // 上电后延迟1秒
 //   // vTaskDelay(pdMS_TO_TICKS(200));
@@ -267,6 +288,7 @@ void PowerOnDelayTask(void *argument) {
 
 // 独立任务中处理
 void PowerReboot_Task(void *argument) {
+    (void)argument;
 //    for (;;) {
 //       ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 //        LOG("重启\n");
@@ -282,6 +304,7 @@ void PowerReboot_Task(void *argument) {
 #define LOG_TASK_INOF_DEBUG
 void TaskMonitor_Task(void *argument)
 {
+    (void)argument;
     for (;;)
     {
 

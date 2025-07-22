@@ -1,6 +1,9 @@
 
 #include "main.h"
-
+#include "UserApp.h"
+#include "interface_uart.h"
+#include <stdbool.h>
+#include "app_sys.h"
 uint8_t BQ25895Reg[21];
 extern I2C_HandleTypeDef hi2c1;
 

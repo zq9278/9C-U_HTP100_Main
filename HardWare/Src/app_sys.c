@@ -1,6 +1,10 @@
 #include "bq25895.h"
 #include "main.h"
 #include <stdint.h>
+#include "Button.h"
+#include "communication.h"
+#include "UserApp.h"
+#include "interface_uart.h"
 uint8_t STATE_POWER_5V;
 uint8_t reset=0;
 void STATE_POWER_5V_Update(void) {

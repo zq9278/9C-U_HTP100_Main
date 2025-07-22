@@ -1,5 +1,9 @@
 
 #include "main.h"
+#include "bq27441.h"
+#include "interface_uart.h"
+#include "UserApp.h"
+
 #define LOW_BATTERY_SOC 3150
 #define WORKING_BATTERY_SOC    3150  // 提醒用户电压
 uint8_t BQ27441_TempData[2];
@@ -8,11 +12,11 @@ extern I2C_HandleTypeDef hi2c1;
 #define DESIGN_CAPACITY     2450   // mAh
 //#define DESIGN_ENERGY      12210   // mWh
 #define DESIGN_ENERGY      9065   // mWh
-#define TERMINATE_VOLTAGE  3400    // mV
+#define TERMINATE_VOLTAGE  2800    // mV
 #define TAPER_RATE         330     // 见BQ27441官方推荐，一般=设计容量/10。充满电的电流33mA
 // 推荐在.h文件或本文件顶部定义
 #define RT_TABLE_LEN 30
-#define LOG_SWITCH_OF_BQ27441
+//#define LOG_SWITCH_OF_BQ27441
 
 //const uint8_t RT_TABLE[30] = {
 //        0x00,0x66, 0x00,0x66, 0x00,0x63, 0x00,0x6B, 0x00,0x48,
@@ -99,7 +103,7 @@ bool BQ27441_WriteRaTable(const uint8_t* rt_table, uint8_t len)
 bool BQ27441_WriteStateBlock_All(void) {
     uint8_t block[32] = {0};
     uint8_t checksum = 0;
-    uint8_t OLD_checksum = 0;
+    //uint8_t OLD_checksum = 0;
     uint8_t sum = 0;
     // ---- 1. 设置BlockData窗口 ----
     i2c_write(BQ27441_EXTENDED_CONTROL, (uint8_t[]){0x00}, 1);   // BlockDataControl
@@ -264,7 +268,7 @@ bool BQ27441_EnableIT(void) {
     xI2CCompleteSem = xSemaphoreCreateBinary();
 
     if (xI2CMutex == NULL || xI2CCompleteSem == NULL) {
-        printf("I2C信号量创建失败!\r\n");
+        LOG("I2C信号量创建失败!\r\n");
         Error_Handler();
     }
 }
@@ -387,7 +391,7 @@ void BatteryMonitor_Run(void)
                 // 电压低于工作电压线，提前UART发送提示
                 LOG("[Battery] [NORMAL] 电池电量偏低（%d mV），提醒用户。\n", BQ27441.Voltage);
                 // 这里可以通过UART发出去
-                // uart_printf("Warning: Battery voltage low (%d mV)\r\n", BQ27441.Voltage);
+                // uart_LOG("Warning: Battery voltage low (%d mV)\r\n", BQ27441.Voltage);
                 batteryMonitor.state = BATTERY_WORKING_LOW;
             }
             else

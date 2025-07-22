@@ -8,6 +8,10 @@
 // SPI接口代码，用于与MCU通信的ADS1220
 #include "main.h"
 #include <stdint.h>
+#include "ads1220.h"
+#include "UserApp.h"
+#include "interface_uart.h"
+
 
 // 定义全局变量
 volatile uint8_t spi_rx_buffer[3];

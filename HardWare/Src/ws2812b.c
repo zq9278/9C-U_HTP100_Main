@@ -1,4 +1,7 @@
 #include "main.h"
+#include "ws2812b.h"
+#include "UserApp.h"
+#include "time_callback.h"
 
 uint16_t Single_LED_Buffer[DATA_SIZE * LED_NUM + 200];
 

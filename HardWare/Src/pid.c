@@ -11,7 +11,7 @@
 // pid.c
 
 #include "main.h"
-
+#include "pid.h"
 float p, i, d;
 
 // 微分滤波系数（0 < alpha < 1），越大越平滑

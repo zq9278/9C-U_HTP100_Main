@@ -5,7 +5,11 @@
 
 #include "device_lifetime.h"
 #include <string.h>
-
+#include "UserApp.h"
+#include "interface_uart.h"
+#include "24cxx.h"
+#include "app_sys.h"
+#include "Button.h"
 // 静态上下文实例
 DeviceContext_t device_ctx;
 extern I2C_HandleTypeDef hi2c2;

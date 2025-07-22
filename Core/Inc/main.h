@@ -37,27 +37,27 @@ extern "C" {
 #include "cmsis_os.h"
 #include "queue.h"
 #include "semphr.h"  // ���ź�����ص� API
-#include "communication.h"
-#include "Button.h"
-#include "pid.h"
-#include "delay.h"
-#include "iic.h"
-#include "bq25895.h"
-#include "bq27441.h"
-#include "tmp112.h"
-#include "24cxx.h"
-#include "tmc5130.h"
-#include "heat.h"
-#include "ws2812b.h"
-#include "app_sys.h"
-#include "ads1220.h"
-#include <stdio.h>
-#include <math.h>
-#include "UserApp.h"
-#include "interface_uart.h"
-#include "time_callback.h"
-#include "string.h"
-#include "device_lifetime.h"
+//#include "communication.h"
+//#include "Button.h"
+//#include "pid.h"
+//#include "delay.h"
+//#include "iic.h"
+//#include "bq25895.h"
+//#include "bq27441.h"
+//#include "tmp112.h"
+//#include "24cxx.h"
+//#include "tmc5130.h"
+//#include "heat.h"
+//#include "ws2812b.h"
+//#include "app_sys.h"
+//#include "ads1220.h"
+//#include <stdio.h>
+//#include <math.h>
+//#include "UserApp.h"
+//#include "interface_uart.h"
+//#include "time_callback.h"
+//#include "string.h"
+//#include "device_lifetime.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

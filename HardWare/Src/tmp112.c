@@ -1,6 +1,8 @@
 
 #include "main.h"
-
+#include "UserApp.h"
+#include "tmp112.h"
+#include "interface_uart.h"
 
 uint8_t EyeTmpRaw[2];
 uint8_t IIC_EYETimeoutFlag;

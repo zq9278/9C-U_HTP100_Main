@@ -3,6 +3,9 @@
 //
 
 #include "time_callback.h"
+#include <stdbool.h>
+#include "tmp112.h"
+#include "ws2812b.h"
 TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,serialTimeoutTimerHandle,IIC_EYETimeoutTimerHandle,eye_is_existHandle,breathTimer;;
 void ws2812_white_delay_callback(TimerHandle_t xTimer) {
 

@@ -1,7 +1,7 @@
 #ifndef _WS2812B_H
 #define _WS2812B_H
 #include "stm32g0xx_hal.h"	  
-
+#include "bq25895.h"
 
 #define WS2812B_HIGH   HAL_GPIO_WritePin(WS2812B_GPIO_Port,WS2812B_Pin,GPIO_PIN_SET)
 #define WS2812B_LOW	   HAL_GPIO_WritePin(WS2812B_GPIO_Port,WS2812B_Pin,GPIO_PIN_RESET)

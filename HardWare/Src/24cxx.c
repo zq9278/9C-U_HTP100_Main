@@ -1,5 +1,9 @@
+#include "iic.h"
 #include "main.h"
+#include "24cxx.h"
 #include <stdint.h>
+#include "UserApp.h"
+#include "interface_uart.h"
 extern I2C_HandleTypeDef hi2c2;
 extern uint8_t AD24C02_EYE[4];
 volatile uint8_t i2c_dma_read_complete = 0;  // 读完成标志

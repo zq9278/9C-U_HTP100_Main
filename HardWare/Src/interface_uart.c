@@ -1,6 +1,8 @@
 
 #include <string.h>
 #include "interface_uart.h"
+#include "UserApp.h"
+#include <stdio.h>
 uint16_t Calculate_CRC(uint8_t *data, uint16_t length)
 {
     uint16_t crc = 0xFFFF;
