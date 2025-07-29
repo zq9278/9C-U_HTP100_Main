@@ -19,9 +19,6 @@ extern USART2_DMA_HandleTypeDef huart2_dma;
 
 void USART2_DMA_Init(void);
 void USART2_DMA_Send(uint8_t *data, uint16_t length);
-
+void LOG_ISR(const char *format, ...);
 
 #endif
-
-
-

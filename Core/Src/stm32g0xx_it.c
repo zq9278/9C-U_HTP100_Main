@@ -65,15 +65,15 @@ void HardFault_Handler_C(uint32_t *stacked_args) {
     uint32_t pc  = stacked_args[6];
     uint32_t psr = stacked_args[7];
 
-    LOG("? [HardFault] ϵͳ�������쳣�Ĵ������£�\r\n");
-    LOG(" R0  = 0x%08lX\r\n", r0);
-    LOG(" R1  = 0x%08lX\r\n", r1);
-    LOG(" R2  = 0x%08lX\r\n", r2);
-    LOG(" R3  = 0x%08lX\r\n", r3);
-    LOG(" R12 = 0x%08lX\r\n", r12);
-    LOG(" LR  = 0x%08lX\r\n", lr);
-    LOG(" PC  = 0x%08lX\r\n", pc);
-    LOG(" PSR = 0x%08lX\r\n", psr);
+    LOG_ISR("? [HardFault] ϵͳ�������쳣�Ĵ������£�\r\n");
+    LOG_ISR(" R0  = 0x%08lX\r\n", r0);
+    LOG_ISR(" R1  = 0x%08lX\r\n", r1);
+    LOG_ISR(" R2  = 0x%08lX\r\n", r2);
+    LOG_ISR(" R3  = 0x%08lX\r\n", r3);
+    LOG_ISR(" R12 = 0x%08lX\r\n", r12);
+    LOG_ISR(" LR  = 0x%08lX\r\n", lr);
+    LOG_ISR(" PC  = 0x%08lX\r\n", pc);
+    LOG_ISR(" PSR = 0x%08lX\r\n", psr);
 
     // ���������ͣ�����������Լ��϶ϵ�ָ��
     __asm volatile("BKPT #0");
@@ -408,7 +408,7 @@ void USART2_IRQHandler(void)
              vTaskNotifyGiveFromISR(bq25895_recovery_homeHandle, &xHigherPriorityTaskWoken);
              portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
          } else {
-             LOG(" bq25895_recovery恢复任务-句柄未初始化！`\n");
+             //LOG(" bq25895_recovery恢复任务-句柄未初始化！`\n");
 
          }
      }
@@ -524,12 +524,12 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xSemaphoreGiveFromISR(I2C2_DMA_Sem, &xHigherPriorityTaskWoken); // 释放阻塞任务
 
-        LOG("I2C2 错误回调触发: 0x%08lX", HAL_I2C_GetError(&hi2c2));
+        //LOG("I2C2 错误回调触发: 0x%08lX", HAL_I2C_GetError(&hi2c2));
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         if (i2c2_recovery_task_handle != NULL) {
             vTaskNotifyGiveFromISR(i2c2_recovery_task_handle, &xHigherPriorityTaskWoken);
         } else {
-            LOG("DEVICE_STATE_EXPIRED: IIC恢复任务-句柄未初始化！`\n");
+            //LOG("DEVICE_STATE_EXPIRED: IIC恢复任务-句柄未初始化！`\n");
 
         }
     }

@@ -40,19 +40,45 @@ int fputc(int ch,FILE *f)//重定向printf
 }
 #endif /* __GNUC__ */
 // 封装的日志函数 (支持可变参数)
-void LOG(const char *format, ...) {
-    if (logSemaphore != NULL) {
-        if (xSemaphoreTake(logSemaphore, portMAX_DELAY) == pdTRUE) {
-            va_list args;
-            va_start(args, format);
-            vprintf(format, args);  // 调用 printf (会重定向到 UART)
-            va_end(args);
-            xSemaphoreGive(logSemaphore);  // 释放信号量
-        }
+// void LOG(const char *format, ...) {
+//     if (logSemaphore != NULL) {
+//         if (xSemaphoreTake(logSemaphore, portMAX_DELAY) == pdTRUE) {
+//             va_list args;
+//             va_start(args, format);
+//             vprintf(format, args);  // 调用 printf (会重定向到 UART)
+//             va_end(args);
+//             xSemaphoreGive(logSemaphore);  // 释放信号量
+//         }
+//     }
+// }
+void LOG(const char *format, ...)
+{
+    if (logSemaphore == NULL) return; // 信号量未初始化直接返回
+
+    if (xSemaphoreTake(logSemaphore, portMAX_DELAY) == pdTRUE) {
+        char buf[128];   // 可根据实际需要调整长度
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buf, sizeof(buf), format, args);
+        va_end(args);
+
+        HAL_UART_Transmit(&huart1, (uint8_t *)buf, strlen(buf), 100);
+
+        xSemaphoreGive(logSemaphore);
     }
 }
 
+// 专门给中断/异常用
+void LOG_ISR(const char *format, ...)
+{
+    char buf[128]; // 根据需要调整缓冲区大小
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, sizeof(buf), format, args);
+    va_end(args);
 
+    HAL_UART_Transmit(&huart1, (uint8_t *)buf, strlen(buf), 100);
+}
 
  USART2_DMA_HandleTypeDef huart2_dma;
 extern UART_HandleTypeDef huart2;

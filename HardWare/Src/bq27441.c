@@ -16,7 +16,7 @@ extern I2C_HandleTypeDef hi2c1;
 #define TAPER_RATE         330     // 见BQ27441官方推荐，一般=设计容量/10。充满电的电流33mA
 // 推荐在.h文件或本文件顶部定义
 #define RT_TABLE_LEN 30
-//#define LOG_SWITCH_OF_BQ27441
+#define LOG_SWITCH_OF_BQ27441
 
 //const uint8_t RT_TABLE[30] = {
 //        0x00,0x66, 0x00,0x66, 0x00,0x63, 0x00,0x6B, 0x00,0x48,
@@ -473,38 +473,21 @@ void BatteryMonitor_Run(void)
 void battery_status_update_bq27441(void) {
   BQ27441_MultiRead_DMA(&BQ27441);
 #ifdef  LOG_SWITCH_OF_BQ27441
-    LOG(
-            "BQ27441 状态：\n"
-            "  电池电压 = %d mV\n"
-            "  电池温度 = %.1f ℃\n"
-            "  状态标志 = 0x%04X\n"
-            "  标称可用容量(无负载下) = %d mAh\n"
-            "  满可用容量（充满总容量，无负载） = %d mAh\n"
-            "  实际剩余容量（当前负载下） = %d mAh\n"
-            "  实际满充容量（当前负载下） = %d mAh\n"
-            "  平均电流 = %d mA\n"
-            "  待机电流 = %d mA\n"
-            "  最大负载电流 = %d mA\n"
-            "  平均功率 = %d mW\n"
-            "  当前电量 = %d %%\n"
-            "  芯片内部温度 = %.1f ℃\n"
-            "  电池健康度 = %d %%（状态码：0x%02X）\n",
-            BQ27441.Voltage,
-            (BQ27441.Temperature * 0.1f) - 273.15f,
-            BQ27441.Flags,
-            BQ27441.NomAvailableCap,
-            BQ27441.FullAvailableCap,
-            BQ27441.RemainingCap,
-            BQ27441.FullChargeCap,
-            BQ27441.AvgCurrent,
-            BQ27441.StandbyCurrent,
-            BQ27441.MaxLoadCurrent,
-            BQ27441.AvgPower,
-            BQ27441.SOC,
-            (BQ27441.InternalTemp * 0.1f) - 273.15f,
-            BQ27441.percent,
-            BQ27441.status
-    );
+    LOG("BQ27441 状态：\n");
+    LOG("  电池电压 = %d mV\n", BQ27441.Voltage);
+    LOG("  电池温度 = %.1f ℃\n", (BQ27441.Temperature * 0.1f) - 273.15f);
+    LOG("  状态标志 = 0x%04X\n", BQ27441.Flags);
+    LOG("  标称可用容量(无负载下) = %d mAh\n", BQ27441.NomAvailableCap);
+    LOG("  满可用容量（充满总容量，无负载） = %d mAh\n", BQ27441.FullAvailableCap);
+    LOG("  实际剩余容量（当前负载下） = %d mAh\n", BQ27441.RemainingCap);
+    LOG("  实际满充容量（当前负载下） = %d mAh\n", BQ27441.FullChargeCap);
+    LOG("  平均电流 = %d mA\n", BQ27441.AvgCurrent);
+    LOG("  待机电流 = %d mA\n", BQ27441.StandbyCurrent);
+    LOG("  最大负载电流 = %d mA\n", BQ27441.MaxLoadCurrent);
+    LOG("  平均功率 = %d mW\n", BQ27441.AvgPower);
+    LOG("  当前电量 = %d %%\n", BQ27441.SOC);
+    LOG("  芯片内部温度 = %.1f ℃\n", (BQ27441.InternalTemp * 0.1f) - 273.15f);
+    LOG("  电池健康度 = %d %%（状态码：0x%02X）\n", BQ27441.percent, BQ27441.status);
 #endif
     //LOG( "%d mV\n",BQ27441.Voltage);
 //if(charging_flag==1) {

@@ -166,7 +166,6 @@ void APP_task(void *argument) {
     (void)argument;
     osDelay(1000);//the breath of frequency
     BQ25895_Init();
-//main_app();
     for (;;) {
         //HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
         osDelay(100);//the breath of frequency
@@ -190,9 +189,10 @@ void Motor_go_home_task(void *argument) {
         MotorChecking();
         motor_homeHandle = NULL;
         vTaskDelete(NULL);  // 自己先挂起
-
+        //vTaskDelay(1000);
     }
 }
+
 
 // 检测任务函数
 void Device_Check_Task(void *argument) {
@@ -317,26 +317,29 @@ void TaskMonitor_Task(void *argument)
         // 获取所有任务信息
         taskCount = uxTaskGetSystemState(taskStatusArray, maxTasks, &totalRunTime);
 
-        LOG("任务名        句柄       状态 优先级 栈余量 栈大小\r\n");
-
-        for (UBaseType_t i = 0; i < taskCount; i++) {
-            TaskStatus_t *ts = &taskStatusArray[i];
-            LOG("%-12s %p    %lu    %lu    %lu    %lu\r\n",
-                   ts->pcTaskName,
-                   ts->xHandle,
-                   (unsigned long)ts->eCurrentState,
-                   (unsigned long)ts->uxCurrentPriority,
-                   (unsigned long)ts->usStackHighWaterMark,
-                   (unsigned long)ts->usStackHighWaterMark * sizeof(StackType_t));  // 栈剩余字节数
-        }
+        //LOG("任务名        句柄       状态 优先级 栈余量 栈大小\r\n");
+        // for (UBaseType_t i = 0; i < taskCount; i++) {
+        //     TaskStatus_t *ts = &taskStatusArray[i];
+        //     LOG("%-12s %p    %lu    %lu    %lu    %lu\r\n",
+        //            ts->pcTaskName,
+        //            ts->xHandle,
+        //            (unsigned long)ts->eCurrentState,
+        //            (unsigned long)ts->uxCurrentPriority,
+        //            (unsigned long)ts->usStackHighWaterMark,
+        //            (unsigned long)ts->usStackHighWaterMark * sizeof(StackType_t));  // 栈剩余字节数
+        // }
 
 #endif
         vTaskDelay(1000);
     }
 }
 
-
-
+#define configCHECK_FOR_STACK_OVERFLOW 2
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)//可以测试是哪个线程出现了问题
+{
+    // 可以加断点、输出等
+    for(;;); // 死循环便于GDB/调试器捕捉
+}
 void Main(void) {
     //HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
     logSemaphore = xSemaphoreCreateMutex();  // 创建LOG互斥信号量
@@ -386,16 +389,17 @@ void Main(void) {
 
     xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 10, &UART_RECEPTHandle);
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 9, &Button_StateHandle);
-    xTaskCreate(APP_task, "APP", 256, NULL, 6, &APPHandle);
-    xTaskCreate(Motor_go_home_task, "Motor_go_home", 128, NULL, 2, &motor_homeHandle);
+    xTaskCreate(APP_task, "APP", 512, NULL, 6, &APPHandle);
+    xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle);
     xTaskCreate(bq25895_recovery_task, "bq25895_recovery", 128, NULL, 2, &bq25895_recovery_homeHandle);
-    if (xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 7, &deviceCheckHandle) == pdPASS) {
-        vTaskSuspend(deviceCheckHandle);
-    };
-    if (xTaskCreate(Press_Task, "Press", 256, NULL, 3, &PressHandle) == pdPASS) { vTaskSuspend(PressHandle); };
-    if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) { vTaskSuspend(HeatHandle); };
+     if (xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 7, &deviceCheckHandle) == pdPASS) {
+         vTaskSuspend(deviceCheckHandle);
+     };
+     if (xTaskCreate(Press_Task, "Press", 256, NULL, 3, &PressHandle) == pdPASS) { vTaskSuspend(PressHandle); };
+     if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) { vTaskSuspend(HeatHandle); };
     xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 256, NULL, 11, &i2c2_recovery_task_handle);
     xTaskCreate(TaskMonitor_Task, "TaskMonitor", 512, NULL, 1, NULL);
+
     //xTaskCreate(PowerOnDelayTask, "PowerOnDelay", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
     //xTaskCreate(PowerReboot_Task, "PowerReboot", 128, NULL,  8, pwrTaskHandle);
 

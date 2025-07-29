@@ -19,7 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "usart.h"
-#include "communication.h"
+
 /* USER CODE BEGIN 0 */
 #include "stm32g0xx_hal.h"
 #include "stm32g0xx_hal_uart.h"
