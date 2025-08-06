@@ -338,7 +338,7 @@ void TaskMonitor_Task(void *argument)
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)//可以测试是哪个线程出现了问题
 {
     // 可以加断点、输出等
-    for(;;); // 死循环便于GDB/调试器捕捉
+    while (1) { };
 }
 void Main(void) {
     //HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
@@ -375,6 +375,7 @@ void Main(void) {
     xTimerStart(serialTimeoutTimerHandle, 0); // 启动定时器
 
     UART_DMA_IDLE_RECEPT_QUEUEHandle = xQueueCreate(3, sizeof(uart_data *));
+    configASSERT(UART_DMA_IDLE_RECEPT_QUEUEHandle != NULL);
 
     AT24CXX_Init();
     BQ27441_DEMO();

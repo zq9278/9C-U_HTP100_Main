@@ -23,6 +23,7 @@
 /* USER CODE BEGIN 0 */
 #include "stm32g0xx_hal.h"
 #include "stm32g0xx_hal_uart.h"
+#include "interface_uart.h"
 #include "UserApp.h"
 
 uart_data uart2_data; // DMA���ջ����������ڴ�Ž��յ�������
@@ -296,52 +297,61 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 
 /* USER CODE BEGIN 1 */
 
-// ���ڿ����жϻص�����
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
-    if (huart->Instance == USART2) {
-        HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
-        uart_data *pUartData = &uart_rx_data_t[uart_buff_ctrl];
-        pUartData->length = Size;
-        // ���ͽ������ݵ�����
-        xQueueSendFromISR(UART_DMA_IDLE_RECEPT_QUEUEHandle, &pUartData, NULL);
-        // �л�����������
-        uart_buff_ctrl++;
-        uart_buff_ctrl %= UART_BUFFER_QUANTITY;
-        // ��������DMA����
-        HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_rx_data_t[uart_buff_ctrl].buffer, UART_RX_BUFFER_SIZE);
+  if (huart->Instance == USART2) {
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
+
+    uart_data *pUartData = &uart_rx_data_t[uart_buff_ctrl];
+    pUartData->length = Size;
+
+    // 队列保护
+    if (UART_DMA_IDLE_RECEPT_QUEUEHandle != NULL) {
+      xQueueSendFromISR(UART_DMA_IDLE_RECEPT_QUEUEHandle, &pUartData, NULL);
+    } else {
+      // 可选：加报警、日志、点灯、错误统计等
+      // 比如点灯报警
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
+      // 或者串口输出报警信息（如有可能）
     }
 
+    // 切换下一个缓冲区
+    uart_buff_ctrl++;
+    uart_buff_ctrl %= UART_BUFFER_QUANTITY;
+
+    // 重新启动DMA
+    HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_rx_data_t[uart_buff_ctrl].buffer, UART_RX_BUFFER_SIZE);
+  }
 }
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART2) {
     uint32_t error = HAL_UART_GetError(huart);
     // ���ݴ������ʹ���
     if (error & HAL_UART_ERROR_ORE) {
-      LOG("UART �������\n");
+      LOG_ISR("UART �������\n");
       __HAL_UART_CLEAR_OREFLAG(huart); // ��������־
       while (__HAL_UART_GET_FLAG(huart, UART_FLAG_RXNE)) {
         (huart->Instance->RDR & 0xFF); // ��ȡ���ռĴ�������ջ�����
       }
     }
     if (error & HAL_UART_ERROR_FE) {
-      LOG("UART ֡����\n");
+      LOG_ISR("UART ֡����\n");
       __HAL_UART_CLEAR_FEFLAG(huart); // ���֡�����־
     }
     if (error & HAL_UART_ERROR_NE) {
-      LOG("UART ��������\n");
+      LOG_ISR("UART ��������\n");
       __HAL_UART_CLEAR_NEFLAG(huart); // ������������־
     }
     if (error & HAL_UART_ERROR_DMA) {
-      LOG("UART DMA ����\n");
+      LOG_ISR("UART DMA ����\n");
       HAL_DMA_Abort(huart->hdmarx); // ֹͣ DMA
     }
     // ���� UART ����״̬
    // MX_USART2_UART_Init();
     // ������������ DMA ����
     if (HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart2_data.buffer, sizeof(uart2_data.buffer)) == HAL_OK) {
-      LOG("�������� DMA ���ճɹ�\n");
+      LOG_ISR("�������� DMA ���ճɹ�\n");
     } else {
-      LOG("�������� DMA ����ʧ��\n");
+      LOG_ISR("�������� DMA ����ʧ��\n");
     }
   }
 }
