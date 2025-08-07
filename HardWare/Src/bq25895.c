@@ -11,11 +11,9 @@ void BQ25895_Init(void) {
     CHG_CE(1);  // 关闭充电使能，准备配置
 //    BQ25895_Write(0x14, 0x80); // 写1到REG_RST位，触发软件复位
 //    osDelay(500);
-    //BQ25895_Write(0x02, 0x30); // 开启ADC
     BQ25895_Write(0x04, 0x40); // 设置充电电流2048mA
     BQ25895_Write(0x05, 0x10); // 设置充电终止电流为64mA
     BQ25895_Write(0x07, 0x8D); // 关闭充电定时
-    //BQ25895_Write(0x08, 0xe7); // 补偿导线电阻
     BQ25895_Write(0x08, 0xF3); // 补偿导线电阻
     BQ25895_Write(0x00, 0x3F); // 3.25A输入电流限制
     //BQ25895_Write(0x03, 0x12); // OTG关闭，最小系统电压3.1V

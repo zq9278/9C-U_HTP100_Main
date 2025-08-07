@@ -198,6 +198,7 @@ void Motor_go_home_task(void *argument) {
 void Device_Check_Task(void *argument) {
     (void)argument;
     xTimerStart(eye_is_existHandle, 0);
+    //AT24C02_WriteAllBytes_eye(0xff);//«Â¿Ìee¥Ê¥¢
     Device_Init();
     for (;;) {
         HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
