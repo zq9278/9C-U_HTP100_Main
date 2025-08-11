@@ -248,7 +248,7 @@ void I2C2_RecoveryTask(void *argument) {
         LOG("[恢复任务] I2C2 总线恢复完成！\n");
 
         // 等待一段时间再重试
-        osDelay(400);
+        osDelay(200);
         i2c2_error_flag = 0;
     }
 }

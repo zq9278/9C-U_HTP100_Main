@@ -223,9 +223,9 @@ void DeviceStateMachine_Update(void) {
                 device_ctx.time_b_left = EYE_AT24CXX_ReadUInt16(0xB0);
                 LOG("Debug: EEPROM A段寿命 = %d，B段寿命 = %d\n", device_ctx.time_a_left, device_ctx.time_b_left);
 
-                // ? 已标记 + A/B 寿命任意为 0 → 直接进入报废
+                //  已标记 + A/B 寿命任意为 0 → 直接进入报废
                 if (device_ctx.started_usage ||device_ctx.time_a_left == 0 || device_ctx.time_b_left == 0) {
-                    LOG("? 已标记设备寿命耗尽，直接进入报废状态！\n");
+                    LOG("已标记设备寿命耗尽，直接进入报废状态！\n");
                     //Device_MarkAsExpired("开机检测到报废");
                     device_ctx.state = DEVICE_STATE_EXPIRED;
                     xTimerStop(eye_is_existHandle, 0);
