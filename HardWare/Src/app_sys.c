@@ -40,6 +40,6 @@ void close_mianAPP(void){
     } else {
         LOG("motor_homeHandle task already exists.\r\n");
     }
-
+    //xTaskNotifyGive(i2c2_recovery_task_handle);
   taskEXIT_CRITICAL();   // ✅退出临界区
 }

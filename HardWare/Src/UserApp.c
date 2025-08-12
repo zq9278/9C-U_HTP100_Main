@@ -203,7 +203,10 @@ void Device_Check_Task(void *argument) {
     for (;;) {
         HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
         //Test_EYE_AT24CXX_ReadWrite_FullCycle();
-        DeviceStateMachine_Update();
+        if (i2c2_error_flag == 0)
+        {
+            DeviceStateMachine_Update();
+        }
 //        EYE_status=1.0;
 //        EYE_checkout(EYE_status);
         osDelay(100);
@@ -229,10 +232,17 @@ void I2C2_RecoveryTask(void *argument) {
         if (xSemaphoreTake(i2c2_mutex, portMAX_DELAY) == pdTRUE) {
             __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_BERR);  // 清除总线错误标志
             __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_ARLO);  // 清除仲裁丢失标志（如果有）
+            //
+            // // 重新启用时钟和 I2C 控制器
+            // __HAL_RCC_I2C2_CLK_DISABLE();
+            // __HAL_RCC_I2C2_CLK_ENABLE();
 
-            // 重新启用时钟和 I2C 控制器
-            __HAL_RCC_I2C2_CLK_DISABLE();
-            __HAL_RCC_I2C2_CLK_ENABLE();
+            // 1. 关闭 I2C 外设
+            __HAL_I2C_DISABLE(&hi2c2);
+
+            // 2. 硬件复位 I2C 外设
+            __HAL_RCC_I2C2_FORCE_RESET();
+            __HAL_RCC_I2C2_RELEASE_RESET();
 
             // 重新初始化 I2C2
             HAL_I2C_DeInit(&hi2c2);
@@ -248,7 +258,7 @@ void I2C2_RecoveryTask(void *argument) {
         LOG("[恢复任务] I2C2 总线恢复完成！\n");
 
         // 等待一段时间再重试
-        osDelay(200);
+        osDelay(10);
         i2c2_error_flag = 0;
     }
 }
@@ -258,6 +268,7 @@ extern
 void bq25895_recovery_task(void *argument) {
     (void)argument;
     for (;;) {
+
         // 一直等待通知信号（错误发生）
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
