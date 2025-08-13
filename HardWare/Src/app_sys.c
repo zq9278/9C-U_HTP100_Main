@@ -17,29 +17,32 @@ void STATE_POWER_5V_Update(void) {
   STATE_POWER_5V = 0; // 开关关
 };
 }
-void close_mianAPP(void){
-    if(currentState!=STATE_PRE_HEAT&&currentState!=STATE_PRE_AUTO){
-        ScreenWorkModeQuit();
-        ScreenTimerStop();
-    }
-
-   taskENTER_CRITICAL();  // ✅进入临界区，禁止上下文切换
-    currentState = STATE_OFF;
-//    HeatPWM(0); // 关闭加热PWM
-    if (PressHandle != NULL && eTaskGetState(PressHandle) != eSuspended) {
-        xTaskNotifyGive(PressHandle);
-    }
-    if (HeatHandle != NULL && eTaskGetState(HeatHandle) != eSuspended) {
-        xTaskNotifyGive(HeatHandle);
-    }
-    if (motor_homeHandle == NULL) {
-        if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle)== pdPASS) {
-        } else {
-            LOG("Failed to create motor_homeHandle task.\r\n");
+void close_mianAPP(void)
+{
+    if (currentState!=STATE_OFF) {
+        if(currentState!=STATE_PRE_HEAT&&currentState!=STATE_PRE_AUTO){
+            ScreenWorkModeQuit();
+            ScreenTimerStop();
         }
-    } else {
-        LOG("motor_homeHandle task already exists.\r\n");
+
+        taskENTER_CRITICAL();  // ✅进入临界区，禁止上下文切换
+        currentState = STATE_OFF;
+        //    HeatPWM(0); // 关闭加热PWM
+        if (PressHandle != NULL && eTaskGetState(PressHandle) != eSuspended) {
+            xTaskNotifyGive(PressHandle);
+        }
+        if (HeatHandle != NULL && eTaskGetState(HeatHandle) != eSuspended) {
+            xTaskNotifyGive(HeatHandle);
+        }
+        if (motor_homeHandle == NULL) {
+            if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle)== pdPASS) {
+            } else {
+                LOG("Failed to create motor_homeHandle task.\r\n");
+            }
+        } else {
+            LOG("motor_homeHandle task already exists.\r\n");
+        }
+        //xTaskNotifyGive(i2c2_recovery_task_handle);
+        taskEXIT_CRITICAL();   // ✅退出临界区
     }
-    //xTaskNotifyGive(i2c2_recovery_task_handle);
-  taskEXIT_CRITICAL();   // ✅退出临界区
 }

@@ -198,17 +198,13 @@ void Motor_go_home_task(void *argument) {
 void Device_Check_Task(void *argument) {
     (void)argument;
     xTimerStart(eye_is_existHandle, 0);
-    //AT24C02_WriteAllBytes_eye(0xff);//清理ee存储
+    AT24C02_WriteAllBytes_eye(0xff);//清理ee存储
     Device_Init();
     for (;;) {
         HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
         //Test_EYE_AT24CXX_ReadWrite_FullCycle();
-        if (i2c2_error_flag == 0)
-        {
             DeviceStateMachine_Update();
-        }
-//        EYE_status=1.0;
-//        EYE_checkout(EYE_status);
+       EYE_checkout(EYE_status);
         osDelay(100);
 
 

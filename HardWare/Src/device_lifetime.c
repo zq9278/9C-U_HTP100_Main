@@ -201,160 +201,91 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
 }
 
 
-
+uint8_t first_unline_flag = 0;
 // 主状态机轮询更新函数（高频调用）
+// void DeviceStateMachine_Update(void) {
+//     bool online = (I2C_CheckDevice(0x91, 5) == HAL_OK);
+//
+//
+//             if (online) {
+//
+//
+//                 uint16_t mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
+//                 LOG("Debug: EYE_MARK_MAP 读取值 = 0x%04X\n", mark);
+//                 osDelay(10);
+//                 uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
+//                 LOG("Debug: 读取主机使用次数：%d\n", eye_times);
+//                 if(mark == 0xFFFF)
+//                 {
+//                     eye_times += 1;
+//                     EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);
+//                     AT24CXX_WriteUInt16(0xf2, eye_times);
+//                     my_prepare_data_times.cmd_type_low = 0xb0;
+//                     my_prepare_data_times.value = eye_times;
+//                     Eye_twitching_invalid_master(&my_prepare_data_times);
+//                     LOG("主机端记录的次数: %d\n", eye_times);
+//                     EYE_status= 1;
+//                     first_unline_flag=0;
+//                 }else
+//                 {
+//                     if (first_unline_flag==0)
+//                     {
+//                         EYE_status= 1;
+//                     }
+//                     else
+//                     {
+//
+//                         EYE_status= 0;
+//                         close_mianAPP();
+//                     }
+//
+//
+//                 }
+//             }
+//             else
+//             {
+//                 EYE_status= 0;
+//                 first_unline_flag=1;
+//                 close_mianAPP();
+//             }
+//     EYE_checkout(EYE_status);
+// }
+
 void DeviceStateMachine_Update(void) {
-    bool online = (I2C_CheckDevice(0x91, 5) == HAL_OK);
+    bool online = (I2C_CheckDevice(0x91, 3) == HAL_OK);
+    uint16_t mark = 0;
+    uint16_t eye_times = 0;
 
-    switch (device_ctx.state) {
-        case DEVICE_STATE_DISCONNECTED:
-            if (online) {
-
-                device_ctx.connected = true;
-
-                uint16_t mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
-                LOG("Debug: EYE_MARK_MAP 读取值 = 0x%04X\n", mark);
-                osDelay(10);
-                device_ctx.started_usage = (mark != 0xFFFF);
-                LOG("Debug: started_usage = %d（0表示新设备，1表示已使用设备）\n", device_ctx.started_usage);
-
-                // 总是读取当前 EEPROM 剩余寿命
-                device_ctx.time_a_left = EYE_AT24CXX_ReadUInt16(0xA0);
-                device_ctx.time_b_left = EYE_AT24CXX_ReadUInt16(0xB0);
-                LOG("Debug: EEPROM A段寿命 = %d，B段寿命 = %d\n", device_ctx.time_a_left, device_ctx.time_b_left);
-
-                //  已标记 + A/B 寿命任意为 0 → 直接进入报废
-                if (device_ctx.started_usage ||device_ctx.time_a_left == 0 || device_ctx.time_b_left == 0) {
-                    LOG("已标记设备寿命耗尽，直接进入报废状态！\n");
-                    //Device_MarkAsExpired("开机检测到报废");
-                    device_ctx.state = DEVICE_STATE_EXPIRED;
-                    xTimerStop(eye_is_existHandle, 0);
-                    EYE_status = 0;
-                    break;
-                }
-                LOG("Normal: 检测到设备接入\n");
-                // 若是新设备，进行 A/B 段校正写回
-                if (!device_ctx.started_usage) {
-                    if (device_ctx.time_a_left == 0xFFFF || device_ctx.time_a_left > DEVICE_LIFETIME_A_DEFAULT) {
-                        LOG("Warning: 读取到非法 A段寿命值：%d，开始修正\n", device_ctx.time_a_left);
-                        device_ctx.time_a_left = DEVICE_LIFETIME_A_DEFAULT;
-                        if (EYE_AT24CXX_WriteUInt16(0xA0, device_ctx.time_a_left) == HAL_OK) {
-                            LOG("Correct: A段寿命已重写为默认值 %d\n", DEVICE_LIFETIME_A_DEFAULT);
-                        } else {
-                            LOG("Error: A段寿命重写失败\n");
-                        }
-                    } else {
-                        LOG("Normal: 未标记设备，A段当前寿命=%d（最大为%d）\n", device_ctx.time_a_left, DEVICE_LIFETIME_A_DEFAULT);
-                    }
-
-                    if (device_ctx.time_b_left == 0xFFFF || device_ctx.time_b_left > DEVICE_LIFETIME_B_DEFAULT) {
-                        LOG("Warning: 读取到非法 B段寿命值：%d，开始修正\n", device_ctx.time_b_left);
-                        device_ctx.time_b_left = DEVICE_LIFETIME_B_DEFAULT;
-                        if (EYE_AT24CXX_WriteUInt16(0xB0, device_ctx.time_b_left) == HAL_OK) {
-                            LOG("Correct: B段寿命已重写为默认值 %d\n", DEVICE_LIFETIME_B_DEFAULT);
-                        } else {
-                            LOG("Error: B段寿命重写失败\n");
-                        }
-                    } else {
-                        LOG("Normal: 未标记设备，B段当前寿命=%d（最大为%d）\n", device_ctx.time_b_left, DEVICE_LIFETIME_B_DEFAULT);
-                    }
-                }
-
-                device_ctx.state = device_ctx.started_usage ? DEVICE_STATE_ACTIVE : DEVICE_STATE_CONNECTED_IDLE;
-                EYE_status = device_ctx.started_usage ? 0 : 1;
-                LOG("Debug: 状态迁移为：%s\n", device_ctx.started_usage ? "ACTIVE（B段）" : "CONNECTED_IDLE（A段）");
-
-                uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
-                LOG("Debug: 读取主机使用次数：%d\n", eye_times);
-                my_prepare_data_times.cmd_type_low = 0xb0;
-                my_prepare_data_times.value = eye_times;
-                Eye_twitching_invalid_master(&my_prepare_data_times);
-                LOG("主机端记录的次数: %d\n", eye_times);
-                LOG("设备状态初始化：A=%d, B=%d, 标记=%d\n", device_ctx.time_a_left, device_ctx.time_b_left, device_ctx.started_usage);
-
-                xTimerStart(eye_is_existHandle, 0);
-                LOG("定时器 eye_is_existHandle 启动\n");
-            }
-
-            break;
-
-
-
-
-        case DEVICE_STATE_CONNECTED_IDLE://a段
-            if (!online) {
-                currentState = STATE_OFF;
-                LOG("Woring: 设备断开连接\n");
-                device_ctx.connected = false;
-                device_ctx.state = DEVICE_STATE_DISCONNECTED;
-                xTimerStop(eye_is_existHandle, 0);
-                EYE_status = 0;
-                close_mianAPP();
-                break;
-            }
-
-            if (eye_existtime_1s && device_ctx.time_a_left > 0) {
-                if (factory_mode==0) {
-                    device_ctx.time_a_left--;
-                }
-
-                EYE_AT24CXX_WriteUInt16(0xA0, device_ctx.time_a_left);  // ? 写回 EEPROM，确保断电后仍保留
-                eye_existtime_1s = 0;
-                LOG("Countdown: A段寿命剩余：%d\n", device_ctx.time_a_left);
-            }
-
-            if (device_ctx.time_a_left == 0) {
-                device_ctx.state = DEVICE_STATE_EXPIRED;
-                Device_MarkAsExpired("A段寿命耗尽");
-            }
-            break;
-
-
-        case DEVICE_STATE_ACTIVE://b段
-            if (!online) {
-                currentState = STATE_OFF;
-                LOG("Woring: 使用中设备断开，强制报废\n");
-                //device_ctx.state = DEVICE_STATE_EXPIRED;
-                Device_MarkAsExpired("使用中断开连接");
-                break;
-            }
-            if (eye_workingtime_1s && device_ctx.time_b_left > 0) {
-
-                if (factory_mode==0) {
-                    device_ctx.time_b_left--;
-                }
-                eye_workingtime_1s = 0;
-                LOG("Countdown: B段寿命剩余：%d\n", device_ctx.time_b_left);
-            }
-            if (device_ctx.time_b_left == 0) {
-                device_ctx.state = DEVICE_STATE_EXPIRED;
-                Device_MarkAsExpired("B段寿命耗尽");
-            }
-            break;
-
-        case DEVICE_STATE_EXPIRED:
-            if (!online) {
-                LOG("Normal: 报废设备已拔出，等待新设备接入\n");
-                device_ctx.connected = false;
-                device_ctx.started_usage = false;
-                device_ctx.state = DEVICE_STATE_DISCONNECTED;
-                xTimerStop(eye_is_existHandle, 0);
-                EYE_status = 0;
-                if (i2c2_recovery_task_handle != NULL) {
-                    xTaskNotifyGive(i2c2_recovery_task_handle);
-                } else {
-                    LOG("DEVICE_STATE_EXPIRED: IIC恢复任务-句柄未初始化！`\n");
-                }
-            }
-            break;
-        default:
-            LOG("Woring: 状态机未知状态：%d\n", device_ctx.state);
-            break;
+    if (!online) {
+        EYE_status = 0;
+        first_unline_flag = 1;
+        close_mianAPP();
+        return;
     }
 
-    // 实时发送设备状态（0 或 1）
-    EYE_checkout((float)EYE_status);
-    if (EYE_status==0.0f) {
-        currentState = STATE_OFF;
+    mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
+    LOG("Debug: EYE_MARK_MAP 读取值 = 0x%04X\n", mark);
+    osDelay(10);
+    eye_times = AT24CXX_ReadOrWriteZero(0xF2);
+    LOG("Debug: 读取主机使用次数：%d\n", eye_times);
+
+    if (mark == 0xFFFF) {
+        eye_times += 1;
+        EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);
+        AT24CXX_WriteUInt16(0xF2, eye_times);
+        my_prepare_data_times.cmd_type_low = 0xB0;
+        my_prepare_data_times.value = eye_times;
+        Eye_twitching_invalid_master(&my_prepare_data_times);
+        LOG("主机端记录的次数: %d\n", eye_times);
+        EYE_status = 1;
+        first_unline_flag = 0;
+    } else {
+        if (first_unline_flag == 0) {
+            EYE_status = 1;
+        } else {
+            EYE_status = 0;
+            close_mianAPP();
+        }
     }
+
 }
