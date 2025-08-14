@@ -165,127 +165,204 @@ bool  Device_StartUsage(void) {
     return true;
 }
 
+// // I2C 检测设备是否在线（带互斥锁）
+// HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
+//     HAL_StatusTypeDef result;
+//
+//     // 判断互斥锁是否已初始化，防止空指针操作
+//     if (i2c2_mutex == NULL) {
+//         LOG("错误：I2C互斥锁未初始化！\n");
+//         return HAL_ERROR;
+//     }
+//
+//     // 尝试获取 I2C2 互斥锁，超时时间100个tick
+//     if (xSemaphoreTake(i2c2_mutex, 100) == pdTRUE) {
+//         // 获取到互斥锁，进行设备检查
+//         for (uint8_t i = 0; i < retries; i++) {
+//             // 检查I2C设备是否准备好（即地址有响应）
+//             result = HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr, 1, 100);
+//             if (result == HAL_OK) {
+//                 // 检查通过，释放互斥锁并返回OK
+//                 xSemaphoreGive(i2c2_mutex);
+//                 i2c2_mutex_owner = NULL;  // 可选：清除所有者标记
+//                 return HAL_OK;
+//             }
+//             // 未找到设备，延时3ms后重试
+//             osDelay(50);
+//         }
+//         // 多次尝试后依旧失败，释放互斥锁并返回错误
+//         xSemaphoreGive(i2c2_mutex);
+//         return HAL_ERROR;
+//     } else {
+//         // 获取互斥锁失败，直接返回错误
+//         LOG("I2C_CheckDevice：获取互斥锁失败！\n");
+//         return HAL_ERROR;
+//     }
+// }
+
 // I2C 检测设备是否在线（带互斥锁）
+// // 必须连续 retries 次都成功才返回 HAL_OK
+// HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
+//     HAL_StatusTypeDef result;
+//     uint8_t success_count = 0;
+//
+//     if (i2c2_mutex == NULL) {
+//         LOG("错误：I2C互斥锁未初始化！\n");
+//         return HAL_ERROR;
+//     }
+//
+//     if (xSemaphoreTake(i2c2_mutex, 100) == pdTRUE) {
+//         for (uint8_t i = 0; i < retries; i++) {
+//             result = HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr, 1, 100);
+//             if (result == HAL_OK) {
+//                 success_count++;
+//             } else {
+//                 // 只要有一次失败就提前退出
+//                 break;
+//             }
+//             osDelay(10); // 每次检查之间的延时
+//         }
+//
+//         xSemaphoreGive(i2c2_mutex);
+//         i2c2_mutex_owner = NULL;
+//
+//         if (success_count == retries) {
+//             return HAL_OK;   // 全部成功
+//         } else {
+//             return HAL_ERROR; // 有一次失败就算失败
+//         }
+//     } else {
+//         LOG("I2C_CheckDevice：获取互斥锁失败！\n");
+//         return HAL_ERROR;
+//     }
+// }
+
+
 HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
     HAL_StatusTypeDef result;
+    uint8_t consecutive_success = 0;
+    uint8_t consecutive_fail = 0;
 
-    // 判断互斥锁是否已初始化，防止空指针操作
     if (i2c2_mutex == NULL) {
         LOG("错误：I2C互斥锁未初始化！\n");
         return HAL_ERROR;
     }
 
-    // 尝试获取 I2C2 互斥锁，超时时间100个tick
     if (xSemaphoreTake(i2c2_mutex, 100) == pdTRUE) {
-        // 获取到互斥锁，进行设备检查
-        for (uint8_t i = 0; i < retries; i++) {
-            // 检查I2C设备是否准备好（即地址有响应）
+        while (1) {
             result = HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr, 1, 100);
             if (result == HAL_OK) {
-                // 检查通过，释放互斥锁并返回OK
-                xSemaphoreGive(i2c2_mutex);
-                i2c2_mutex_owner = NULL;  // 可选：清除所有者标记
-                return HAL_OK;
+                consecutive_success++;
+                consecutive_fail = 0; // 成功则失败计数清零
+            } else {
+                consecutive_fail++;
+                consecutive_success = 0; // 失败则成功计数清零
             }
-            // 未找到设备，延时3ms后重试
-            osDelay(50);
+
+            if (consecutive_success >= retries) {
+                xSemaphoreGive(i2c2_mutex);
+                i2c2_mutex_owner = NULL;
+                return HAL_OK;   // 连续 N 次成功
+            }
+
+            if (consecutive_fail >= retries) {
+                xSemaphoreGive(i2c2_mutex);
+                i2c2_mutex_owner = NULL;
+                return HAL_ERROR; // 连续 N 次失败
+            }
+
+            osDelay(100);
         }
-        // 多次尝试后依旧失败，释放互斥锁并返回错误
-        xSemaphoreGive(i2c2_mutex);
-        return HAL_ERROR;
     } else {
-        // 获取互斥锁失败，直接返回错误
         LOG("I2C_CheckDevice：获取互斥锁失败！\n");
         return HAL_ERROR;
     }
 }
 
 
-uint8_t first_unline_flag = 0;
-// 主状态机轮询更新函数（高频调用）
-// void DeviceStateMachine_Update(void) {
-//     bool online = (I2C_CheckDevice(0x91, 5) == HAL_OK);
-//
-//
-//             if (online) {
-//
-//
-//                 uint16_t mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
-//                 LOG("Debug: EYE_MARK_MAP 读取值 = 0x%04X\n", mark);
-//                 osDelay(10);
-//                 uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xf2);
-//                 LOG("Debug: 读取主机使用次数：%d\n", eye_times);
-//                 if(mark == 0xFFFF)
-//                 {
-//                     eye_times += 1;
-//                     EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);
-//                     AT24CXX_WriteUInt16(0xf2, eye_times);
-//                     my_prepare_data_times.cmd_type_low = 0xb0;
-//                     my_prepare_data_times.value = eye_times;
-//                     Eye_twitching_invalid_master(&my_prepare_data_times);
-//                     LOG("主机端记录的次数: %d\n", eye_times);
-//                     EYE_status= 1;
-//                     first_unline_flag=0;
-//                 }else
-//                 {
-//                     if (first_unline_flag==0)
-//                     {
-//                         EYE_status= 1;
-//                     }
-//                     else
-//                     {
-//
-//                         EYE_status= 0;
-//                         close_mianAPP();
-//                     }
-//
-//
-//                 }
-//             }
-//             else
-//             {
-//                 EYE_status= 0;
-//                 first_unline_flag=1;
-//                 close_mianAPP();
-//             }
-//     EYE_checkout(EYE_status);
-// }
 
+
+typedef enum {
+    ST_CHECK_ONLINE = 0,
+    ST_OFFLINE,
+    ST_CHECK_MARK,
+    ST_ONLINE_NEW,
+    ST_ONLINE_OLD
+} EyeState;
 void DeviceStateMachine_Update(void) {
-    bool online = (I2C_CheckDevice(0x91, 3) == HAL_OK);
-    uint16_t mark = 0;
-    uint16_t eye_times = 0;
+     bool online = (I2C_CheckDevice(0x91, 4) == HAL_OK);
+     uint16_t mark = 0;
+     uint16_t eye_times = 0;
 
-    if (!online) {
-        EYE_status = 0;
-        first_unline_flag = 1;
-        close_mianAPP();
-        return;
-    }
+    static EyeState eye_state = ST_CHECK_ONLINE;
 
-    mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
-    LOG("Debug: EYE_MARK_MAP 读取值 = 0x%04X\n", mark);
-    osDelay(10);
-    eye_times = AT24CXX_ReadOrWriteZero(0xF2);
-    LOG("Debug: 读取主机使用次数：%d\n", eye_times);
+    switch (eye_state) {
+    case ST_OFFLINE:
+        if (!online) {
+            EYE_status = 0;
+            close_mianAPP();
+            break; // 继续保持离线，直到检测到上线
+        }
+        // 上线沿：仅在上线瞬间检查标志
+        eye_state = ST_CHECK_MARK;
+        break;
 
-    if (mark == 0xFFFF) {
-        eye_times += 1;
-        EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);
-        AT24CXX_WriteUInt16(0xF2, eye_times);
-        my_prepare_data_times.cmd_type_low = 0xB0;
-        my_prepare_data_times.value = eye_times;
-        Eye_twitching_invalid_master(&my_prepare_data_times);
-        LOG("主机端记录的次数: %d\n", eye_times);
-        EYE_status = 1;
-        first_unline_flag = 0;
-    } else {
-        if (first_unline_flag == 0) {
-            EYE_status = 1;
+    case ST_CHECK_MARK:
+        vTaskDelay(10);
+        mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
+        LOG("Debug: EYE_MARK_MAP 读取值 = 0x%04X\n", mark);
+        osDelay(5);
+
+        if (mark == 0xFFFF) {
+            // 新设备：首次使用，写入标志并计数
+            eye_times = AT24CXX_ReadOrWriteZero(0xF2);
+            LOG("Debug: 读取主机使用次数：%d\n", eye_times);
+
+            eye_times += 1;
+            EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);
+            AT24CXX_WriteUInt16(0xF2, eye_times);
+
+            my_prepare_data_times.cmd_type_low = 0xB0;
+            my_prepare_data_times.value = eye_times;
+            Eye_twitching_invalid_master(&my_prepare_data_times);
+
+            LOG("主机端记录的次数: %d\n", eye_times);
+            EYE_status = 1;              // 本次插入会话允许使用
+            eye_state = ST_ONLINE_NEW;   // 保持允许，直到拔出/断电
         } else {
+            // 旧设备：不允许使用（实时禁止）
+            EYE_status = 0;
+            close_mianAPP();
+            eye_state = ST_ONLINE_OLD;   // 保持禁止，直到拔出/断电
+        }
+        break;
+
+    case ST_ONLINE_NEW:
+        if (!online) {
+            // 拔出/断电后，回到离线，下一次再插即按“旧设备”处理
+            EYE_status = 0;
+            close_mianAPP();
+            eye_state = ST_OFFLINE;
+        } else {
+            // 仍在线：继续允许，不再重复读/写标志
+            EYE_status = 1;
+        }
+        break;
+
+    case ST_ONLINE_OLD:
+        if (!online) {
+            // 拔出/断电后回到离线
+            eye_state = ST_OFFLINE;
+        } else {
+            // 旧设备在线：持续禁止
             EYE_status = 0;
             close_mianAPP();
         }
+        break;
+
+    default:
+        eye_state = ST_OFFLINE;
+        break;
     }
 
 }

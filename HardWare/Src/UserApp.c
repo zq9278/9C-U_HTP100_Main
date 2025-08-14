@@ -197,16 +197,18 @@ void Motor_go_home_task(void *argument) {
 // 检测任务函数
 void Device_Check_Task(void *argument) {
     (void)argument;
+    EYE_checkout(1.0);
+    vTaskDelay(1200);
     xTimerStart(eye_is_existHandle, 0);
-    AT24C02_WriteAllBytes_eye(0xff);//清理ee存储
+    //AT24C02_WriteAllBytes_eye(0xff);//清理ee存储
     Device_Init();
     for (;;) {
         HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
         //Test_EYE_AT24CXX_ReadWrite_FullCycle();
-            DeviceStateMachine_Update();
-       EYE_checkout(EYE_status);
+        DeviceStateMachine_Update();
+        //EYE_status=1;
+        EYE_checkout(EYE_status);
         osDelay(100);
-
 
     }
 }
@@ -223,7 +225,8 @@ void I2C2_RecoveryTask(void *argument) {
 
         i2c2_error_flag = 1;
 
-
+        uint32_t isr = hi2c2.Instance->ISR;
+        LOG("[I2C2 错误] ISR=0x%08lX\n", isr);
         // 清除 I2C 错误标志以保持总线正常
         if (xSemaphoreTake(i2c2_mutex, portMAX_DELAY) == pdTRUE) {
             __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_BERR);  // 清除总线错误标志
@@ -254,7 +257,7 @@ void I2C2_RecoveryTask(void *argument) {
         LOG("[恢复任务] I2C2 总线恢复完成！\n");
 
         // 等待一段时间再重试
-        osDelay(10);
+        //osDelay(10);
         i2c2_error_flag = 0;
     }
 }

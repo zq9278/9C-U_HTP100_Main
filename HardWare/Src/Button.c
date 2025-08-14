@@ -35,7 +35,7 @@ void Button_detection(void) {
             break;
 
         case STATE_PRE_HEAT://开启加热
-            Device_StartUsage();
+            //Device_StartUsage();
             currentState = STATE_HEAT; // 从预热进入加热
             heat_finish = 0;
             // HeatPID.setpoint = 42.5;
@@ -68,7 +68,7 @@ void Button_detection(void) {
                 vTaskDelete(motor_homeHandle);
                 motor_homeHandle = NULL;
             }
-            Device_StartUsage();
+            //Device_StartUsage();
             currentState = STATE_PRESS;                // 从预挤压进入挤压
             press_finish = 0;
             TMC_ENN(0);                                // 启动电机
@@ -112,10 +112,10 @@ void Button_detection(void) {
                 vTaskDelete(motor_homeHandle);
                 motor_homeHandle = NULL;
             }
-            if (!Device_StartUsage()) {
-                break;
-                // 错误处理
-            }
+            // if (!Device_StartUsage()) {
+            //     break;
+            //     // 错误处理
+            // }
             currentState = STATE_AUTO; // 从预自动进入自动模式
             auto_finish = 0;
             // HeatPID.setpoint = 42.5;
