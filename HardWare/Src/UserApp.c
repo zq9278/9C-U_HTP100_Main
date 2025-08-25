@@ -197,6 +197,7 @@ void Motor_go_home_task(void *argument) {
 // ¼ì²âÈÎÎñº¯Êý
 void Device_Check_Task(void *argument) {
     (void)argument;
+    AD24C01_Factory_formatted();
     EYE_checkout(1.0);
     vTaskDelay(1200);
     xTimerStart(eye_is_existHandle, 0);

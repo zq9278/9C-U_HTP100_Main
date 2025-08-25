@@ -41,7 +41,7 @@ void Button_detection(void) {
             // HeatPID.setpoint = 42.5;
 //          HeatPID.previous_error = pid_heat.previous_error;
 //          HeatPID.integral = pid_heat.integral;
-            HeatPID.setpoint = 41.5 + temperature_compensation;
+            HeatPID.setpoint = 42.5 + temperature_compensation;
             //HeatPID.Ki=0.04;
             ScreenTimerStart();
 
