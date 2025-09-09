@@ -85,7 +85,7 @@ void Heat_Task(void *argument) {
                 LOG("Read_tmp112/n");
 #endif
                 EyeTmp = TmpRaw2Ture();
-                EyeTmp=(EyeTmp>43)?43:EyeTmp;
+                //EyeTmp=(EyeTmp>43)?43:EyeTmp;
                 if (tempature_flag_400ms) {
                     tempature_flag_400ms = 0;
                     if (EyeTmp != 0.0f) {

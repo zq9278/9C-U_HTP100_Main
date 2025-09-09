@@ -12,6 +12,8 @@
 
 #include "main.h"
 #include "pid.h"
+
+#include "interface_uart.h"
 float p, i, d;
 
 // 微分滤波系数（0 < alpha < 1），越大越平滑
@@ -61,7 +63,7 @@ float PID_Compute(PID_TypeDef *pid, float measured_value) {
     float output_limited = Limit(output, pid->output_min, pid->output_max);
 
     // 调试输出
-    //LOG("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",p,i,d,measured_value,output_limited,pid->setpoint);
+    LOG("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",p,i,d,measured_value,output_limited,pid->setpoint,error);
 
     return output_limited;
 }

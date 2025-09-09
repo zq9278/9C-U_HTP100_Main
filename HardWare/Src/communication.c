@@ -85,7 +85,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             currentState = STATE_PRE_HEAT; // 切换到预加热状态
             emergency_stop = 0;
             HeatPWM(1);                    // 启动加热PWM
-            HeatPID.integral = 0;
+            //HeatPID.integral = 0;
             HeatPID.setpoint = 37 + temperature_compensation;
             if (HeatHandle != NULL) {
                 vTaskResume(HeatHandle);
