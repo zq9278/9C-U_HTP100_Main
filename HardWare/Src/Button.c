@@ -23,6 +23,7 @@ extern uint8_t heat_finish, press_finish, auto_finish;
 extern PID_TypeDef HeatPID;
 extern uint8_t emergency_stop;
 extern int motor_go_home;
+volatile uint8_t button_pressed = 0;
 
 void Button_detection(void) {
     switch (currentState) {

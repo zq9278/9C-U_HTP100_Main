@@ -118,7 +118,7 @@ extern UART_HandleTypeDef huart2;
 extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
-
+extern volatile uint8_t button_pressed;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -406,15 +406,16 @@ void USART2_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-//extern osSemaphoreId_t BUTTON_SEMAPHOREHandle; // �����ź������
+//extern osSemaphoreId_t BUTTON_SEMAPHOREHandle;
  void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
  {
-    if (GPIO_Pin == SW_CNT_Pin) {  // ����Ƿ���Ŀ�갴��
+    if (GPIO_Pin == SW_CNT_Pin) {
          BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-         // ���ж����ͷ��ź�����֪ͨ���񰴼�����
-         xSemaphoreGiveFromISR(BUTTON_SEMAPHOREHandle,&xHigherPriorityTaskWoken);
-         // �����Ҫ�л������ģ�����ô˺���
-         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);//�Ƿ������ж�isr����ִ�и������ȼ�������
+      if (!button_pressed)
+      {
+        xSemaphoreGiveFromISR(BUTTON_SEMAPHOREHandle,&xHigherPriorityTaskWoken);
+      }
+         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
      }
      if (GPIO_Pin == CHG_INT_Pin) {
          BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -427,17 +428,6 @@ void USART2_IRQHandler(void)
          }
      }
  }
-
-//extern osTimerId_t butttonHandle;
-//void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin) {
-//  if (GPIO_Pin == SW_CNT_Pin) {
-//    // ����ֹͣ��ʱ������������У�
-//    //osTimerStop(butttonHandle);
-//    // ������ʱ��
-//    osTimerStart(butttonHandle, 5);
-//    xTimerStartFromISR
-//  }
-//}
 
 volatile uint32_t last_button_press_time_PWR = 0; // ��¼�ϴΰ������µ�ʱ���
 extern uint8_t reset;

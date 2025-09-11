@@ -140,7 +140,7 @@ void Press_Task(void *argument) {
     }
     /* USER CODE END Press_Task */
 }
-
+extern volatile uint8_t button_pressed;
 void Button_State_Task(void *argument) {
     (void)argument;
     /* USER CODE BEGIN Button_State_Task */
@@ -154,6 +154,11 @@ void Button_State_Task(void *argument) {
                 // 按键稳定，执行按键逻辑
                 if (EYE_status == 1) {
                     Button_detection();
+                    // 等待释放
+                    while (HAL_GPIO_ReadPin(SW_CNT_GPIO_Port, SW_CNT_Pin) == GPIO_PIN_RESET) {
+                        osDelay(10);
+                    }
+                    button_pressed = 0; // 准备下一次按键
                 }
                 soft_button = 0;
             }
@@ -213,6 +218,7 @@ void Device_Check_Task(void *argument) {
         EYE_checkout(EYE_status);
         osDelay(100);
 
+        //EYE_AT24CXX_WriteUInt16(super_eyes, 0x0202);//标记特殊眼盾
     }
 }
 

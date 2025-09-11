@@ -273,6 +273,7 @@ void DeviceStateMachine_Update(void) {
     case ST_CHECK_MARK:
         vTaskDelay(10);
         mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
+       uint16_t super_eye = EYE_AT24CXX_ReadUInt16(super_eyes);
         LOG("[EEPROM] Read EYE_MARK_MAP=0x%04X\n", mark);
         osDelay(5);
 
@@ -280,7 +281,10 @@ void DeviceStateMachine_Update(void) {
             // 新设备
             eye_times = AT24CXX_ReadOrWriteZero(0xF2);
             eye_times += 1;
-            EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);//标记眼盾
+            if (super_eye!=0x0202)//眼盾的super_eyes位，值不等于0x02则认为是普通眼盾需要标记
+            {
+                EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);//标记眼盾
+            }
             AT24CXX_WriteUInt16(0xF2, eye_times);
 
             my_prepare_data_times.cmd_type_low = 0xB0;
