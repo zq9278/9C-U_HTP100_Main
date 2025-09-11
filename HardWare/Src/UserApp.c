@@ -348,11 +348,42 @@ void TaskMonitor_Task(void *argument)
     }
 }
 
+
 #define configCHECK_FOR_STACK_OVERFLOW 2
-void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)//可以测试是哪个线程出现了问题
+#define configUSE_MALLOC_FAILED_HOOK    1
+#define configASSERT(x) if( (x) == 0 ) vAssertCalled(__FILE__, __LINE__)
+
+/**
+ * @brief  FreeRTOS 检测到任务栈溢出时调用
+ */
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
-    // 可以加断点、输出等
-    while (1) { };
+    // 防止优化掉参数
+    (void)xTask;
+
+    LOG("[ERROR] Stack overflow detected! Task=%s\n", pcTaskName);
+
+    // 可以加上出错灯指示
+    //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET); // 假设 PC13 LED
+
+    // 可以选择进入死循环，防止后续内核崩溃
+    taskDISABLE_INTERRUPTS();
+    for(;;) {
+        // 这里可加入小延时闪灯，表示错误类型
+    }
+}
+
+/**
+ * @brief  FreeRTOS 断言失败处理函数
+ */
+void vAssertCalled(const char *file, int line)
+{
+    LOG("[ASSERT] Failed in file %s, line %d\n", file, line);
+
+    taskDISABLE_INTERRUPTS();
+    for(;;) {
+        // 同样可闪灯提示
+    }
 }
 void Main(void) {
     //HAL_IWDG_Refresh(&hiwdg);  // 正常运行时喂狗
@@ -402,7 +433,7 @@ void Main(void) {
     //TMP112_Init();
 
 
-    xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 256, NULL, 10, &UART_RECEPTHandle);
+    xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 350, NULL, 10, &UART_RECEPTHandle);
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 9, &Button_StateHandle);
     xTaskCreate(APP_task, "APP", 512, NULL, 6, &APPHandle);
     xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle);

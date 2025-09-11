@@ -55,31 +55,45 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void HardFault_Handler_C(uint32_t *stacked_args) {
-    uint32_t r0  = stacked_args[0];
-    uint32_t r1  = stacked_args[1];
-    uint32_t r2  = stacked_args[2];
-    uint32_t r3  = stacked_args[3];
-    uint32_t r12 = stacked_args[4];
-    uint32_t lr  = stacked_args[5];
-    uint32_t pc  = stacked_args[6];
-    uint32_t psr = stacked_args[7];
+void HardFault_Handler_C(unsigned int * hardfault_args)
+{
+  // uint32_t stacked_r0  = ((uint32_t)hardfault_args[0]);
+  // uint32_t stacked_r1  = ((uint32_t)hardfault_args[1]);
+  // uint32_t stacked_r2  = ((uint32_t)hardfault_args[2]);
+  // uint32_t stacked_r3  = ((uint32_t)hardfault_args[3]);
+  // uint32_t stacked_r12 = ((uint32_t)hardfault_args[4]);
+  // uint32_t stacked_lr  = ((uint32_t)hardfault_args[5]);
+  // uint32_t stacked_pc  = ((uint32_t)hardfault_args[6]);
+  // uint32_t stacked_psr = ((uint32_t)hardfault_args[7]);
+  //
+  // LOG_ISR("\n[HardFault]\n");
+  // LOG_ISR("R0  = 0x%08lX\n", stacked_r0);
+  // LOG_ISR("R1  = 0x%08lX\n", stacked_r1);
+  // LOG_ISR("R2  = 0x%08lX\n", stacked_r2);
+  // LOG_ISR("R3  = 0x%08lX\n", stacked_r3);
+  // LOG_ISR("R12 = 0x%08lX\n", stacked_r12);
+  // LOG_ISR("LR  = 0x%08lX\n", stacked_lr);
+  // LOG_ISR("PC  = 0x%08lX\n", stacked_pc);
+  // LOG_ISR("PSR = 0x%08lX\n", stacked_psr);
+  //
+  // while (1); // 卡住，防止继续跑坏
 
-    LOG_ISR("? [HardFault] ϵͳ�������쳣�Ĵ������£�\r\n");
-    LOG_ISR(" R0  = 0x%08lX\r\n", r0);
-    LOG_ISR(" R1  = 0x%08lX\r\n", r1);
-    LOG_ISR(" R2  = 0x%08lX\r\n", r2);
-    LOG_ISR(" R3  = 0x%08lX\r\n", r3);
-    LOG_ISR(" R12 = 0x%08lX\r\n", r12);
-    LOG_ISR(" LR  = 0x%08lX\r\n", lr);
-    LOG_ISR(" PC  = 0x%08lX\r\n", pc);
-    LOG_ISR(" PSR = 0x%08lX\r\n", psr);
+  uint32_t stacked_pc = hardfault_args[6];
+  uint32_t stacked_lr = hardfault_args[5];
 
-    // ���������ͣ�����������Լ��϶ϵ�ָ��
-    __asm volatile("BKPT #0");
+  const char *task_name = "NoTask";
+  if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) {
+    TaskHandle_t current = xTaskGetCurrentTaskHandle();
+    task_name = pcTaskGetName(current);
+  }
 
-    // ͣסϵͳ���ȴ�����
-    while (1);
+  LOG_ISR("\n[HardFault]\n");
+  LOG_ISR("PC = 0x%08lX LR=0x%08lX\n", stacked_pc, stacked_lr);
+  LOG_ISR("Task=%s\n", task_name);
+
+
+  taskDISABLE_INTERRUPTS();
+  for (;;);
 }
 
 /* USER CODE END 0 */

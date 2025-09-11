@@ -63,7 +63,7 @@ float PID_Compute(PID_TypeDef *pid, float measured_value) {
     float output_limited = Limit(output, pid->output_min, pid->output_max);
 
     // µ÷ÊÔÊä³ö
-    LOG("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",p,i,d,measured_value,output_limited,pid->setpoint,error);
+    //LOG("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",p,i,d,measured_value,output_limited,pid->setpoint,error);
 
     return output_limited;
 }
