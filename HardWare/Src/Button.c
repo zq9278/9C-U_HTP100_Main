@@ -4,7 +4,6 @@
  * @Last Modified by: zhangqi
  * @Last Modified time: 2024-12-30 13:08:02
  */
-
 #include "main.h"
 #include "interface_uart.h"
 #include "Button.h"
@@ -31,9 +30,7 @@ void Button_detection(void) {
     switch (currentState) {
         case STATE_OFF:
             ScreenWorkModeQuit();
-
             break;
-
         case STATE_PRE_HEAT://开启加热
             //Device_StartUsage();
             currentState = STATE_HEAT; // 从预热进入加热
@@ -44,26 +41,20 @@ void Button_detection(void) {
             HeatPID.setpoint = 42.5 + temperature_compensation;
             //HeatPID.Ki=0.04;
             ScreenTimerStart();
-
             break;
-
         case STATE_HEAT://关闭加热
             EYE_working_Flag = 0;//眼盾不在工作
             currentState = STATE_OFF;                   // 从加热进入关闭
             emergency_stop = 1;                      // 设置紧急停止标志
             if (heat_finish == 0) {//完成之后按钮不起作用
-
                 ScreenWorkModeQuit();
-
             }
             HeatPWM(0); // 关闭加热PWM
             if (HeatHandle != NULL && eTaskGetState(HeatHandle) != eSuspended) {
                 xTaskNotifyGive(HeatHandle);
             }
             break;
-
         case STATE_PRE_PRESS://开启挤压
-
             if (motor_homeHandle != NULL) {
                 vTaskDelete(motor_homeHandle);
                 motor_homeHandle = NULL;
@@ -76,17 +67,13 @@ void Button_detection(void) {
                 vTaskResume(PressHandle);
             }
             ScreenTimerStart();
-
             break;
-
         case STATE_PRESS://关闭挤压
             EYE_working_Flag = 0;//眼盾不在工作
             currentState = STATE_OFF;                    // 从挤压进入关闭
             emergency_stop = 1;                       // 设置紧急停止标志
             if (press_finish == 0) {
-
                 ScreenWorkModeQuit();
-
             }
             if (PressHandle != NULL && eTaskGetState(PressHandle) != eSuspended) {
                 xTaskNotifyGive(PressHandle);
@@ -103,7 +90,6 @@ void Button_detection(void) {
                 LOG("motor_homeHandle task already exists.\r\n");
             }
             break;
-
         case STATE_PRE_AUTO://开启自动
 //            while (motor_go_home != 1) {
 //                vTaskDelay(10);
@@ -119,7 +105,6 @@ void Button_detection(void) {
             currentState = STATE_AUTO; // 从预自动进入自动模式
             auto_finish = 0;
             // HeatPID.setpoint = 42.5;
-//
             HeatPID.setpoint = 42.5 + temperature_compensation;
             //HeatPID.Ki=0.04;
             //xQueueSend(HEAT_DATAHandle, &HeatPID, 0);  // 将加热数据发送到队列
@@ -128,17 +113,13 @@ void Button_detection(void) {
                 vTaskResume(PressHandle);
             }
             ScreenTimerStart();
-
             break;
-
         case STATE_AUTO://关闭自动
             EYE_working_Flag = 0;//眼盾不在工作
             currentState = STATE_OFF; // 从自动返回关闭
             emergency_stop = 1; // 设置紧急停止标志(1 << 0)); // 清除第0位// 通知停止加热任务
             if (auto_finish == 0) {
-
                 ScreenWorkModeQuit();
-
             }
             HeatPWM(0); // 关闭加热PWM
             if (PressHandle != NULL && eTaskGetState(PressHandle) != eSuspended) {

@@ -319,7 +319,7 @@ void DeviceStateMachine_Update(void) {
             LOG("Debug: 读取主机使用次数：%d\n", eye_times);
 
             eye_times += 1;
-            EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);
+            //EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);
             AT24CXX_WriteUInt16(0xF2, eye_times);
 
             my_prepare_data_times.cmd_type_low = 0xB0;

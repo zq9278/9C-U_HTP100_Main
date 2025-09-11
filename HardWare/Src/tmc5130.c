@@ -50,7 +50,7 @@ void TMC5130_Init(void) {
     // TMC5130_Write(0xac, 0x00000000);
     // TMC5130_Write(0xb4, 0x0000075f);
     TMC5130_Write(0xa0, 0x00000000); // ä½????¤æ?·æ¨¡å¼?
-    PID_Init(&MotorPID, 300, 0, 0, 5000, -5000, (float) (50000), (float) (-50000),
+    PID_Init(&MotorPID, 100, 0, 0, 5000, -5000, (float) (50000), (float) (-50000),
              0); // 0.03,0.05//0.02, 0.01, 0.02,
 }
 

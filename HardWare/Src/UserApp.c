@@ -85,7 +85,7 @@ void Heat_Task(void *argument) {
                 LOG("Read_tmp112/n");
 #endif
                 EyeTmp = TmpRaw2Ture();
-                //EyeTmp=(EyeTmp>43)?43:EyeTmp;
+                EyeTmp=(EyeTmp>43)?43:EyeTmp;
                 if (tempature_flag_400ms) {
                     tempature_flag_400ms = 0;
                     if (EyeTmp != 0.0f) {
@@ -102,6 +102,7 @@ void Heat_Task(void *argument) {
             }
 
             vTaskDelay(pdMS_TO_TICKS(150));
+            //HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
 
         }
         vTaskSuspend(NULL);  // 自己先挂起
@@ -205,7 +206,7 @@ void Device_Check_Task(void *argument) {
     //AT24C02_WriteAllBytes_eye(0xff);//清理ee存储
     Device_Init();
     for (;;) {
-        HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+        //HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
         //Test_EYE_AT24CXX_ReadWrite_FullCycle();
         DeviceStateMachine_Update();
         //EYE_status=1;
