@@ -224,8 +224,8 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
             if (consecutive_fail >= retries) {
                 xSemaphoreGive(i2c2_mutex);
                 i2c2_mutex_owner = NULL;
-                LOG("[ERROR] I2C device 0x%02X not responding (%u consecutive fails)\n",
-                    i2c_addr, consecutive_fail);
+                // LOG("[ERROR] I2C device 0x%02X not responding (%u consecutive fails)\n",
+                //     i2c_addr, consecutive_fail);
                 return HAL_ERROR; // Á¬Ðø N ´ÎÊ§°Ü
             }
 
