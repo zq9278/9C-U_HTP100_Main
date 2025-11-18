@@ -51,7 +51,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         cmd_type, data, currentState);
 
     switch (cmd_type) {
-    case 0x8900:  // Íê³ÉĞÅºÅ
+    case 0x8900:  // å®Œæˆä¿¡å·
         LOG("[INFO] Finish signal received\n");
         if (currentState == STATE_HEAT) {
             heat_finish = 1;
@@ -85,7 +85,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         }
         break;
 
-    case 0x1041:  // ÆÁÄ»¼ÓÈÈ¿ªÊ¼
+    case 0x1041:  // å±å¹•åŠ çƒ­å¼€å§‹
         if (EYE_status == 0) {
             LOG("[WARN] Skip HEAT start: EYE_status=0\n");
             break;
@@ -101,7 +101,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         LOG("[STATE] -> PRE_HEAT, setpoint=%.2f\n", HeatPID.setpoint);
         break;
 
-    case 0x1030:  // ÆÁÄ»¼ÓÈÈÍ£Ö¹
+    case 0x1030:  // å±å¹•åŠ çƒ­åœæ­¢
         if (currentState == STATE_HEAT || currentState == STATE_PRE_HEAT) {
             HeatPWM(0);
             LOG("[ACTION] HeatPWM stopped\n");
@@ -118,7 +118,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         LOG("[STATE] -> OFF (from HEAT stop)\n");
         break;
 
-    case 0x1005:  // ÆÁÄ»¼·Ñ¹¿ªÊ¼
+    case 0x1005:  // å±å¹•æŒ¤å‹å¼€å§‹
         if (EYE_status == 0) {
             LOG("[WARN] Skip PRESS start: EYE_status=0\n");
             break;
@@ -129,7 +129,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         LOG("[STATE] -> PRE_PRESS, MotorPID.setpoint=%.2f\n", MotorPID.setpoint);
         break;
 
-    case 0x1034:  // ÆÁÄ»¼·Ñ¹Í£Ö¹
+    case 0x1034:  // å±å¹•æŒ¤å‹åœæ­¢
         if (currentState == STATE_PRESS) {
             if (press_finish == 0) {
                 emergency_stop = 1;
@@ -154,7 +154,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         LOG("[STATE] -> OFF (from PRESS stop)\n");
         break;
 
-    case 0x1037:  // ÆÁÄ»×Ô¶¯Ä£Ê½¿ªÊ¼
+    case 0x1037:  // å±å¹•è‡ªåŠ¨æ¨¡å¼å¼€å§‹
         if (EYE_status == 0) {
             LOG("[WARN] Skip AUTO start: EYE_status=0\n");
             break;
@@ -173,7 +173,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             HeatPID.setpoint, MotorPID.setpoint);
         break;
 
-    case 0x1038:  // ÆÁÄ»×Ô¶¯Ä£Ê½Í£Ö¹
+    case 0x1038:  // å±å¹•è‡ªåŠ¨æ¨¡å¼åœæ­¢
         if (currentState == STATE_PRE_AUTO) {
             HeatPWM(0);
             if (HeatHandle != NULL) {
@@ -193,7 +193,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         LOG("[STATE] -> OFF (from AUTO stop)\n");
         break;
 
-    case 0x1040:  // Èí°´Å¥ÊÂ¼ş
+    case 0x1040:  // è½¯æŒ‰é’®äº‹ä»¶
     case 0x1006:
     case 0x1036:
         soft_button = 1;
@@ -201,13 +201,13 @@ void UART1_CMDHandler(recept_data_p msg) {
         LOG("[EVENT] Soft button pressed, semaphore released\n");
         break;
 
-    case 0x1051:  // ÆÁÄ»´æÔÚĞÅºÅ
+    case 0x1051:  // å±å¹•å­˜åœ¨ä¿¡å·
         serialTimeoutFlag = 0;
         xTimerReset(serialTimeoutTimerHandle, 0);
         LOG("[EVENT] Screen alive signal, timer reset\n");
         break;
 
-    case 0x1050:  // ÆÁÄ»¿ª»úĞÅºÅ
+    case 0x1050:  // å±å¹•å¼€æœºä¿¡å·
         serialTimeoutFlag = 0;
         prepare_data_set();
         currentState = STATE_OFF;
@@ -215,21 +215,21 @@ void UART1_CMDHandler(recept_data_p msg) {
         LOG("[EVENT] Screen power-on, deviceCheck resumed\n");
         break;
 
-    case 0x1052:  // ÆÁÄ»Ó¦´ğ
+    case 0x1052:  // å±å¹•åº”ç­”
         LOG("[EVENT] Screen is open\n");
         break;
 
-    case 0x1053:  // ÉèÖÃÄ¿±êÎÂ¶È
+    case 0x1053:  // è®¾ç½®ç›®æ ‡æ¸©åº¦
         HeatPID.setpoint = data + temperature_compensation;
         LOG("[PARAM] HeatPID.setpoint=%.2f\n", HeatPID.setpoint);
         break;
 
-    case 0x1054:  // ÉèÖÃÄ¿±êÑ¹Á¦
+    case 0x1054:  // è®¾ç½®ç›®æ ‡å‹åŠ›
         MotorPID.setpoint = data;
         LOG("[PARAM] MotorPID.setpoint=%.2f\n", MotorPID.setpoint);
         break;
 
-    case 0x1055:  // ¹¤³§Ä£Ê½
+    case 0x1055:  // å·¥å‚æ¨¡å¼
         factory_mode = 1;
         currentState = STATE_PRE_AUTO;
         emergency_stop = 0;
@@ -251,7 +251,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         LOG("[STATE] -> PRE_AUTO (factory)\n");
         break;
 
-    case 0x1056:  // ÉÏ±¨´ÎÊı
+    case 0x1056:  // ä¸ŠæŠ¥æ¬¡æ•°
     {
         prepare_data my_prepare_data_times;
         my_prepare_data_times.cmd_head_high = 0x6A;
@@ -285,7 +285,7 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
     uint16_t cmd_type = ((msg->cmd_type_high) << 8) | (msg->cmd_type_low);
     uint16_t data = (uint16_t) msg->value;
 
-    // ³õÊ¼»¯ÊµÀı
+    // åˆå§‹åŒ–å®ä¾‹
     my_prepare_data.cmd_head_high = 0x6A;
     my_prepare_data.cmd_head_low = 0xA6;
     my_prepare_data.cmd_type_high = 0x00;
@@ -296,7 +296,7 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         cmd_type, data, save_prepare, set_prepare);
 
     switch (cmd_type) {
-    case 0x1042:  // ÉèÖÃÔ¤ÉèÖµ¶ÁÈ¡£¨Ğ¡¼ıÍ·£©
+    case 0x1042:  // è®¾ç½®é¢„è®¾å€¼è¯»å–ï¼ˆå°ç®­å¤´ï¼‰
         save_prepare = data;
         LOG("[STATE] Save prepare=%u\n", save_prepare);
         switch (save_prepare) {
@@ -331,7 +331,7 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
             LOG("[WARN] Invalid save_prepare=%u\n", save_prepare);
             break;
         }
-        // ÏÂ·¢ÈıÌõÊı¾İ
+        // ä¸‹å‘ä¸‰æ¡æ•°æ®
         my_prepare_data.cmd_type_low = 0xA9;
         my_prepare_data.value = prepare_press_pre;
         Eye_twitching_invalid_master(&my_prepare_data);
@@ -345,7 +345,7 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         Eye_twitching_invalid_master(&my_prepare_data);
         break;
 
-    case 0x1044:  // Ñ¡ÔñÔ¤ÉèÖµ£¨´ó¿ò£©
+    case 0x1044:  // é€‰æ‹©é¢„è®¾å€¼ï¼ˆå¤§æ¡†ï¼‰
         set_prepare = data;
         AT24CXX_WriteUInt16(0xFC, set_prepare);
         LOG("[STATE] Set prepare=%u saved @0xFC\n", set_prepare);
@@ -377,7 +377,7 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         }
         LOG("[PRESET] Apply slot%u: press=%u, temp=%u, time=%u\n",
             set_prepare, prepare_press_pre, prepare_temperature_pre, prepare_time_pre);
-        // ÏÂ·¢ÈıÌõÊı¾İ
+        // ä¸‹å‘ä¸‰æ¡æ•°æ®
         my_prepare_data.cmd_type_low = 0xA4;
         my_prepare_data.value = prepare_press_pre;
         Eye_twitching_invalid_master(&my_prepare_data);
@@ -391,7 +391,7 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         Eye_twitching_invalid_master(&my_prepare_data);
         break;
 
-    case 0x1039:  // Ô¤ÉèÎÂ¶È
+    case 0x1039:  // é¢„è®¾æ¸©åº¦
         switch (save_prepare) {
         case 1: AT24CXX_WriteUInt16(0x08, data); break;
         case 2: AT24CXX_WriteUInt16(0x10, data); break;
@@ -401,7 +401,7 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         LOG("[PARAM] Save slot%u temp=%u\n", save_prepare, data);
         break;
 
-    case 0x1040:  // Ô¤ÉèÑ¹Á¦
+    case 0x1040:  // é¢„è®¾å‹åŠ›
         switch (save_prepare) {
         case 1: AT24CXX_WriteUInt16(0x0A, data); break;
         case 2: AT24CXX_WriteUInt16(0x12, data); break;
@@ -411,7 +411,7 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         LOG("[PARAM] Save slot%u press=%u\n", save_prepare, data);
         break;
 
-    case 0x1041:  // Ô¤ÉèÊ±¼ä
+    case 0x1041:  // é¢„è®¾æ—¶é—´
         switch (save_prepare) {
         case 1: AT24CXX_WriteUInt16(0x0C, data); break;
         case 2: AT24CXX_WriteUInt16(0x14, data); break;
@@ -421,19 +421,19 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         LOG("[PARAM] Save slot%u time=%u\n", save_prepare, data);
         break;
 
-    case 0x1043:  // ÆäËûÔ¤Éè²ÎÊı
+    case 0x1043:  // å…¶ä»–é¢„è®¾å‚æ•°
         AT24CXX_WriteUInt16(0xF8, data);
         LOG("[PARAM] Saved param@0xF8=%u\n", data);
         break;
 
-    case 0x1046:  // ÇåÀí EEPROM
+    case 0x1046:  // æ¸…ç† EEPROM
         HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
         AT24C02_WriteAllBytes(0xFF);
         HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
         LOG("[ACTION] Cleared EEPROM all bytes\n");
         break;
 
-    case 0x1047:  // ÇåÀíÑÛ²¿ EEPROM
+    case 0x1047:  // æ¸…ç†çœ¼éƒ¨ EEPROM
         HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
         AT24C02_WriteAllBytes_eye(0xFF);
         HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
@@ -465,19 +465,19 @@ void command_parsing(uart_data *received_data) {
         cmd_type, received_data->length);
 
     switch (cmd_type) {
-    case 0x5aa5: {  // ¹¤×÷ÃüÁî
+    case 0x5aa5: {  // å·¥ä½œå‘½ä»¤
         LOG("[DISPATCH] -> UART1_CMDHandler\n");
         UART1_CMDHandler((recept_data *)received_data->buffer);
         break;
     }
 
-    case 0x6aa6: {  // prepare ÃüÁî
+    case 0x6aa6: {  // prepare å‘½ä»¤
         LOG("[DISPATCH] -> UART1_CMDHandler_prepare\n");
         UART1_CMDHandler_prepare((prepare_data *)received_data->buffer);
         break;
     }
 
-    case 0x7aa7: {  // ¸üĞÂµç»ú PID
+    case 0x7aa7: {  // æ›´æ–°ç”µæœº PID
         recept_data_debug_p press_pid_data = (recept_data_debug *) received_data->buffer;
         LOG("[PID] Motor update: P=%.3f, I=%.3f, D=%.3f, setpoint=%.2f\n",
             press_pid_data->p,
@@ -492,7 +492,7 @@ void command_parsing(uart_data *received_data) {
         break;
     }
 
-    case 0x9aa9: {  // ¸üĞÂ¼ÓÈÈ PID
+    case 0x9aa9: {  // æ›´æ–°åŠ çƒ­ PID
         recept_data_debug_p heat_pid_data = (recept_data_debug *) received_data->buffer;
         LOG("[PID] Heat update: P=%.3f, I=%.3f, D=%.3f, setpoint=%.2f\n",
             heat_pid_data->p,
@@ -528,8 +528,8 @@ void ScreenUpdateForce(float value) {
     }
     pData.data = value;
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
-    pData.end_high = 0xff; // Ö¡Î²
-    pData.end_low = 0xff;  // Ö¡Î²
+    pData.end_high = 0xff; // å¸§å°¾
+    pData.end_low = 0xff;  // å¸§å°¾
     USART2_DMA_Send((uint8_t *) &pData, sizeof(pData));
 
 }
@@ -549,8 +549,8 @@ void ScreenUpdateTemperature(float value) {
     pData.data = value;
 
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
-    pData.end_high = 0xff; // Ö¡Î²
-    pData.end_low = 0xff;  // Ö¡Î²
+    pData.end_high = 0xff; // å¸§å°¾
+    pData.end_low = 0xff;  // å¸§å°¾
     USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 
 }
@@ -564,8 +564,8 @@ void ScreenUpdateSOC(float value) {
     pData.cmd_type_low = 0x50;
     pData.data = value;
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
-    pData.end_high = 0xff; // Ö¡Î²
-    pData.end_low = 0xff;  // Ö¡Î²
+    pData.end_high = 0xff; // å¸§å°¾
+    pData.end_low = 0xff;  // å¸§å°¾
     USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 
 }
@@ -578,8 +578,8 @@ void ScreenWorkModeQuit(void) {
     pData.cmd_type_high = 0x20;
     pData.cmd_type_low = 0x51;
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
-    pData.end_high = 0xff; // Ö¡Î²
-    pData.end_low = 0xff;  // Ö¡Î²
+    pData.end_high = 0xff; // å¸§å°¾
+    pData.end_low = 0xff;  // å¸§å°¾
     USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 
 }
@@ -593,8 +593,8 @@ void EYE_checkout(float data) {
     pData.cmd_type_low = 0x55;
     pData.data = data;
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
-    pData.end_high = 0xff; // Ö¡Î²
-    pData.end_low = 0xff;  // Ö¡Î²
+    pData.end_high = 0xff; // å¸§å°¾
+    pData.end_low = 0xff;  // å¸§å°¾
     USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 
 }
@@ -608,8 +608,8 @@ void ScreenTimerStart(void) {
     pData.cmd_type_high = 0x20;
     pData.cmd_type_low = 0x52;
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
-    pData.end_high = 0xff; // Ö¡Î²
-    pData.end_low = 0xff;  // Ö¡Î²
+    pData.end_high = 0xff; // å¸§å°¾
+    pData.end_low = 0xff;  // å¸§å°¾
 //    taskENTER_CRITICAL();
 //    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
 //    taskEXIT_CRITICAL();
@@ -627,8 +627,8 @@ void ScreenTimerStop(void) {
     pData.cmd_type_high = 0x20;
     pData.cmd_type_low = 0x56;
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
-    pData.end_high = 0xff; // Ö¡Î²
-    pData.end_low = 0xff;  // Ö¡Î²
+    pData.end_high = 0xff; // å¸§å°¾
+    pData.end_low = 0xff;  // å¸§å°¾
 //    taskENTER_CRITICAL();
 //    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
 //    taskEXIT_CRITICAL();
@@ -643,8 +643,8 @@ void NEW_EYE(void) {
     pData.cmd_type_high = 0x20;
     pData.cmd_type_low = 0x57;
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
-    pData.end_high = 0xff; // Ö¡Î²
-    pData.end_low = 0xff;  // Ö¡Î²
+    pData.end_high = 0xff; // å¸§å°¾
+    pData.end_low = 0xff;  // å¸§å°¾
 //    taskENTER_CRITICAL();
 //    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
 //    taskEXIT_CRITICAL();
@@ -659,8 +659,8 @@ void Eye_twitching_invalid(void) {
     pData.cmd_type_high = 0x91;
     pData.cmd_type_low = 0x00;
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
-    pData.end_high = 0xff; // Ö¡Î²
-    pData.end_low = 0xff;  // Ö¡Î²
+    pData.end_high = 0xff; // å¸§å°¾
+    pData.end_low = 0xff;  // å¸§å°¾
 //    taskENTER_CRITICAL();
 //    HAL_UART_Transmit(&huart2, (uint8_t *)&pData, sizeof(pData),100);
 //    taskEXIT_CRITICAL();
@@ -687,8 +687,8 @@ void ScreenWorkMode_count(float count) {
     pData.cmd_type_low = 0x00;
     pData.data = count;
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
-    pData.end_high = 0xff; // Ö¡Î²
-    pData.end_low = 0xff;  // Ö¡Î²
+    pData.end_high = 0xff; // å¸§å°¾
+    pData.end_low = 0xff;  // å¸§å°¾
     USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 }
 
@@ -711,9 +711,9 @@ void Serial_data_stream_parsing(uart_data *frameData) {
                         LOG("Error: Frame size exceeds buffer limit\n");
                         break;
                     }
-                    // ¼ÆËãCRC²¢Ğ£Ñé
+                    // è®¡ç®—CRCå¹¶æ ¡éªŒ
                     uint16_t received_crc = (frameData->buffer[j - 2] | (frameData->buffer[j - 1] << 8));
-                    uint16_t calculated_crc = Calculate_CRC(&frameData->buffer[i], frame_size - 4); // ²»°üº¬CRCºÍÖ¡Î²
+                    uint16_t calculated_crc = Calculate_CRC(&frameData->buffer[i], frame_size - 4); // ä¸åŒ…å«CRCå’Œå¸§å°¾
                     if (calculated_crc == received_crc) {
                         command_parsing((uart_data *)&frameData->buffer[i]);
 for(uint16_t i = 0; i < frameData->length; i++) {
@@ -723,7 +723,7 @@ for(uint16_t i = 0; i < frameData->length; i++) {
                     } else {
                         LOG("Error: CRC mismatch\n");
                     }
-                    // Ìø¹ıÒÑ½âÎöµÄÖ¡Êı¾İ£¬±ÜÃâÖØ¸´½âÎö
+                    // è·³è¿‡å·²è§£æçš„å¸§æ•°æ®ï¼Œé¿å…é‡å¤è§£æ
                     i = j + 1;
                     break;
                 }
