@@ -93,7 +93,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         currentState = STATE_PRE_HEAT;
         emergency_stop = 0;
         HeatPWM(1);
-        HeatPID.setpoint = 37 + temperature_compensation;
+        HeatPID.setpoint = 40 + temperature_compensation;
         if (HeatHandle != NULL) {
             vTaskResume(HeatHandle);
             LOG("[TASK] HeatHandle resumed\n");
@@ -163,7 +163,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         emergency_stop = 0;
         HeatPWM(1);
         HeatPID.integral = 0;
-        HeatPID.setpoint = 37 + temperature_compensation;
+        HeatPID.setpoint = 40 + temperature_compensation;
         MotorPID.setpoint = data;
         if (HeatHandle != NULL) {
             vTaskResume(HeatHandle);
