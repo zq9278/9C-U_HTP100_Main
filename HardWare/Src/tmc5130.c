@@ -6,6 +6,23 @@
 #include "ads1220.h"
 #include "UserApp.h"
 #include "time_callback.h"
+
+#define FORCE_FILTER_ALPHA 0.2f
+
+// Low-pass filter to smooth pressure readings before reporting them
+static float FilterForce(float force) {
+    static float filtered_force = 0.0f;
+    static uint8_t initialized = 0;
+
+    if (!initialized) {
+        filtered_force = force;
+        initialized = 1;
+        return filtered_force;
+    }
+
+    filtered_force += FORCE_FILTER_ALPHA * (force - filtered_force);
+    return filtered_force;
+}
 /*motor*/
 uint32_t MotorSpeed = 0x4000;
 
@@ -14,7 +31,7 @@ extern SPI_HandleTypeDef hspi1;
 PID_TypeDef MotorPID;
 
 void TMC5130_Init(void) {
-    //	TMC_ENN(0);//???¤æ?·é??ç»??¸æ?·é???
+    //	TMC_ENN(0);//???ï¿½ï¿½?ï¿½ï¿½??ï¿½??ï¿½ï¿½?ï¿½ï¿½???
     //HAL_Delay(20);
     TMC5130_Write(0x81, 0x00000001); // reset
     TMC5130_Write(0xec, 0x000300c3); // CHOPCONF: vsense=1,TOFF=3, HSTRT=4,
@@ -22,9 +39,9 @@ void TMC5130_Init(void) {
 
     TMC5130_Write(0x90, 0x00001006); // IHOLD=6, IRUN=16, IHOLDDELAY=6
     /*
-     *IHOLD ¿ÕÏÐµçÁ÷
-     * IRUN   ÔËÐÐµçÁ÷
-     * IHOLDDELAY Ô½´óÔ½Æ½»¬£¬Ô½Ð¡Ô½Í»±ä
+     *IHOLD ï¿½ï¿½ï¿½Ðµï¿½ï¿½ï¿½
+     * IRUN   ï¿½ï¿½ï¿½Ðµï¿½ï¿½ï¿½
+     * IHOLDDELAY Ô½ï¿½ï¿½Ô½Æ½ï¿½ï¿½ï¿½ï¿½Ô½Ð¡Ô½Í»ï¿½ï¿½
      * */
     TMC5130_Write(
             0x91,
@@ -41,41 +58,41 @@ void TMC5130_Init(void) {
     TMC5130_Write(0xa5,0x00015000); // V1 = 50 000 Acceleration threshold velocity V1
     //TMC5130_Write(0xa4, 0x00011000); // A1 = 1 000 First acceleration
     //TMC5130_Write(0xa6, 0x00018fff); // AMAX = 500 Acceleration above V1
-    TMC5130_Write(0xA4, 0x00000001); // A1 ×îÐ¡ÆðÊ¼¼ÓËÙ¶È£¨²»ÄÜÎª0£¬×îÐ¡Îª1£©
-    TMC5130_Write(0xA6, 0x00001001); // AMAX ×îÐ¡Ö÷¼ÓËÙ¶È£¨²»ÄÜÎª0£¬×îÐ¡Îª1£©
+    TMC5130_Write(0xA4, 0x00000001); // A1 ï¿½ï¿½Ð¡ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½Ù¶È£ï¿½ï¿½ï¿½ï¿½ï¿½Îª0ï¿½ï¿½ï¿½ï¿½Ð¡Îª1ï¿½ï¿½
+    TMC5130_Write(0xA6, 0x00001001); // AMAX ï¿½ï¿½Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È£ï¿½ï¿½ï¿½ï¿½ï¿½Îª0ï¿½ï¿½ï¿½ï¿½Ð¡Îª1ï¿½ï¿½
     TMC5130_Write(0xa7, MotorSpeed); // VMAX = 200 000
     TMC5130_Write(0xa8, 0x00001fff); // DMAX = 700 Deceleration above V1
     TMC5130_Write(0xaa, 0x00008000); // D1 = 1400 Deceleration below V1
     TMC5130_Write(0xab, 0x0000000a); // VSTOP = 10 Stop velocity (Near to zero)
     // TMC5130_Write(0xac, 0x00000000);
     // TMC5130_Write(0xb4, 0x0000075f);
-    TMC5130_Write(0xa0, 0x00000000); // ä½????¤æ?·æ¨¡å¼?
-    PID_Init(&MotorPID, 100, 0, 0, 5000, -5000, (float) (50000), (float) (-50000),
+    TMC5130_Write(0xa0, 0x00000000); // ï¿½????ï¿½ï¿½?ï¿½æ¨¡ï¿½?
+    PID_Init(&MotorPID, 300, 0, 0, 5000, -5000, (float) (50000), (float) (-50000),
              0); // 0.03,0.05//0.02, 0.01, 0.02,
 }
 
-// ÖÐ¶ÏÊÕ·¢º¯Êý
-// ¶¨ÒåÈ«¾Ö±äÁ¿±£´æ×´Ì¬
+// ï¿½Ð¶ï¿½ï¿½Õ·ï¿½ï¿½ï¿½ï¿½ï¿½
+// ï¿½ï¿½ï¿½ï¿½È«ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬
 volatile uint8_t SPI_RxComplete = 0;
 uint8_t TxBuffer[5];
 uint8_t RxBuffer[4];
 
 void TMC5130_Read(uint8_t ReadAddr, uint8_t *pBuffer) {
-    // Çå³ý×´Ì¬±êÖ¾
+    // ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½Ö¾
     SPI_RxComplete = 0;
-    // ³õÊ¼»¯Êý¾Ý
+    // ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     TxBuffer[0] = ReadAddr;
-    // µÚÒ»´Î·¢ËÍ£¬·¢ËÍ5¸ö×Ö½Ú
+    // ï¿½ï¿½Ò»ï¿½Î·ï¿½ï¿½Í£ï¿½ï¿½ï¿½ï¿½ï¿½5ï¿½ï¿½ï¿½Ö½ï¿½
     TMC_CSN(0);
     HAL_SPI_Transmit_IT(&hspi1, TxBuffer, 5);
     TMC_CSN(1);
-    // ÑÓÊ±È·±£Ó²¼þÎÈ¶¨£¨¿ÉÑ¡£¬¸ù¾Ý¾ßÌåÓ²¼þÐèÇó£©
-    // HAL_Delay(1); // »òÕß²åÈëºÏÊÊµÄNOPÖ¸Áî
+    // ï¿½ï¿½Ê±È·ï¿½ï¿½Ó²ï¿½ï¿½ï¿½È¶ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½Ý¾ï¿½ï¿½ï¿½Ó²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    // HAL_Delay(1); // ï¿½ï¿½ï¿½ß²ï¿½ï¿½ï¿½ï¿½ï¿½Êµï¿½NOPÖ¸ï¿½ï¿½
     TMC_CSN(0);
     HAL_SPI_Transmit_IT(&hspi1, TxBuffer, 1);
-    SPI_RxComplete = 0; // ÖØÖÃ½ÓÊÕ±êÖ¾
+    SPI_RxComplete = 0; // ï¿½ï¿½ï¿½Ã½ï¿½ï¿½Õ±ï¿½Ö¾
     HAL_SPI_Receive_IT(&hspi1, pBuffer, 4);
-    while (!SPI_RxComplete); // µÈ´ý½ÓÊÕÍê³É
+    while (!SPI_RxComplete); // ï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     TMC_CSN(1);
 }
 
@@ -92,9 +109,9 @@ void TMC5130_Write(uint8_t WriteAddr, uint32_t WriteData) {
 }
 
 void MotorSetHome(void) {
-    // ½«µ±Ç°Î»ÖÃ¼Ä´æÆ÷£¨XACTUAL£©ÇåÁã£¬Âß¼­×ø±êÖØÖÃÎª 0
+    // ï¿½ï¿½ï¿½ï¿½Ç°Î»ï¿½Ã¼Ä´ï¿½ï¿½ï¿½ï¿½ï¿½XACTUALï¿½ï¿½ï¿½ï¿½ï¿½ã£¬ï¿½ß¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îª 0
     TMC5130_Write(0xA1, 0);
-    // ½«Ä¿±êÎ»ÖÃ¼Ä´æÆ÷£¨XTARGET£©ÇåÁã£¬±ÜÃâµç»úÒÆ¶¯
+    // ï¿½ï¿½Ä¿ï¿½ï¿½Î»ï¿½Ã¼Ä´ï¿½ï¿½ï¿½ï¿½ï¿½XTARGETï¿½ï¿½ï¿½ï¿½ï¿½ã£¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¶ï¿½
     TMC5130_Write(0xAD, 0);
 }
 
@@ -140,19 +157,19 @@ uint8_t MotorChecking() {
     VelocityModeMove(Positive);
 
     while (1) {
-        // ¶ÁÈ¡µç»ú×´Ì¬¼Ä´æÆ÷
+        // ï¿½ï¿½È¡ï¿½ï¿½ï¿½×´Ì¬ï¿½Ä´ï¿½ï¿½ï¿½
         TMC5130_Read(0x04, ReadData);
 
-        // ¼ì²éÄ¿±ê×´Ì¬£¨¼ÙÉèÄ¿±ê×´Ì¬Îª×´Ì¬×ÖµÚ3×Ö½ÚµÄ bit1 Îª 1£©
+        // ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½×´Ì¬Îª×´Ì¬ï¿½Öµï¿½3ï¿½Ö½Úµï¿½ bit1 Îª 1ï¿½ï¿½
         if ((ReadData[3] & 0x02) == 0x02) {
-            // ×´Ì¬Âú×ã£¬ÍË³öÑ­»·
+            // ×´Ì¬ï¿½ï¿½ï¿½ã£¬ï¿½Ë³ï¿½Ñ­ï¿½ï¿½
             break;
         }
         vTaskDelay(100);
     }
 
     MotorSetHome();
-    TMC5130_Write(0xa0, 0x00000000); // ä½????¤æ?·æ¨¡å¼?
+    TMC5130_Write(0xa0, 0x00000000); // ï¿½????ï¿½ï¿½?ï¿½æ¨¡ï¿½?
     TMC_ENN(1);
 
     return 1;
@@ -161,12 +178,12 @@ uint8_t MotorChecking() {
 uint8_t MotorCompare(int32_t SetData, int32_t CompareData) {
     int32_t SubData;
     SubData = CompareData - SetData;
-    if (SubData > 0) // ForceSen  ????ç°?
+    if (SubData > 0) // ForceSen  ????ï¿½?
     {
         TMC5130_Write(0xa7, 0x6000);
         TMC5130_Write(0xa0, 2);
         return 2;
-    } else if (SubData < 0) // ????ç°?
+    } else if (SubData < 0) // ????ï¿½?
     {
         TMC5130_Write(0xa7, 0x4000);
         TMC5130_Write(0xa0, 1);
@@ -178,16 +195,16 @@ uint8_t MotorCompare(int32_t SetData, int32_t CompareData) {
     }
 }
 
-// TMC_ENN(0); // ä½¿è?½ç?µæ??
-// TMC5130_Write(0xad, 115000); // ç»???¹ä?ç½?
-/*pid?§å?¶ä?ç½?*/
+// TMC_ENN(0); // ä½¿ï¿½?ï¿½ï¿½?ï¿½ï¿½??
+// TMC5130_Write(0xad, 115000); // ï¿½???ï¿½ï¿½?ï¿½?
+/*pid?ï¿½ï¿½?ï¿½ï¿½?ï¿½?*/
 void SetMotorposition(int position) {
     TMC5130_Write(0xa7, 1000);
     TMC5130_Write(0xa0, 0);
     TMC5130_Write(0xad, (uint32_t) position);
 }
 
-/*pid?§å?¶é??åº?*/
+/*pid?ï¿½ï¿½?ï¿½ï¿½??ï¿½?*/
 void SetMotorSpeed(int speed) {
     if (speed < 0) {
         TMC5130_Write(0xa0, 1);
@@ -200,7 +217,7 @@ void SetMotorSpeed(int speed) {
 
 float weight1;
 float weight;
-float MotorPWM;       // ÓÃÓÚ´æ´¢¼ÓÈÈÆ÷µÄPWMÕ¼¿Õ±È
+float MotorPWM;       // ï¿½ï¿½ï¿½Ú´æ´¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½PWMÕ¼ï¿½Õ±ï¿½
 extern float weight0; // test_variable
 PID_TypeDef MotorPID;
 
@@ -208,7 +225,7 @@ uint8_t PressureModeStart = 1;
 float control_output;
 float control_output_speed;
 //volatile int Flag_3s = 0, Flag_1s = 0;
-//extern osMessageQueueId_t PRESS_DATAHandle; // ¶ÓÁÐ¾ä±ú
+//extern osMessageQueueId_t PRESS_DATAHandle; // ï¿½ï¿½ï¿½Ð¾ï¿½ï¿½
 //extern osTimerId_t motor_back_1sHandle;
 //extern osTimerId_t motor_grab3sHandle;
 //extern osMessageQueueId_t PressureHandle;
@@ -228,10 +245,10 @@ extern uint8_t flag_200ms;
 //
 //    if (1) {
 //        //flag_200ms=0;
-//        xQueueSend(PressureHandle, &hhmg, 0); // ½«Êý¾Ý·¢ËÍµ½¶ÓÁÐ
+//        xQueueSend(PressureHandle, &hhmg, 0); // ï¿½ï¿½ï¿½ï¿½ï¿½Ý·ï¿½ï¿½Íµï¿½ï¿½ï¿½ï¿½ï¿½
 //    }
 //    switch (PressureModeStart) {
-//        case 1: // ×î¿ªÊ¼µÄÇ°½ø½×¶Î
+//        case 1: // ï¿½î¿ªÊ¼ï¿½ï¿½Ç°ï¿½ï¿½ï¿½×¶ï¿½
 //            control_output_speed = 20000;
 //            SetMotorSpeed((int) control_output_speed);
 //            float start_force_flag = MotorPID.setpoint / 2;
@@ -241,29 +258,29 @@ extern uint8_t flag_200ms;
 //                control_output_speed = 0;
 //                SetMotorSpeed((int) control_output_speed);
 //                Flag_3s = 0;
-//                osTimerStart(motor_grab3sHandle, 1000); // Æô¶¯3Ãë¶¨Ê±Æ÷
+//                osTimerStart(motor_grab3sHandle, 1000); // ï¿½ï¿½ï¿½ï¿½3ï¿½ë¶¨Ê±ï¿½ï¿½
 //            }
 //            break;
 //        case 2:
 //            SetMotorSpeed((int) control_output_speed);
 //            break;
-//        case 3: // Ñ¹Á¦±£³Ö½×¶Î
+//        case 3: // Ñ¹ï¿½ï¿½ï¿½ï¿½ï¿½Ö½×¶ï¿½
 //
 //            MotorPWM = PID_Compute(&MotorPID, hhmg);
 //            SetMotorSpeed((int) MotorPWM);
 //
 //            if (Flag_3s == 1) {
-//                PressureModeStart = 4; // ÇÐ»»µ½»ØÍË½×¶Î
+//                PressureModeStart = 4; // ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë½×¶ï¿½
 //                Flag_1s = 0;
-//                osTimerStart(motor_back_1sHandle, 500); // Æô¶¯1Ãë¶¨Ê±Æ÷
+//                osTimerStart(motor_back_1sHandle, 500); // ï¿½ï¿½ï¿½ï¿½1ï¿½ë¶¨Ê±ï¿½ï¿½
 //            }
 //            break;
-//        case 4: // »ØÍË½×¶Î
+//        case 4: // ï¿½ï¿½ï¿½Ë½×¶ï¿½
 //            control_output_speed = -20000;
 //            SetMotorSpeed((int) control_output_speed);
 //
 //            if (Flag_1s == 1) {
-//                PressureModeStart = 1; // ·µ»ØÇ°½ø½×¶Î
+//                PressureModeStart = 1; // ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½×¶ï¿½
 //                Flag_3s = 0;
 //            }
 //            break;
@@ -277,16 +294,16 @@ void PressureControl() {
     float weight1 = ADS1220_ReadPressure();
     float weight = Limit(weight1 - weight0, 0, weight1 - weight0);
     float hhmg = (weight / 1000.0) * 9.8 * 80;
+    float hhmg_filtered = FilterForce(hhmg);
 
-    // ·¢ËÍÑ¹Á¦Êý¾Ýµ½¶ÓÁÐ
-    if (
-    press_flag_400ms){
-        press_flag_400ms=0;
-        ScreenUpdateForce(hhmg);
-        //xQueueSend(PressureHandle, &hhmg, 0);
+    // Push filtered pressure data when screen refresh flag is set
+    if (press_flag_400ms) {
+        press_flag_400ms = 0;
+        ScreenUpdateForce(hhmg_filtered);
+        //xQueueSend(PressureHandle, &hhmg_filtered, 0);
     }
     switch (PressureModeStart) {
-        case 1: { // ×î¿ªÊ¼µÄÇ°½ø½×¶Î
+        case 1: { // ï¿½î¿ªÊ¼ï¿½ï¿½Ç°ï¿½ï¿½ï¿½×¶ï¿½
             control_output_speed = 20000;
             SetMotorSpeed((int)control_output_speed);
             //float start_force_flag = Limit(MotorPID.setpoint / 2, 80, MotorPID.setpoint / 2);
@@ -294,30 +311,30 @@ void PressureControl() {
                 PressureModeStart = 3;
                 SetMotorSpeed(0);
                 Flag_3s = 0;
-                osTimerStart(motor_grab3sHandle, 1000); // Æô¶¯3Ãë¶¨Ê±Æ÷
+                osTimerStart(motor_grab3sHandle, 1000); // ï¿½ï¿½ï¿½ï¿½3ï¿½ë¶¨Ê±ï¿½ï¿½
             }
             break;
         }
-        case 2: { // ±£³ÖËÙ¶È½×¶Î
+        case 2: { // ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶È½×¶ï¿½
             SetMotorSpeed((int)control_output_speed);
             break;
         }
-        case 3: { // Ñ¹Á¦±£³Ö½×¶Î
+        case 3: { // Ñ¹ï¿½ï¿½ï¿½ï¿½ï¿½Ö½×¶ï¿½
             MotorPWM = PID_Compute_motor(&MotorPID, hhmg);
             SetMotorSpeed((int)MotorPWM);
 
             if (Flag_3s) {
-                PressureModeStart = 4; // ÇÐ»»µ½»ØÍË½×¶Î
+                PressureModeStart = 4; // ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë½×¶ï¿½
                 Flag_1s = 0;
-                osTimerStart(motor_back_1sHandle, 500); // Æô¶¯1Ãë¶¨Ê±Æ÷
+                osTimerStart(motor_back_1sHandle, 500); // ï¿½ï¿½ï¿½ï¿½1ï¿½ë¶¨Ê±ï¿½ï¿½
             }
             break;
         }
-        case 4: { // »ØÍË½×¶Î
+        case 4: { // ï¿½ï¿½ï¿½Ë½×¶ï¿½
             SetMotorSpeed(-20000);
 
             if (Flag_1s) {
-                PressureModeStart = 1; // ·µ»ØÇ°½ø½×¶Î
+                PressureModeStart = 1; // ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½×¶ï¿½
                 Flag_3s = 0;
             }
             break;
