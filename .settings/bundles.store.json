@@ -23,6 +23,10 @@
     {
       "name": "jlink-gdbserver",
       "version": "8.38.0+st.1"
+    },
+    {
+      "name": "programmer",
+      "version": "2.20.0"
     }
   ]
 }

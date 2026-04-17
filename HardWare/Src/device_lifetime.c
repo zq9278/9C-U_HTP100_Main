@@ -191,6 +191,22 @@ bool Device_StartUsage(void) {
     return true;
 }
 
+// 仅在进入 PRE_* 状态时调用，延后标记未写入过的普通眼盾，
+// 避免设备上电检测到新眼盾后立即写入标记。
+void Device_TryMarkNormalEyeShield(void) {
+    uint16_t mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
+
+    if (mark != 0xFFFF) {
+        return;
+    }
+
+    if (EYE_AT24CXX_ReadUInt16(super_eyes) == 0x0202) {
+        return;
+    }
+
+    EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);
+    LOG("[STATE] Normal eye shield marked on PRE state entry\n");
+}
 
 HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
     HAL_StatusTypeDef result;
@@ -273,7 +289,6 @@ void DeviceStateMachine_Update(void) {
     case ST_CHECK_MARK:
         vTaskDelay(10);
         mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
-       uint16_t super_eye = EYE_AT24CXX_ReadUInt16(super_eyes);
         LOG("[EEPROM] Read EYE_MARK_MAP=0x%04X\n", mark);
         osDelay(5);
 
@@ -281,10 +296,6 @@ void DeviceStateMachine_Update(void) {
             // 新设备
             eye_times = AT24CXX_ReadOrWriteZero(0xF2);
             eye_times += 1;
-            if (super_eye!=0x0202)//眼盾的super_eyes位，值不等于0x02则认为是普通眼盾需要标记
-            {
-                EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);//标记眼盾
-            }
             AT24CXX_WriteUInt16(0xF2, eye_times);
 
             my_prepare_data_times.cmd_type_low = 0xB0;

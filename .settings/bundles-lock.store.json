@@ -150,6 +150,10 @@
       "selected_by": [
         {
           "name": "programmer",
+          "version": "2.20.0"
+        },
+        {
+          "name": "programmer",
           "version": "^2.20.0"
         }
       ]
@@ -161,6 +165,10 @@
       "selected_by": [
         {
           "name": "programmer",
+          "version": "2.20.0"
+        },
+        {
+          "name": "programmer",
           "version": "^2.20.0"
         }
       ]
@@ -170,6 +178,10 @@
       "version": "2.20.0",
       "platform": "x86_64-windows",
       "selected_by": [
+        {
+          "name": "programmer",
+          "version": "2.20.0"
+        },
         {
           "name": "programmer",
           "version": "^2.20.0"

@@ -32,7 +32,8 @@ void Button_detection(void) {
         LOG("[STATE] -> OFF\r\n");
         break;
 
-    case STATE_PRE_HEAT: // ½øÈë¼ÓÈÈ
+    case STATE_PRE_HEAT: // è¿›å…¥åŠ çƒ­
+        Device_TryMarkNormalEyeShield();
         currentState = STATE_HEAT;
         heat_finish = 0;
         HeatPID.setpoint = 42.5 + temperature_compensation;
@@ -40,7 +41,7 @@ void Button_detection(void) {
         LOG("[STATE] PRE_HEAT -> HEAT, setpoint=%.2f\r\n", HeatPID.setpoint);
         break;
 
-    case STATE_HEAT: // ´Ó¼ÓÈÈ½øÈë¹Ø±Õ
+    case STATE_HEAT: // ä»åŠ çƒ­è¿›å…¥å…³é—­
         EYE_working_Flag = 0;
         currentState = STATE_OFF;
         emergency_stop = 1;
@@ -54,7 +55,8 @@ void Button_detection(void) {
         LOG("[STATE] HEAT -> OFF (emergency_stop=%d)\r\n", emergency_stop);
         break;
 
-    case STATE_PRE_PRESS: // ½øÈë¼·Ñ¹
+    case STATE_PRE_PRESS: // è¿›å…¥æŒ¤å‹
+        Device_TryMarkNormalEyeShield();
         if (motor_homeHandle != NULL) {
             vTaskDelete(motor_homeHandle);
             motor_homeHandle = NULL;
@@ -69,7 +71,7 @@ void Button_detection(void) {
         LOG("[STATE] PRE_PRESS -> PRESS\r\n");
         break;
 
-    case STATE_PRESS: // ¼·Ñ¹¹Ø±Õ½øÈë OFF
+    case STATE_PRESS: // æŒ¤å‹å…³é—­è¿›å…¥ OFF
         EYE_working_Flag = 0;
         currentState = STATE_OFF;
         emergency_stop = 1;
@@ -93,7 +95,8 @@ void Button_detection(void) {
         LOG("[STATE] PRESS -> OFF\r\n");
         break;
 
-    case STATE_PRE_AUTO: // ×Ô¶¯Ä£Ê½×¼±¸
+    case STATE_PRE_AUTO: // è‡ªåŠ¨æ¨¡å¼å‡†å¤‡
+        Device_TryMarkNormalEyeShield();
         if (motor_homeHandle != NULL) {
             vTaskDelete(motor_homeHandle);
             motor_homeHandle = NULL;
