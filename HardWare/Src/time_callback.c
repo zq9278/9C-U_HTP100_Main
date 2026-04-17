@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include "tmp112.h"
 #include "ws2812b.h"
-TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,serialTimeoutTimerHandle,IIC_EYETimeoutTimerHandle,eye_is_existHandle,breathTimer;;
+TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle, press_updateHandle, serialTimeoutTimerHandle, IIC_EYETimeoutTimerHandle, eye_is_existHandle, breathTimer;;
 void ws2812_white_delay_callback(TimerHandle_t xTimer) {
 
     Flag_400ms = 1;
@@ -37,29 +37,33 @@ void buttton_Callback(TimerHandle_t xTimer) {
 void tempareture_pid_timer(TimerHandle_t xTimer) {
     flag_200ms = 1;
     tempature_flag_400ms = 1;
-    press_flag_400ms = 1;
     battery_flag_400ms = 1;
-    is_charging_flag= 1;
+    is_charging_flag = 1;
 }
+
+void press_update_timer(TimerHandle_t xTimer) {
+    press_flag_400ms = 1;
+}
+
 // 串口超时处理函数
-uint8_t serialTimeoutFlag = 0;//有屏幕
+uint8_t serialTimeoutFlag = 0;//有屏�?
 void SerialTimeout_Callback(TimerHandle_t xTimer)
 {
     serialTimeoutFlag = 1;
 }
-//uint8_t IIC_EYETimeoutFlag = 0;//有眼盾
+//uint8_t IIC_EYETimeoutFlag = 0;//有眼�?
 //void IIC_EYETimeout_Callback(TimerHandle_t xTimer)
 //{
 //    IIC_EYETimeoutFlag= 1;
 //}
-void eye_is_exist_callback(TimerHandle_t xTimer) {//眼盾检测时间
+void eye_is_exist_callback(TimerHandle_t xTimer) {//眼盾检测时�?
     eye_workingtime_1s=1;
     eye_existtime_1s=1;
-    if (EYE_exist_Flag){//眼盾存在，先读60的寿命，不够就加， 超过就发送眼盾失败数据
+    if (EYE_exist_Flag){//眼盾存在，先�?60的�?�命，不够就加， 超过就发送眼盾失败数�?
 
 
     }
-    else if(EYE_working_Flag){//眼盾在工作，先读30的寿命，不够就加， 超过就发送眼盾失败数据
+    else if(EYE_working_Flag){//眼盾在工作，先�??30的�?�命，不够就加， 超过就发送眼盾失败数�?
 
     }
 }

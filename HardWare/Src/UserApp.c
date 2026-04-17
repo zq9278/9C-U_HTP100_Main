@@ -30,10 +30,10 @@ uint8_t i2c2_error_flag = 0;
 /* FreeRTOS Handles */
 TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle, i2c2_recovery_task_handle, pwrTaskHandle,bq25895_recovery_homeHandle;
 QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
-SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore, spi2RxDmaSemaphoreHandle, spi2TxDmaSemaphoreHandle;  // SPI2 DMA ����ź���;  // ������־�ź���;
+SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore, spi2RxDmaSemaphoreHandle, spi2TxDmaSemaphoreHandle;  // SPI2 DMA ����ź���?;  // ������־�ź���;
 SemaphoreHandle_t xI2CMutex;       // I2C���߻�����
 SemaphoreHandle_t i2c2_mutex, I2C2_DMA_Sem;
-SemaphoreHandle_t xI2CCompleteSem; // ��������ź���
+SemaphoreHandle_t xI2CCompleteSem; // ��������ź���?
 
 
 
@@ -57,7 +57,7 @@ void Heat_Task(void *argument) {
         LOG("heat_start");
         Kalman_Init(&kf, 0.1f, 1.0f);  // Q: ԽСԽƽ��, R: ԽСԽ���β���
         while (1) {
-            // 1. ����˳�֪ͨ
+            // 1. ����˳�ͨ�?
             //if ((ulTaskNotifyTake(pdTRUE, 0) > 0)||(EYE_status==0)) {
             //if (ulTaskNotifyTake(pdTRUE, 0) > 0) {
 
@@ -71,14 +71,14 @@ void Heat_Task(void *argument) {
                 currentState = STATE_OFF;
                 HeatPWM(0); // �رռ���PWM
                 LOG("[Heat] �յ��˳�֪ͨ��׼���ͷ���Դ���˳�...\n");
-                // 2. ������л��������ͷ���
+                // 2. ������л��������ͷ���?
                 if (xSemaphoreGetMutexHolder(i2c2_mutex) == xTaskGetCurrentTaskHandle()) {
                     xSemaphoreGive(i2c2_mutex);
                     LOG("[Heat] ���ͷ� i2c2_mutex\n");
                 }
 
                 // 3. ִ�б�Ҫ�������˳�
-                break;  // ���� inner while���ص���� for ѭ����������
+                break;  // ���� inner while���ص����? for ѭ����������
             }
             if (i2c2_error_flag == 0) {
 #ifdef DEBUG_LOG
@@ -120,7 +120,7 @@ void Press_Task(void *argument) {
         Discard_dirty_data();
         weight0 = ADS1220_ReadPressure();           // ��ȡ��ʼѹ��ֵ
         while (1) {
-            // 1. ����˳�֪ͨ
+            // 1. ����˳�ͨ�?
             if (ulTaskNotifyTake(pdTRUE, 0) > 0) {
                 //if ((ulTaskNotifyTake(pdTRUE, 0) > 0)||(EYE_status==0)) {
                 LOG("[Press_Task] �յ��˳�֪ͨ��׼���ͷ���Դ���˳�...\n");
@@ -129,9 +129,9 @@ void Press_Task(void *argument) {
                     ScreenWorkModeQuit();
                     ScreenTimerStop();
                 }
-                // 2. ������л��������ͷ���
+                // 2. ������л��������ͷ���?
                 // 3. ִ�б�Ҫ�������˳�
-                break;  // ���� inner while���ص���� for ѭ����������
+                break;  // ���� inner while���ص����? for ѭ����������
             }
             PressureControl();
             osDelay(50);
@@ -149,7 +149,7 @@ void Button_State_Task(void *argument) {
         // �ȴ��ź�������
         if (xSemaphoreTake(BUTTON_SEMAPHOREHandle, portMAX_DELAY) == pdTRUE) {
             osDelay(100); // ������ʱ���ȴ�����״̬�ȶ�
-            // ��鰴��״̬�Ƿ���Ϊ����
+            // ��鰴��״�?�Ƿ���Ϊ����
             if ((HAL_GPIO_ReadPin(SW_CNT_GPIO_Port, SW_CNT_Pin) == GPIO_PIN_RESET) || (soft_button == 1)) {
                 // �����ȶ���ִ�а����߼�
                 if (EYE_status == 1) {
@@ -163,7 +163,7 @@ void Button_State_Task(void *argument) {
                 soft_button = 0;
             }
         }
-        // ��ʱ�������������ռ�� CPU
+        // ��ʱ�������������ռ��? CPU
         // vTaskDelay(100);
     }
     /* USER CODE END Button_State_Task */
@@ -176,7 +176,7 @@ void APP_task(void *argument) {
     for (;;) {
         //HAL_IWDG_Refresh(&hiwdg);  // ��������ʱι��
         osDelay(100);//the breath of frequency
-       bq25895_reinitialize_if_vbus_inserted();//�����������
+       bq25895_reinitialize_if_vbus_inserted();//�����������?
         UpdateChargeState_bq25895();
         battery_status_update_bq27441();
         BQ27441_PrintRaTable();
@@ -201,7 +201,7 @@ void Motor_go_home_task(void *argument) {
 }
 
 
-// ���������
+// ���������?
 void Device_Check_Task(void *argument) {
     (void)argument;
     AD24C01_Factory_formatted();
@@ -218,7 +218,7 @@ void Device_Check_Task(void *argument) {
         EYE_checkout(EYE_status);
         osDelay(100);
 
-        //EYE_AT24CXX_WriteUInt16(super_eyes, 0x0202);//��������۶�
+        //EYE_AT24CXX_WriteUInt16(super_eyes, 0x0202);//��������۶�?
     }
 }
 
@@ -236,7 +236,7 @@ void I2C2_RecoveryTask(void *argument) {
 
         uint32_t isr = hi2c2.Instance->ISR;
         LOG("[I2C2 ����] ISR=0x%08lX\n", isr);
-        // ��� I2C �����־�Ա�����������
+        // ���? I2C �����־�Ա�����������?
         if (xSemaphoreTake(i2c2_mutex, portMAX_DELAY) == pdTRUE) {
             __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_BERR);  // ������ߴ����־
             __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_ARLO);  // ����ٲö�ʧ��־������У�
@@ -256,7 +256,7 @@ void I2C2_RecoveryTask(void *argument) {
             HAL_I2C_DeInit(&hi2c2);
             HAL_I2C_Init(&hi2c2);
 
-            // ��ѡ������� DMA�����³�ʼ�� DMA
+            // ��ѡ�������? DMA�����³�ʼ�� DMA
             HAL_DMA_DeInit(&hdma_i2c2_rx);
             HAL_DMA_Init(&hdma_i2c2_rx);
 
@@ -288,8 +288,8 @@ void bq25895_recovery_task(void *argument) {
 }
 void PowerOnDelayTask(void *argument) {
     (void)argument;
-//    AD24C01_Factory_formatted();//���flashû�г�ʼ�������ʼ��
-//    // �ϵ���ӳ�1��
+//    AD24C01_Factory_formatted();//���flashû�г�ʼ�������ʼ��?
+//    // �ϵ���ӳ�?1��
 //   // vTaskDelay(pdMS_TO_TICKS(200));
 //    // ����PA10
 //    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
@@ -337,7 +337,7 @@ void TaskMonitor_Task(void *argument)
         // ��ȡ����������Ϣ
         taskCount = uxTaskGetSystemState(taskStatusArray, maxTasks, &totalRunTime);
 
-        //LOG("������        ���       ״̬ ���ȼ� ջ���� ջ��С\r\n");
+        //LOG("������        ���?       ״̬ ���ȼ� ջ���� ջ��С\r\n");
         // for (UBaseType_t i = 0; i < taskCount; i++) {
         //     TaskStatus_t *ts = &taskStatusArray[i];
         //     LOG("%-12s %p    %lu    %lu    %lu    %lu\r\n",
@@ -372,10 +372,10 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
     // ���Լ��ϳ�����ָʾ
     //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET); // ���� PC13 LED
 
-    // ����ѡ�������ѭ������ֹ�����ں˱���
+    // ����ѡ��������?������ֹ�����ں˱���
     taskDISABLE_INTERRUPTS();
     for(;;) {
-        // ����ɼ���С��ʱ���ƣ���ʾ��������
+        // ����ɼ���С��ʱ���ƣ���ʾ��������?
     }
 }
 
@@ -416,8 +416,10 @@ void Main(void) {
     motor_back_1sHandle = xTimerCreate("motor_back_1s", pdMS_TO_TICKS(1000), pdFALSE, NULL, motor_back_1sCallback);
     butttonHandle = xTimerCreate("buttton", pdMS_TO_TICKS(100), pdTRUE, NULL, buttton_Callback);
     tempareture_pidHandle = xTimerCreate("tempareture_pid", pdMS_TO_TICKS(400), pdTRUE, NULL, tempareture_pid_timer);
+    press_updateHandle = xTimerCreate("press_update", pdMS_TO_TICKS(200), pdTRUE, NULL, press_update_timer);
     eye_is_existHandle = xTimerCreate("eye_is_exist_delay", pdMS_TO_TICKS(1000), pdTRUE, NULL, eye_is_exist_callback);
     xTimerStart(tempareture_pidHandle, 0); // ������ʱ��
+    xTimerStart(press_updateHandle, 0);
     serialTimeoutTimerHandle = xTimerCreate("SerialTimeout",
                                             pdMS_TO_TICKS(2000),
                                             pdTRUE,  //
