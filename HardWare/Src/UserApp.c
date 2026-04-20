@@ -30,10 +30,10 @@ uint8_t i2c2_error_flag = 0;
 /* FreeRTOS Handles */
 TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle, i2c2_recovery_task_handle, pwrTaskHandle,bq25895_recovery_homeHandle;
 QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
-SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore, spi2RxDmaSemaphoreHandle, spi2TxDmaSemaphoreHandle;  // SPI2 DMA 锟斤拷锟斤拷藕锟斤拷锟?;  // 锟斤拷锟斤拷锟斤拷志锟脚猴拷锟斤拷;
-SemaphoreHandle_t xI2CMutex;       // I2C锟斤拷锟竭伙拷锟斤拷锟斤拷
+SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore, spi2RxDmaSemaphoreHandle, spi2TxDmaSemaphoreHandle;  // 按钮信号量、日志输出互斥量、USART2 DMA 传输完成信号量、SPI2 DMA RX/TX 传输完成信号量
+SemaphoreHandle_t xI2CMutex;       // I2C 总线互斥锁，用于保护对 I2C 总线的并发访问
 SemaphoreHandle_t i2c2_mutex, I2C2_DMA_Sem;
-SemaphoreHandle_t xI2CCompleteSem; // 锟斤拷锟斤拷锟斤拷锟斤拷藕锟斤拷锟?
+SemaphoreHandle_t xI2CCompleteSem; // I2C 传输完成信号量，用于等待 I2C 操作完成
 
 
 
@@ -55,9 +55,9 @@ void Heat_Task(void *argument) {
 
     for (;;) {
         LOG("heat_start");
-        Kalman_Init(&kf, 0.1f, 1.0f);  // Q: 越小越平锟斤拷, R: 越小越锟斤拷锟轿诧拷锟斤拷
+        Kalman_Init(&kf, 0.1f, 1.0f);  // Q: 越小滤波结果越平滑，R: 越小则对测量噪声更敏感
         while (1) {
-            // 1. 锟斤拷锟斤拷顺锟酵ㄖ?
+            // 1. 检查是否收到停止任务的通知
             //if ((ulTaskNotifyTake(pdTRUE, 0) > 0)||(EYE_status==0)) {
             //if (ulTaskNotifyTake(pdTRUE, 0) > 0) {
 
@@ -69,23 +69,23 @@ void Heat_Task(void *argument) {
                     ScreenTimerStop();
                 }
                 currentState = STATE_OFF;
-                HeatPWM(0); // 锟截闭硷拷锟斤拷PWM
-                LOG("[Heat] 锟秸碉拷锟剿筹拷通知锟斤拷准锟斤拷锟酵凤拷锟斤拷源锟斤拷锟剿筹拷...\n");
-                // 2. 锟斤拷锟斤拷锟斤拷谢锟斤拷锟斤拷锟斤拷锟斤拷头锟斤拷锟?
+                HeatPWM(0); // 立即关闭加热 PWM 输出
+                LOG("[Heat] 接收到停止加热通知，准备释放资源并退出...\n");
+                // 2. 如果当前任务持有 I2C 互斥锁，则释放它
                 if (xSemaphoreGetMutexHolder(i2c2_mutex) == xTaskGetCurrentTaskHandle()) {
                     xSemaphoreGive(i2c2_mutex);
-                    LOG("[Heat] 锟斤拷锟酵凤拷 i2c2_mutex\n");
+                    LOG("[Heat] 释放 i2c2_mutex\n");
                 }
 
-                // 3. 执锟叫憋拷要锟斤拷锟斤拷锟斤拷锟剿筹拷
-                break;  // 锟斤拷锟斤拷 inner while锟斤拷锟截碉拷锟斤拷锟? for 循锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷
+                // 3. 执行结束处理并退出循环
+                break;  // 跳出内部 while 循环，进入任务挂起流程
             }
             if (i2c2_error_flag == 0) {
 #ifdef DEBUG_LOG
                 LOG("Read_tmp112/n");
 #endif
                 EyeTmp = TmpRaw2Ture();
-                EyeTmp=(EyeTmp>43)?43:EyeTmp;
+                //EyeTmp=(EyeTmp>43)?43:EyeTmp;
                 if (tempature_flag_400ms) {
                     tempature_flag_400ms = 0;
                     if (EyeTmp != 0.0f) {
@@ -105,7 +105,7 @@ void Heat_Task(void *argument) {
             //HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
 
         }
-        vTaskSuspend(NULL);  // 锟皆硷拷锟饺癸拷锟斤拷
+        vTaskSuspend(NULL);  // 挂起当前任务
     }
 
 }
@@ -115,28 +115,28 @@ void Press_Task(void *argument) {
 
     for (;;) {
         LOG("Press started\n");
-        ADS1220_StartConversion();  // 锟斤拷锟斤拷转锟斤拷
-        osDelay(20);//锟斤拷止ADC芯片没锟斤拷应锟斤拷锟斤拷
+        ADS1220_StartConversion();  // 启动 ADS1220 压力转换
+        osDelay(20); // 延时 20ms，等待 ADC 芯片响应
         Discard_dirty_data();
-        weight0 = ADS1220_ReadPressure();           // 锟斤拷取锟斤拷始压锟斤拷值
+        weight0 = ADS1220_ReadPressure();           // 读取初始压力基准值
         while (1) {
-            // 1. 锟斤拷锟斤拷顺锟酵ㄖ?
+            // 1. 检查是否收到停止任务的通知
             if (ulTaskNotifyTake(pdTRUE, 0) > 0) {
                 //if ((ulTaskNotifyTake(pdTRUE, 0) > 0)||(EYE_status==0)) {
-                LOG("[Press_Task] 锟秸碉拷锟剿筹拷通知锟斤拷准锟斤拷锟酵凤拷锟斤拷源锟斤拷锟剿筹拷...\n");
+                LOG("[Press_Task] 接收到停止控制通知，准备退出...\n");
                 currentState = STATE_OFF;
                 if(currentState!=STATE_PRE_HEAT&&currentState!=STATE_PRE_AUTO){
                     ScreenWorkModeQuit();
                     ScreenTimerStop();
                 }
-                // 2. 锟斤拷锟斤拷锟斤拷谢锟斤拷锟斤拷锟斤拷锟斤拷头锟斤拷锟?
-                // 3. 执锟叫憋拷要锟斤拷锟斤拷锟斤拷锟剿筹拷
-                break;  // 锟斤拷锟斤拷 inner while锟斤拷锟截碉拷锟斤拷锟? for 循锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷
+                // 2. 释放当前任务可能持有的资源
+                // 3. 执行结束处理并跳出循环
+                break;  // 跳出内部 while 循环，进入任务挂起流程
             }
             PressureControl();
             osDelay(50);
         }
-        vTaskSuspend(NULL);  // 锟皆硷拷锟饺癸拷锟斤拷
+        vTaskSuspend(NULL);  // 挂起当前任务
     }
     /* USER CODE END Press_Task */
 }
@@ -146,24 +146,24 @@ void Button_State_Task(void *argument) {
     /* USER CODE BEGIN Button_State_Task */
     /* Infinite loop */
     for (;;) {
-        // 锟饺达拷锟脚猴拷锟斤拷锟斤拷锟斤拷
+        // 等待按钮中断信号
         if (xSemaphoreTake(BUTTON_SEMAPHOREHandle, portMAX_DELAY) == pdTRUE) {
-            osDelay(100); // 锟斤拷锟斤拷锟斤拷时锟斤拷锟饺达拷锟斤拷锟斤拷状态锟饺讹拷
-            // 锟斤拷榘达拷锟阶刺?锟角凤拷锟斤拷为锟斤拷锟斤拷
+            osDelay(100); // 延时 100ms，避免按键抖动造成误触发
+            // 读取按键状态，如果仍然按下则认为按键有效
             if ((HAL_GPIO_ReadPin(SW_CNT_GPIO_Port, SW_CNT_Pin) == GPIO_PIN_RESET) || (soft_button == 1)) {
-                // 锟斤拷锟斤拷锟饺讹拷锟斤拷执锟叫帮拷锟斤拷锟竭硷拷
+                // 按键有效后执行相应处理逻辑
                 if (EYE_status == 1) {
                     Button_detection();
-                    // 锟饺达拷锟酵凤拷
+                    // 等待按键释放
                     while (HAL_GPIO_ReadPin(SW_CNT_GPIO_Port, SW_CNT_Pin) == GPIO_PIN_RESET) {
                         osDelay(10);
                     }
-                    button_pressed = 0; // 准锟斤拷锟斤拷一锟轿帮拷锟斤拷
+                    button_pressed = 0; // 准备处理下一次按键事件
                 }
                 soft_button = 0;
             }
         }
-        // 锟斤拷时锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟秸硷拷锟? CPU
+        // 这里不使用延时，以避免占用过多 CPU 时间
         // vTaskDelay(100);
     }
     /* USER CODE END Button_State_Task */
@@ -174,9 +174,9 @@ void APP_task(void *argument) {
     osDelay(1000);//the breath of frequency
     BQ25895_Init();
     for (;;) {
-        //HAL_IWDG_Refresh(&hiwdg);  // 锟斤拷锟斤拷锟斤拷锟斤拷时喂锟斤拷
+        //HAL_IWDG_Refresh(&hiwdg);  // 如果启用独立看门狗，则在这里刷新看门狗计数器
         osDelay(100);//the breath of frequency
-       bq25895_reinitialize_if_vbus_inserted();//锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟?
+       bq25895_reinitialize_if_vbus_inserted(); // 如果检测到 VBUS 插入，则重新初始化充电管理器
         UpdateChargeState_bq25895();
         battery_status_update_bq27441();
         BQ27441_PrintRaTable();
@@ -189,26 +189,26 @@ void APP_task(void *argument) {
 
 void Motor_go_home_task(void *argument) {
     (void)argument;
-    vTaskDelay(100);//TMC5130_Init();锟斤拷锟斤拷同一锟斤拷锟竭程ｏ拷锟斤拷要锟饺达拷tmc5130锟斤拷位
+    vTaskDelay(100); // 延时 100ms，避免与 TMC5130 初始化过程冲突，等待电机回零
     for (;;) {
         LOG("motor go home\n");
         ADS1220_StopConversion();
         MotorChecking();
         motor_homeHandle = NULL;
-        vTaskDelete(NULL);  // 锟皆硷拷锟饺癸拷锟斤拷
+        vTaskDelete(NULL);  // 删除并退出当前任务
         //vTaskDelay(1000);
     }
 }
 
 
-// 锟斤拷锟斤拷锟斤拷锟斤拷锟?
+// 设备自检任务
 void Device_Check_Task(void *argument) {
     (void)argument;
     AD24C01_Factory_formatted();
     EYE_checkout(1.0);
     vTaskDelay(1200);
     xTimerStart(eye_is_existHandle, 0);
-    //AT24C02_WriteAllBytes_eye(0xff);//锟斤拷锟斤拷ee锟芥储
+    //AT24C02_WriteAllBytes_eye(0xff);// 擦除 EEPROM 存储
     Device_Init();
     for (;;) {
         //HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
@@ -218,7 +218,7 @@ void Device_Check_Task(void *argument) {
         EYE_checkout(EYE_status);
         osDelay(100);
 
-        //EYE_AT24CXX_WriteUInt16(super_eyes, 0x0202);//锟斤拷锟斤拷锟斤拷锟斤拷鄱锟?
+        //EYE_AT24CXX_WriteUInt16(super_eyes, 0x0202);// 写入眼部数据到 EEPROM
     }
 }
 
@@ -229,43 +229,43 @@ extern DMA_HandleTypeDef hdma_i2c2_rx;
 void I2C2_RecoveryTask(void *argument) {
     (void)argument;
     for (;;) {
-        // 一直锟饺达拷通知锟脚号ｏ拷锟斤拷锟斤拷锟斤拷锟斤拷
+        // 等待通知以执行 I2C 错误恢复
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
         i2c2_error_flag = 1;
 
         uint32_t isr = hi2c2.Instance->ISR;
-        LOG("[I2C2 锟斤拷锟斤拷] ISR=0x%08lX\n", isr);
-        // 锟斤拷锟? I2C 锟斤拷锟斤拷锟街撅拷员锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟?
+        LOG("[I2C2 错误] ISR=0x%08lX\n", isr);
+        // 处理 I2C 错误或总线异常后，清除相关错误标志
         if (xSemaphoreTake(i2c2_mutex, portMAX_DELAY) == pdTRUE) {
-            __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_BERR);  // 锟斤拷锟斤拷锟斤拷叽锟斤拷锟斤拷志
-            __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_ARLO);  // 锟斤拷锟斤拷俨枚锟绞э拷锟街撅拷锟斤拷锟斤拷锟叫ｏ拷
+            __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_BERR);  // 清除总线错误标志
+            __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_ARLO);  // 清除仲裁丢失标志
             //
-            // // 锟斤拷锟斤拷锟斤拷锟斤拷时锟接猴拷 I2C 锟斤拷锟斤拷锟斤拷
+            // // 如果需要，可禁用并重新使能 I2C 时钟以强制复位总线
             // __HAL_RCC_I2C2_CLK_DISABLE();
             // __HAL_RCC_I2C2_CLK_ENABLE();
 
-            // 1. 锟截憋拷 I2C 锟斤拷锟斤拷
+            // 1. 禁用 I2C 外设
             __HAL_I2C_DISABLE(&hi2c2);
 
-            // 2. 硬锟斤拷锟斤拷位 I2C 锟斤拷锟斤拷
+            // 2. 硬件复位 I2C 外设
             __HAL_RCC_I2C2_FORCE_RESET();
             __HAL_RCC_I2C2_RELEASE_RESET();
 
-            // 锟斤拷锟铰筹拷始锟斤拷 I2C2
+            // 重新初始化 I2C2
             HAL_I2C_DeInit(&hi2c2);
             HAL_I2C_Init(&hi2c2);
 
-            // 锟斤拷选锟斤拷锟斤拷锟斤拷锟? DMA锟斤拷锟斤拷锟铰筹拷始锟斤拷 DMA
+            // 重新初始化与 I2C2 关联的 DMA
             HAL_DMA_DeInit(&hdma_i2c2_rx);
             HAL_DMA_Init(&hdma_i2c2_rx);
 
-            xSemaphoreGive(i2c2_mutex);  // 锟酵放伙拷锟斤拷锟斤拷
+            xSemaphoreGive(i2c2_mutex);  // 释放 I2C 互斥锁
         }
 
-        LOG("[锟街革拷锟斤拷锟斤拷] I2C2 锟斤拷锟竭恢革拷锟斤拷桑锟絓n");
+        LOG("[错误恢复] I2C2 已恢复并重新初始化\n");
 
-        // 锟饺达拷一锟斤拷时锟斤拷锟斤拷锟斤拷锟斤拷
+        // 等待短暂时间，让 I2C 总线恢复稳定
         //osDelay(10);
         i2c2_error_flag = 0;
     }
@@ -277,7 +277,7 @@ void bq25895_recovery_task(void *argument) {
     (void)argument;
     for (;;) {
 
-        // 一直锟饺达拷通知锟脚号ｏ拷锟斤拷锟斤拷锟斤拷锟斤拷
+        // 等待通知以恢复 bq25895 充电管理器
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
 //        HAL_NVIC_DisableIRQ(EXTI4_15_IRQn);
@@ -288,10 +288,10 @@ void bq25895_recovery_task(void *argument) {
 }
 void PowerOnDelayTask(void *argument) {
     (void)argument;
-//    AD24C01_Factory_formatted();//锟斤拷锟絝lash没锟叫筹拷始锟斤拷锟斤拷锟斤拷锟绞硷拷锟?
-//    // 锟较碉拷锟斤拷映锟?1锟斤拷
+//    AD24C01_Factory_formatted();// 仅用于未初始化 Flash 设备的工厂格式化
+//    // 校准电压显示值
 //   // vTaskDelay(pdMS_TO_TICKS(200));
-//    // 锟斤拷锟斤拷PA10
+//    // 控制 PA10 引脚
 //    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
 //    vTaskDelay(pdMS_TO_TICKS(500));
 //    prepare_data_set();
@@ -300,19 +300,19 @@ void PowerOnDelayTask(void *argument) {
 //    vTaskDelay(pdMS_TO_TICKS(500));
 //    prepare_data_set();
 //
-//    // 删锟斤拷锟皆硷拷
+//    // 删除错误任务
 //    vTaskDelete(NULL);
-//    LOG("锟较碉拷锟斤拷锟絓n");
+//    LOG("定时任务结束\n");
 }
 
 
-// 锟斤拷锟斤拷锟斤拷锟斤拷锟叫达拷锟斤拷
+// 电源重启任务
 void PowerReboot_Task(void *argument) {
     (void)argument;
 //    for (;;) {
 //       ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-//        LOG("锟斤拷锟斤拷\n");
-//            vTaskDelay(pdMS_TO_TICKS(10));  // 锟接筹拷100ms
+//        LOG("重启\n");
+//            vTaskDelay(pdMS_TO_TICKS(10));  // 延时 100ms
 //            if(HAL_GPIO_ReadPin(PWR_SENSE_GPIO_Port, PWR_SENSE_Pin) == 0){
 //               // reset = 1;
 ////                hiwdg.Init.Reload = 1;
@@ -329,15 +329,15 @@ void TaskMonitor_Task(void *argument)
     {
 
 #ifdef LOG_TASK_INOF_DEBUG
-        const UBaseType_t maxTasks = 20;  // 锟斤拷锟斤拷实锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟睫革拷
+        const UBaseType_t maxTasks = 20;  // 根据实际任务数量分配状态信息缓存
         TaskStatus_t taskStatusArray[maxTasks];
         UBaseType_t taskCount;
         uint32_t totalRunTime;
 
-        // 锟斤拷取锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷息
+        // 获取任务状态信息
         taskCount = uxTaskGetSystemState(taskStatusArray, maxTasks, &totalRunTime);
 
-        //LOG("锟斤拷锟斤拷锟斤拷        锟斤拷锟?       状态 锟斤拷锟饺硷拷 栈锟斤拷锟斤拷 栈锟斤拷小\r\n");
+        //LOG("任务名        句柄       状态 优先级 栈剩余 栈字节\r\n");
         // for (UBaseType_t i = 0; i < taskCount; i++) {
         //     TaskStatus_t *ts = &taskStatusArray[i];
         //     LOG("%-12s %p    %lu    %lu    %lu    %lu\r\n",
@@ -346,7 +346,7 @@ void TaskMonitor_Task(void *argument)
         //            (unsigned long)ts->eCurrentState,
         //            (unsigned long)ts->uxCurrentPriority,
         //            (unsigned long)ts->usStackHighWaterMark,
-        //            (unsigned long)ts->usStackHighWaterMark * sizeof(StackType_t));  // 栈剩锟斤拷锟街斤拷锟斤拷
+        //            (unsigned long)ts->usStackHighWaterMark * sizeof(StackType_t));  // 计算剩余栈字节数
         // }
 
 #endif
@@ -360,27 +360,27 @@ void TaskMonitor_Task(void *argument)
 #define configASSERT(x) if( (x) == 0 ) vAssertCalled(__FILE__, __LINE__)
 
 /**
- * @brief  FreeRTOS 锟斤拷獾斤拷锟斤拷锟秸伙拷锟斤拷时锟斤拷锟斤拷
+ * @brief  FreeRTOS 堆栈溢出时的钩子函数
  */
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
-    // 锟斤拷止锟脚伙拷锟斤拷锟斤拷锟斤拷
+    // 停止当前任务并进入错误处理循环
     (void)xTask;
 
     LOG("[ERROR] Stack overflow detected! Task=%s\n", pcTaskName);
 
-    // 锟斤拷锟皆硷拷锟较筹拷锟斤拷锟斤拷指示
-    //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET); // 锟斤拷锟斤拷 PC13 LED
+    // 可以在此处点亮错误指示灯
+    //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET); // 点亮 PC13 LED
 
-    // 锟斤拷锟斤拷选锟斤拷锟斤拷锟斤拷锟窖?锟斤拷锟斤拷锟斤拷止锟斤拷锟斤拷锟节核憋拷锟斤拷
+    // 选择合适方式停止任务，防止继续运行
     taskDISABLE_INTERRUPTS();
     for(;;) {
-        // 锟斤拷锟斤拷杉锟斤拷锟叫★拷锟绞憋拷锟斤拷疲锟斤拷锟绞撅拷锟斤拷锟斤拷锟斤拷锟?
+        // 进入死循环，等待外部复位或调试干预
     }
 }
 
 /**
- * @brief  FreeRTOS 锟斤拷锟斤拷失锟杰达拷锟斤拷锟斤拷锟斤拷
+ * @brief  FreeRTOS 断言失败时的处理函数
  */
 void vAssertCalled(const char *file, int line)
 {
@@ -388,16 +388,16 @@ void vAssertCalled(const char *file, int line)
 
     taskDISABLE_INTERRUPTS();
     for(;;) {
-        // 同锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷示
+        // 保持此处，以便调试断言失败原因
     }
 }
 void Main(void) {
-    //HAL_IWDG_Refresh(&hiwdg);  // 锟斤拷锟斤拷锟斤拷锟斤拷时喂锟斤拷
-    logSemaphore = xSemaphoreCreateMutex();  // 锟斤拷锟斤拷LOG锟斤拷锟斤拷锟脚猴拷锟斤拷
-    i2c2_mutex = xSemaphoreCreateMutex();  // 锟斤拷锟斤拷LOG锟斤拷锟斤拷锟脚猴拷锟斤拷
+    //HAL_IWDG_Refresh(&hiwdg);  // 刷新独立看门狗计数器
+    logSemaphore = xSemaphoreCreateMutex();  // 创建日志输出互斥量
+    i2c2_mutex = xSemaphoreCreateMutex();  // 创建 I2C 互斥量
     I2C2_DMA_Sem = xSemaphoreCreateBinary();
-    BUTTON_SEMAPHOREHandle = xSemaphoreCreateBinary();//锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷
-    usart2_dmatxSemaphore = xSemaphoreCreateBinary();        // usart2DMA锟脚猴拷锟斤拷
+    BUTTON_SEMAPHOREHandle = xSemaphoreCreateBinary(); // 创建按钮事件二值信号量
+    usart2_dmatxSemaphore = xSemaphoreCreateBinary();        // USART2 DMA 传输完成信号量
     USART2_DMA_Init();
     SPI2_DMA_Semaphores_Init();
     I2C_Semaphore_Init();
@@ -406,11 +406,11 @@ void Main(void) {
     ws2812_yellow_delayHandle = xTimerCreate("ws2812_yellow_delay", pdMS_TO_TICKS(400), pdFALSE, NULL,
                                              ws2812_yellow_callback);
     breathTimer = xTimerCreate("BreathTimer",
-                               pdMS_TO_TICKS(30),   // 每 30ms 锟斤拷一锟斤拷
-                               pdTRUE,              // 锟皆讹拷锟斤拷装
+                               pdMS_TO_TICKS(30),   // 每 30ms 触发一次
+                               pdTRUE,              // 自动重新加载
                                NULL,
                                BreathingLightCallback);
-    //xTimerStart(breathTimer, 20); // ? 锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷
+    //xTimerStart(breathTimer, 20); // ? 未使用的定时器启动参数
     breath_delayHandle = xTimerCreate("breath_delay", pdMS_TO_TICKS(400), pdFALSE, NULL, breath_delay_Callback);
     motor_grab3sHandle = xTimerCreate("motor_grab3s", pdMS_TO_TICKS(3000), pdFALSE, NULL, motor_grab3s_Callback);
     motor_back_1sHandle = xTimerCreate("motor_back_1s", pdMS_TO_TICKS(1000), pdFALSE, NULL, motor_back_1sCallback);
@@ -418,14 +418,14 @@ void Main(void) {
     tempareture_pidHandle = xTimerCreate("tempareture_pid", pdMS_TO_TICKS(400), pdTRUE, NULL, tempareture_pid_timer);
     press_updateHandle = xTimerCreate("press_update", pdMS_TO_TICKS(200), pdTRUE, NULL, press_update_timer);
     eye_is_existHandle = xTimerCreate("eye_is_exist_delay", pdMS_TO_TICKS(1000), pdTRUE, NULL, eye_is_exist_callback);
-    xTimerStart(tempareture_pidHandle, 0); // 锟斤拷锟斤拷锟斤拷时锟斤拷
+    xTimerStart(tempareture_pidHandle, 0); // 启动温度 PID 定时器
     xTimerStart(press_updateHandle, 0);
     serialTimeoutTimerHandle = xTimerCreate("SerialTimeout",
                                             pdMS_TO_TICKS(2000),
                                             pdTRUE,  //
                                             NULL,
                                             SerialTimeout_Callback);
-    xTimerStart(serialTimeoutTimerHandle, 0); // 锟斤拷锟斤拷锟斤拷时锟斤拷
+    xTimerStart(serialTimeoutTimerHandle, 0); // 启动串口超时定时器
 
     UART_DMA_IDLE_RECEPT_QUEUEHandle = xQueueCreate(3, sizeof(uart_data *));
     configASSERT(UART_DMA_IDLE_RECEPT_QUEUEHandle != NULL);
@@ -435,7 +435,7 @@ void Main(void) {
     BQ27441_VerifyConfig();
 
     PWM_WS2812B_Init();
-    ADS1220_Init(); // 锟斤拷始锟斤拷ADS1220
+    ADS1220_Init(); // 初始化 ADS1220 压力传感器
     TMC5130_Init();
     HeatInit();
     //TMP112_Init();
