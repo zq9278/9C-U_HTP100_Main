@@ -73,6 +73,8 @@ void ScreenWorkMode_count(float count);
 void EYE_checkout(float data);
         void ScreenUpdateForce(float value);
 void ScreenUpdateTemperature(float value);
+void ScreenUpdateHeatPower(float value);
+void ScreenUpdateHeatLoadStatus(float value);
 void Serial_data_stream_parsing(uart_data *frameData);
 
 

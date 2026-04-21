@@ -20,7 +20,7 @@ void PWM_WS2812B_Init(void) {
   //	__HAL_TIM_DISABLE(&htim16);
   __HAL_TIM_ENABLE_DMA(&htim16, TIM_DMA_CC1);
   HAL_TIM_Base_Start_IT(&htim17);
-  osTimerStart(ws2812_white_delayHandle, 400); // ÖØĞÂÆô¶¯¶¨Ê±Æ÷
+  osTimerStart(ws2812_white_delayHandle, 400); // é‡æ–°å¯åŠ¨å®šæ—¶å™¨
     }
   //	__HAL_DMA_DISABLE(&hdma_tim16_ch1);
 
@@ -42,9 +42,9 @@ void PWM_WS2812B_Write_24Bits(uint16_t num, uint32_t GRB_Data) {
   }
 }
 void PWM_WS2812B_Show(uint16_t num) {
-  //  Í¨¹ıDMAÊä³öÊı¾İ
+  //  é€šè¿‡DMAè¾“å‡ºæ•°æ®
   while (hdma_tim16_ch1.State != HAL_DMA_STATE_READY)
-    ; // µÈ´ıDMAÍê³É
+    ; // ç­‰å¾…DMAå®Œæˆ
   HAL_TIM_PWM_Start_DMA(&htim16, TIM_CHANNEL_1, (uint32_t *)Single_LED_Buffer,
                         num * DATA_SIZE + 150);
 }
@@ -69,31 +69,31 @@ void PWM_WS2812B(uint16_t num, uint32_t RGB_data) {
   PWM_WS2812B_Show(num);
 }
 
-extern ChargeState_t ChargeState; // µ±Ç°×´Ì¬
+extern ChargeState_t ChargeState; // å½“å‰çŠ¶æ€
 extern uint8_t STATE_POWER_5V;
 void LEDUpdate(void) {
 }
 void UpdateState(uint8_t emergency_stop, uint8_t charging, uint8_t low_battery,
                  uint8_t fully_charged, uint8_t working) {
   if (emergency_stop) {
-    ChargeState = STATE_EMERGENCY_STOP; // ¼±Í£ÓÅÏÈ¼¶×î¸ß
+    ChargeState = STATE_EMERGENCY_STOP; // æ€¥åœä¼˜å…ˆçº§æœ€é«˜
   } else if (fully_charged) {
-    ChargeState = STATE_CHARGED; // ³äÂú×´Ì¬ÓÅÏÈ¼¶µÚ¶ş
+    ChargeState = STATE_CHARGED; // å……æ»¡çŠ¶æ€ä¼˜å…ˆçº§ç¬¬äºŒ
   } else if (charging) {
-    ChargeState = STATE_CHARGING; // ³äµçÓÅÏÈ¼¶µÚÈı
+    ChargeState = STATE_CHARGING; // å……ç”µä¼˜å…ˆçº§ç¬¬ä¸‰
   } else if (low_battery) {
-    ChargeState = STATE_LOW_BATTERY; // µÍµçÁ¿ÓÅÏÈ¼¶µÚËÄ
+    ChargeState = STATE_LOW_BATTERY; // ä½ç”µé‡ä¼˜å…ˆçº§ç¬¬å››
   } else if (working) {
-    ChargeState = STATE_WORKING; // ¹¤×÷ÓÅÏÈ¼¶µÚÎå
+    ChargeState = STATE_WORKING; // å·¥ä½œä¼˜å…ˆçº§ç¬¬äº”
   } else {
-    ChargeState = STATE_POWER_ON; // Ä¬ÈÏ¿ª»ú×´Ì¬
+    ChargeState = STATE_POWER_ON; // é»˜è®¤å¼€æœºçŠ¶æ€
   }
 }
 
 //extern osTimerId_t breath_delayHandle;
-uint8_t white_delay = 0;    // ×´Ì¬±äÁ¿£¨Í¬Ê±×÷Îª±êÖ¾Î»ºÍµÆÖé×´Ì¬£©
-uint8_t yellow_delay = 0;    // ×´Ì¬±äÁ¿£¨Í¬Ê±×÷Îª±êÖ¾Î»ºÍµÆÖé×´Ì¬£©
-uint8_t breathing_flag = 0; // ±êÖ¾Î»£¬ÓÃÓÚ¿ØÖÆºôÎüµÆµÄ¿ª¹Ø
+uint8_t white_delay = 0;    // çŠ¶æ€å˜é‡ï¼ˆåŒæ—¶ä½œä¸ºæ ‡å¿—ä½å’Œç¯ç çŠ¶æ€ï¼‰
+uint8_t yellow_delay = 0;    // çŠ¶æ€å˜é‡ï¼ˆåŒæ—¶ä½œä¸ºæ ‡å¿—ä½å’Œç¯ç çŠ¶æ€ï¼‰
+uint8_t breathing_flag = 0; // æ ‡å¿—ä½ï¼Œç”¨äºæ§åˆ¶å‘¼å¸ç¯çš„å¼€å…³
 uint32_t GRB_DATA;
  static uint8_t RGB_DATA = 0;
     static uint8_t LEDDir = 0;
@@ -109,7 +109,7 @@ uint32_t GRB_DATA;
 //        LEDDir = 0;
 //      }
 //    }
-// GRB_DATA= RGB_DATA * 0x010101; // µÈ¼ÛÓÚ (RGB_DATA << 16) | (RGB_DATA << 8) | RGB_DATA
+// GRB_DATA= RGB_DATA * 0x010101; // ç­‰ä»·äº (RGB_DATA << 16) | (RGB_DATA << 8) | RGB_DATA
 //PWM_WS2812B_Write_24Bits(LED_NUM, GRB_DATA);
 // //
 //}
@@ -122,15 +122,15 @@ void UpdateBreathingLight(void) {
         if (RGB_DATA <= 10)  LEDDir = 0;
     }
 
-    // ¿ÉÑ¡£º¼Ó¸ö·ÇÏßĞÔÓ³ÉäÔöÇ¿ºôÎü¸Ğ
+    // å¯é€‰ï¼šåŠ ä¸ªéçº¿æ€§æ˜ å°„å¢å¼ºå‘¼å¸æ„Ÿ
     uint8_t brightness = (RGB_DATA * RGB_DATA) / 100;
 
-    // ¹¹Ôì GRB Êı¾İ
+    // æ„é€  GRB æ•°æ®
     uint32_t GRB_DATA = (brightness << 16) | (brightness << 8) | brightness; // G,R,B
     PWM_WS2812B_Write_24Bits(LED_NUM, GRB_DATA);
 }
 
-// ĞÂÔöÒ»¸öÁÁ¶ÈËõ·Åº¯Êı
+// æ–°å¢ä¸€ä¸ªäº®åº¦ç¼©æ”¾å‡½æ•°
 uint32_t ScaleColor(uint32_t color, float brightness)
 {
     uint8_t g = (color >> 16) & 0xFF;
@@ -144,11 +144,11 @@ uint32_t ScaleColor(uint32_t color, float brightness)
     return (g << 16) | (r << 8) | b;
 }
 
-// ĞŞ¸ÄºóµÄ UpdateLightState
+// ä¿®æ”¹åçš„ UpdateLightState
 void UpdateLightState(ChargeState_t state)
 {
      float brightness=0.5;
-    // ?? ·Ç CHARGING ×´Ì¬£¬¹Ø±ÕºôÎüµÆ¶¨Ê±Æ÷
+    // ?? é CHARGING çŠ¶æ€ï¼Œå…³é—­å‘¼å¸ç¯å®šæ—¶å™¨
     if (state != STATE_CHARGING && xTimerIsTimerActive(breathTimer)) {
         xTimerStop(breathTimer, 10);
     }
@@ -156,37 +156,37 @@ void UpdateLightState(ChargeState_t state)
         case STATE_POWER_ON:
         case STATE_WORKING:
         case STATE_CHARGED:
-            // °×É«³£ÁÁ
+            // ç™½è‰²å¸¸äº®
             PWM_WS2812B_Write_24Bits(LED_NUM, ScaleColor(0x444444, brightness));
             PWM_WS2812B_Show(LED_NUM);
             break;
 
         case STATE_LOW_BATTERY:
             if (white_delay) {
-                PWM_WS2812B_Write_24Bits(LED_NUM, ScaleColor(0x444444, brightness)); // °×É«
+                PWM_WS2812B_Write_24Bits(LED_NUM, ScaleColor(0x444444, brightness)); // ç™½è‰²
             } else {
-                PWM_WS2812B_Write_24Bits(LED_NUM, 0x000000); // ºÚÉ«£¨Ï¨Ãğ£©
+                PWM_WS2812B_Write_24Bits(LED_NUM, 0x000000); // é»‘è‰²ï¼ˆç†„ç­ï¼‰
             }
             PWM_WS2812B_Show(LED_NUM);
             break;
 
         case STATE_CHARGING:
-//            UpdateBreathingLight(); // ÕâÀïÊÇºôÎüµÆ¶¯»­
+//            UpdateBreathingLight(); // è¿™é‡Œæ˜¯å‘¼å¸ç¯åŠ¨ç”»
 //            PWM_WS2812B_Show(LED_NUM);
-            xTimerStart(breathTimer, 10); // ? Æô¶¯ºôÎü¶¯»­,ÔÊĞíµÈ´ı10ms
+            xTimerStart(breathTimer, 10); // ? å¯åŠ¨å‘¼å¸åŠ¨ç”»,å…è®¸ç­‰å¾…10ms
             break;
 
         case STATE_EMERGENCY_STOP:
             if (yellow_delay == 0) {
-                osTimerStart(ws2812_yellow_delayHandle, 3000); // »ÆµÆ³ÖĞø 3 Ãë
+                osTimerStart(ws2812_yellow_delayHandle, 3000); // é»„ç¯æŒç»­ 3 ç§’
                 yellow_delay = 1;
             }
-            PWM_WS2812B_Write_24Bits(LED_NUM, ScaleColor(0xFFFF00, brightness)); // »ÆÉ«
+            PWM_WS2812B_Write_24Bits(LED_NUM, ScaleColor(0xFFFF00, brightness)); // é»„è‰²
             PWM_WS2812B_Show(LED_NUM);
             break;
 
         default:
-            PWM_WS2812B_Write_24Bits(LED_NUM, 0x000000); // Ä¬ÈÏÏ¨Ãğ
+            PWM_WS2812B_Write_24Bits(LED_NUM, 0x000000); // é»˜è®¤ç†„ç­
             PWM_WS2812B_Show(LED_NUM);
             break;
     }

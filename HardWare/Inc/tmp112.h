@@ -23,6 +23,8 @@ typedef struct {
 extern KalmanFilter kf;
 void Kalman_Init(KalmanFilter *kf, float Q, float R);
 float Kalman_Update(KalmanFilter *kf, float measurement);
+void TempDisplayTargetFilterReset(void);
+float TempDisplayTargetFilterUpdate(float measured_value, float target_value);
 void TMP112_Init(void);
 void TMP112_WriteWord(uint8_t WriteAddr,uint8_t*  WriteData);
 HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer);

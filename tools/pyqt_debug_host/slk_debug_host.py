@@ -85,6 +85,8 @@ INCOMING_WORK_NAMES = {
     0x2055: "眼部检测",
     0x2056: "计时停止",
     0x2057: "新眼部",
+    0x2058: "加热功率",
+    0x2059: "负载触发状态",
     0x9000: "工作次数",
     0x9100: "眼部无效",
 }
@@ -571,12 +573,18 @@ class MainWindow(QMainWindow):
         cards = QHBoxLayout()
         self.temp_card = ValueCard("当前温度", "℃")
         self.press_card = ValueCard("当前压力", "mmHg")
+        self.power_card = ValueCard("加热功率", "%")
+        self.load_card = ValueCard("负载模式")
         self.soc_card = ValueCard("电量", "%")
         self.eye_card = ValueCard("眼部状态")
         self.event_card = ValueCard("最近事件")
-        for card in (self.temp_card, self.press_card, self.soc_card, self.eye_card, self.event_card):
+        for card in (self.temp_card, self.press_card, self.power_card, self.load_card, self.soc_card, self.eye_card, self.event_card):
             cards.addWidget(card)
         layout.addLayout(cards)
+        self.load_detail_label = QLabel("负载条件：等待稳定")
+        self.load_detail_label.setObjectName("Hint")
+        self.load_detail_label.setWordWrap(True)
+        layout.addWidget(self.load_detail_label)
 
         plot_splitter = QSplitter(Qt.Vertical)
         self.temp_plot, self.temp_curve = self._create_plot("温度曲线", "℃", "#ef476f")
@@ -724,6 +732,32 @@ class MainWindow(QMainWindow):
         self.log.append(f'<span style="color:#94a3b8;">[{timestamp}]</span> <span style="color:{color};">[{prefix}]</span> {text}')
         self.log.verticalScrollBar().setValue(self.log.verticalScrollBar().maximum())
 
+    def update_heat_load_status(self, status: int) -> None:
+        items = [
+            (0x01, "启动屏蔽完成"),
+            (0x02, "目标附近稳定"),
+            (0x04, "负载检测已武装"),
+            (0x08, "温度低于目标"),
+            (0x10, "仍在目标附近"),
+            (0x20, "检测到掉温"),
+            (0x40, "掉温已确认"),
+        ]
+        active = [name for bit, name in items if status & bit]
+
+        if status & 0x80:
+            self.load_card.set_value("已进入")
+            self.event_card.set_value("进入负载模式")
+        elif active:
+            self.load_card.set_value(f"{len(active)} 项")
+        else:
+            self.load_card.set_value("未触发")
+
+        detail = " / ".join(active) if active else "等待稳定"
+        if status & 0x80:
+            detail = f"{detail} / 已进入负载模式"
+        self.load_card.value_label.setToolTip(detail)
+        self.load_detail_label.setText(f"负载条件：{detail}")
+
     def on_frame(self, frame: ParsedFrame) -> None:
         crc_text = "OK" if frame.valid_crc else "CRC_ERR"
         detail = frame.name
@@ -748,6 +782,10 @@ class MainWindow(QMainWindow):
                 self.press_card.set_value(frame.value)
             elif frame.cmd_type == 0x2050 and frame.value is not None:
                 self.soc_card.set_value(frame.value)
+            elif frame.cmd_type == 0x2058 and frame.value is not None:
+                self.power_card.set_value(frame.value)
+            elif frame.cmd_type == 0x2059 and frame.value is not None:
+                self.update_heat_load_status(int(frame.value))
             elif frame.cmd_type == 0x2055 and frame.value is not None:
                 self.last_eye_time = time.monotonic()
                 if frame.value >= 0.5:

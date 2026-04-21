@@ -87,6 +87,62 @@ float Kalman_Update(KalmanFilter *kf, float measurement) {
     return kf->x;
 }
 KalmanFilter kf;
+#define TEMP_DISPLAY_TARGET_FILTER_SIZE 10u
+static float temp_display_target_buffer[TEMP_DISPLAY_TARGET_FILTER_SIZE];
+static uint8_t temp_display_target_count = 0;
+static uint8_t temp_display_target_index = 0;
+static uint8_t temp_display_target_valid = 0;
+static float temp_display_last_target = 0.0f;
+
+static float TempAbs(float value) {
+    return (value >= 0.0f) ? value : -value;
+}
+
+void TempDisplayTargetFilterReset(void) {
+    temp_display_target_count = 0;
+    temp_display_target_index = 0;
+    temp_display_target_valid = 0;
+    temp_display_last_target = 0.0f;
+}
+
+float TempDisplayTargetFilterUpdate(float measured_value, float target_value) {
+    float best_value;
+    float best_error;
+
+    if (target_value <= 0.0f) {
+        TempDisplayTargetFilterReset();
+        return measured_value;
+    }
+
+    if (!temp_display_target_valid ||
+        TempAbs(target_value - temp_display_last_target) > 0.01f) {
+        TempDisplayTargetFilterReset();
+        temp_display_target_valid = 1;
+        temp_display_last_target = target_value;
+    }
+
+    temp_display_target_buffer[temp_display_target_index] = measured_value;
+    temp_display_target_index++;
+    if (temp_display_target_index >= TEMP_DISPLAY_TARGET_FILTER_SIZE) {
+        temp_display_target_index = 0;
+    }
+    if (temp_display_target_count < TEMP_DISPLAY_TARGET_FILTER_SIZE) {
+        temp_display_target_count++;
+    }
+
+    best_value = temp_display_target_buffer[0];
+    best_error = TempAbs(best_value - target_value);
+    for (uint8_t i = 1; i < temp_display_target_count; i++) {
+        float current_error = TempAbs(temp_display_target_buffer[i] - target_value);
+        if (current_error < best_error) {
+            best_error = current_error;
+            best_value = temp_display_target_buffer[i];
+        }
+    }
+
+    return best_value;
+}
+
 #define ALPHA 0.1  // 设置平滑因子，值越大对最新数据的权重越大
 float previousEMA = 0.0;  // 之前的平滑值
 int16_t TmpData;

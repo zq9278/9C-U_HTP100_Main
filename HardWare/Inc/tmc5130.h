@@ -30,5 +30,7 @@ uint8_t MotorCompare(int32_t SetData, int32_t CompareData);
 void SetMotorposition(int speed);
 void SetMotorSpeed(int speed);
 
+void PressureDisplayTargetFilterReset(void);
+float PressureDisplayTargetFilterUpdate(float measured_value, float target_value);
 void PressureControl(void);
 #endif

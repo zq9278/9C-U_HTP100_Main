@@ -502,7 +502,7 @@ void command_parsing(uart_data *received_data) {
 
         PID_Init(&HeatPID,
                  heat_pid_data->p, heat_pid_data->i, heat_pid_data->d,
-                 1500, 0, 255, 0, heat_pid_data->setpoint);
+                 300, -300, 255, 0, heat_pid_data->setpoint);
         LOG("[PID] HeatPID initialized\n");
         break;
     }
@@ -553,6 +553,34 @@ void ScreenUpdateTemperature(float value) {
     pData.end_low = 0xff;  // 帧尾
     USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 
+}
+
+void ScreenUpdateHeatPower(float value) {
+    static recept_data pData;
+    pData.cmd_head_high = 0x5A;
+    pData.cmd_head_low = 0xA5;
+    pData.frame_length = 0x0d;
+    pData.cmd_type_high = 0x20;
+    pData.cmd_type_low = 0x58;
+    pData.data = value;
+    pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
+    pData.end_high = 0xff;
+    pData.end_low = 0xff;
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+}
+
+void ScreenUpdateHeatLoadStatus(float value) {
+    static recept_data pData;
+    pData.cmd_head_high = 0x5A;
+    pData.cmd_head_low = 0xA5;
+    pData.frame_length = 0x0d;
+    pData.cmd_type_high = 0x20;
+    pData.cmd_type_low = 0x59;
+    pData.data = value;
+    pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
+    pData.end_high = 0xff;
+    pData.end_low = 0xff;
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 }
 
 void ScreenUpdateSOC(float value) {
