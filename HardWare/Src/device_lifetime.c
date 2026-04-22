@@ -125,8 +125,14 @@ void Device_TryMarkNormalEyeShield(void) {
     eye_times += 1;
     AT24CXX_WriteUInt16(0xF2, eye_times);
 
-    EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);
-    LOG("[STATE] Normal eye shield marked on PRE state entry\n");
+    for (uint8_t retry = 0; retry < 3; retry++) {
+        if (EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1) == HAL_OK) {
+            LOG("[STATE] Normal eye shield marked on formal state entry, retry=%u\n", retry);
+            return;
+        }
+        osDelay(5);
+    }
+    LOG("[ERROR] Normal eye shield mark failed after 3 retries\n");
 }
 
 HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
