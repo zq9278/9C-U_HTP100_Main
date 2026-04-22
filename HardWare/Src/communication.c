@@ -9,6 +9,7 @@
 #include "24cxx.h"
 #include "tmp112.h"
 #include "heat.h"
+#include "tmc5130.h"
 #include "UserApp.h"
 #include "app_sys.h"
 #include "time_callback.h"
@@ -493,6 +494,23 @@ void command_parsing(uart_data *received_data) {
         break;
     }
 
+    #if ENABLE_PRESSURE_LEVEL_PID_TUNING
+    case 0x7ab7: {  // 按压力挡位实时更新电机 PID（setpoint 字段作为挡位值）
+        recept_data_debug_p level_pid_data = (recept_data_debug *) received_data->buffer;
+        uint8_t ok = PressurePIDSetByLevel(level_pid_data->setpoint,
+                                           level_pid_data->p,
+                                           level_pid_data->i,
+                                           level_pid_data->d);
+        LOG("[PID_LEVEL] level=%.2f, P=%.3f, I=%.3f, D=%.3f, ok=%u\n",
+            level_pid_data->setpoint,
+            level_pid_data->p,
+            level_pid_data->i,
+            level_pid_data->d,
+            ok);
+        break;
+    }
+    #endif
+
     case 0x9aa9: {  // 更新加热 PID
         recept_data_debug_p heat_pid_data = (recept_data_debug *) received_data->buffer;
         LOG("[PID] Heat update: P=%.3f, I=%.3f, D=%.3f, setpoint=%.2f\n",
@@ -732,7 +750,8 @@ void Serial_data_stream_parsing(uart_data *frameData) {
     }
     for (uint16_t i = 0; i < frameData->length - 1; i++) {
         // if (frameData->buffer[i] == FRAME_HEADER_BYTE1 && i + 1 < frameData->length && frameData->buffer[i + 1] == FRAME_HEADER_BYTE2) {
-        if ((frameData->buffer[i] == 0x7a && i + 1 < frameData->length && frameData->buffer[i + 1] == 0xA7) ||
+        if ((frameData->buffer[i] == 0x7a && i + 1 < frameData->length &&
+             (frameData->buffer[i + 1] == 0xA7 || frameData->buffer[i + 1] == 0xB7)) ||
             (frameData->buffer[i] == FRAME_HEADER_BYTE1 && i + 1 < frameData->length &&
              frameData->buffer[i + 1] == FRAME_HEADER_BYTE2) ||
             (frameData->buffer[i] == 0x6a && i + 1 < frameData->length && frameData->buffer[i + 1] == 0xa6) ||

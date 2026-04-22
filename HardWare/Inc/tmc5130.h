@@ -15,6 +15,9 @@
 #define TMC_CSN(n)		(n?HAL_GPIO_WritePin(TMC_CSN_GPIO_Port,TMC_CSN_Pin,GPIO_PIN_SET):HAL_GPIO_WritePin(TMC_CSN_GPIO_Port,TMC_CSN_Pin,GPIO_PIN_RESET))
 #define Positive 1
 #define Negative 2
+#ifndef ENABLE_PRESSURE_LEVEL_PID_TUNING
+#define ENABLE_PRESSURE_LEVEL_PID_TUNING 1
+#endif
 
 void TMC5130_Init(void);
 void TMC5130_Read(uint8_t ReadAddr, uint8_t *pBuffer);
@@ -32,6 +35,9 @@ void SetMotorSpeed(int speed);
 
 void PressureDisplayTargetFilterReset(void);
 float PressureDisplayTargetFilterUpdate(float measured_value, float target_value);
+#if ENABLE_PRESSURE_LEVEL_PID_TUNING
+uint8_t PressurePIDSetByLevel(float pressure_level_mmhg, float kp, float ki, float kd);
+#endif
 void PressureControlReset(void);
 void PressureControl(void);
 #endif

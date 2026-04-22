@@ -166,7 +166,7 @@ void Press_Task(void *argument) {
                 break;  // 跳出内部 while 循环，进入任务挂起流程
             }
             PressureControl();
-            osDelay(50);
+            osDelay(20);
         }
         vTaskSuspend(NULL);  // 挂起当前任务
     }

@@ -24,10 +24,10 @@
 // 定义传感器参数
 #define SENSITIVITY 0.365           // 默认灵敏度 (mV/V)
 #define SENSITIVITY_150 0.380       // 150档灵敏度 (mV/V)
-#define SENSITIVITY_250 0.360       // 250档灵敏度 (mV/V)
-#define SENSITIVITY_350 0.368       // 350档灵敏度 (mV/V)
-#define SENSITIVITY_450 0.370       // 450档灵敏度 (mV/V)
-#define SENSITIVITY_550 0.360       // 550档灵敏度 (mV/V)
+#define SENSITIVITY_250 0.350       // 250档灵敏度 (mV/V)
+#define SENSITIVITY_350 0.350       // 350档灵敏度 (mV/V)
+#define SENSITIVITY_450 0.340       // 450档灵敏度 (mV/V)
+#define SENSITIVITY_550 0.340       // 550档灵敏度 (mV/V)
 #define MAX_WEIGHT 2.0            // 满量程重量 (kg)
 #define EXCITATION_VOLTAGE 3.3    // 激励电压 (V)
 #define GAIN 128                    // 放大倍数

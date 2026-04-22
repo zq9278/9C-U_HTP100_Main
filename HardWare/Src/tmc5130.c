@@ -23,6 +23,82 @@
 #define PRESSURE_COEFF_550_MMHG 80.0f
 PID_TypeDef MotorPID;
 
+typedef struct {
+    float kp;
+    float ki;
+    float kd;
+} PressurePidProfile_t;
+
+#if ENABLE_PRESSURE_LEVEL_PID_TUNING
+static PressurePidProfile_t g_pid_150 = {200.0f, 0.0f, 0.0f};
+static PressurePidProfile_t g_pid_250 = {50.0f, 0.36f, 0.0f};
+static PressurePidProfile_t g_pid_350 = {25.0f, 0.40f, 0.0f};
+static PressurePidProfile_t g_pid_450 = {20.0f, 0.36f, 0.0f};
+static PressurePidProfile_t g_pid_550 = {20.0f, 0.36f, 0.0f};
+
+static PressurePidProfile_t *GetPressurePidProfile(float pressure_level_mmhg) {
+    if (pressure_level_mmhg <= 200.0f) {
+        return &g_pid_150;
+    }
+    if (pressure_level_mmhg <= 300.0f) {
+        return &g_pid_250;
+    }
+    if (pressure_level_mmhg <= 400.0f) {
+        return &g_pid_350;
+    }
+    if (pressure_level_mmhg <= 500.0f) {
+        return &g_pid_450;
+    }
+    return &g_pid_550;
+}
+
+static void ApplyPressurePidBySetpoint(float pressure_setpoint_mmhg) {
+    PressurePidProfile_t *pid_profile = GetPressurePidProfile(pressure_setpoint_mmhg);
+    MotorPID.Kp = pid_profile->kp;
+    MotorPID.Ki = pid_profile->ki;
+    MotorPID.Kd = pid_profile->kd;
+}
+
+#if ENABLE_PRESSURE_LEVEL_PID_TUNING
+uint8_t PressurePIDSetByLevel(float pressure_level_mmhg, float kp, float ki, float kd) {
+    PressurePidProfile_t *pid_profile = GetPressurePidProfile(pressure_level_mmhg);
+    if (pid_profile == NULL) {
+        return 0;
+    }
+
+    pid_profile->kp = kp;
+    pid_profile->ki = ki;
+    pid_profile->kd = kd;
+
+    /* 如果当前正在该挡位运行，立即生效。 */
+    if (((pressure_level_mmhg <= 200.0f) && (MotorPID.setpoint <= 200.0f)) ||
+        ((pressure_level_mmhg > 200.0f) && (pressure_level_mmhg <= 300.0f) && (MotorPID.setpoint > 200.0f) && (MotorPID.setpoint <= 300.0f)) ||
+        ((pressure_level_mmhg > 300.0f) && (pressure_level_mmhg <= 400.0f) && (MotorPID.setpoint > 300.0f) && (MotorPID.setpoint <= 400.0f)) ||
+        ((pressure_level_mmhg > 400.0f) && (pressure_level_mmhg <= 500.0f) && (MotorPID.setpoint > 400.0f) && (MotorPID.setpoint <= 500.0f)) ||
+        ((pressure_level_mmhg > 500.0f) && (MotorPID.setpoint > 500.0f))) {
+        ApplyPressurePidBySetpoint(MotorPID.setpoint);
+    }
+    return 1;
+}
+#endif
+#else
+static void ApplyPressurePidBySetpoint(float pressure_setpoint_mmhg) {
+    if (pressure_setpoint_mmhg <= 200.0f) {
+        MotorPID.Kp = 200.0f;
+        MotorPID.Ki = 0.0f;
+        MotorPID.Kd = 0.0f;
+    } else if (pressure_setpoint_mmhg <= 500.0f) {
+        MotorPID.Kp = 10.0f;
+        MotorPID.Ki = 0.0f;
+        MotorPID.Kd = 0.0f;
+    } else {
+        MotorPID.Kp = 1.0f;
+        MotorPID.Ki = 0.5f;
+        MotorPID.Kd = 0.1f;
+    }
+}
+#endif
+
 /*
  * 根据当前�?标压力挡位，返回对应的换算系数�?
  *
@@ -30,25 +106,20 @@ PID_TypeDef MotorPID;
  * 如果后续上位机下发的不是精确�? 150/250/350/450/550，也会按最近区间归档�?
  */
 static float GetPressureConvertCoeff(float pressure_setpoint_mmhg) {
+    ApplyPressurePidBySetpoint(pressure_setpoint_mmhg);
+
     if (pressure_setpoint_mmhg <= 200.0f) {
-        MotorPID.Kp=200;
         return PRESSURE_COEFF_150_MMHG;
     }
     if (pressure_setpoint_mmhg <= 300.0f) {
-        MotorPID.Kp=10;
         return PRESSURE_COEFF_250_MMHG;
     }
     if (pressure_setpoint_mmhg <= 400.0f) {
-         MotorPID.Kp=10;
         return PRESSURE_COEFF_350_MMHG;
     }
     if (pressure_setpoint_mmhg <= 500.0f) {
-         MotorPID.Kp=10;
         return PRESSURE_COEFF_450_MMHG;
     }
-    MotorPID.Kp=1;
-    MotorPID.Ki=0.5;
-    MotorPID.Kd=0.1;
     return PRESSURE_COEFF_550_MMHG;
 }
 
@@ -130,8 +201,6 @@ float PressureDisplayTargetFilterUpdate(float measured_value, float target_value
 uint32_t MotorSpeed = 0x4000;
 
 extern SPI_HandleTypeDef hspi1;
-
-PID_TypeDef MotorPID;
 
 void TMC5130_Init(void) {
     //	TMC_ENN(0);// ���õ������
@@ -345,11 +414,11 @@ typedef struct {
 } PressureStageProfile_t;
 
 /*                                                   speed_a冲压  speed_b快速   speed_d退  th_a_to_b  th_b_to_c  hold_ms_c  retract_ms_d  low_band  low_enter_ms */
-static const PressureStageProfile_t g_profile_150 = {25000.0f,      5000.0f,    10000.0f, 50.0f,     100.0f,    1500u,   600u,           100.0f,      1000u};
-static const PressureStageProfile_t g_profile_250 = {35000.0f,     10000.0f,    10000.0f, 50.0f,     100.5f,    1500u,   800u,           200.0f,      1000u};
-static const PressureStageProfile_t g_profile_350 = {50000.0f,     10000.0f,    10000.0f, 50.0f,     100.0f,    1500u,   800u,           300.0f,      1000u};
-static const PressureStageProfile_t g_profile_450 = {50000.0f,     17000.0f,    10000.0f, 50.0f,     100.0f,    1500u,   800u,           400.0f,      1000u};
-static const PressureStageProfile_t g_profile_550 = {50000.0f,     16000.0f,    10000.0f, 50.0f,     100.0f,    1500u,   1000u,          500.0f,      1000u};
+static const PressureStageProfile_t g_profile_150 = {20000.0f,     5000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   600u,           100.0f,      1000u};
+static const PressureStageProfile_t g_profile_250 = {35000.0f,     5000.0f,    10000.0f, 100.0f,     110.5f,    1500u,   800u,           200.0f,      1000u};
+static const PressureStageProfile_t g_profile_350 = {50000.0f,     5000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   800u,           300.0f,      1000u};
+static const PressureStageProfile_t g_profile_450 = {50000.0f,     5000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   800u,           400.0f,      1000u};
+static const PressureStageProfile_t g_profile_550 = {50000.0f,     5000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   1000u,          500.0f,      1000u};
 
 static const PressureStageProfile_t *GetPressureStageProfile(float pressure_setpoint_mmhg) {
     if (pressure_setpoint_mmhg <= 200.0f) {
@@ -400,11 +469,11 @@ void PressureControl() {
     float hhmg = (force / 1000.0f) * 9.8f * convert_coeff;
     float pressure_display = PressureDisplayTargetFilterUpdate(hhmg, target);
     uint32_t now_ms = HAL_GetTick();
-    ScreenUpdateForce(hhmg);
+    
     if (press_flag_400ms) {
         press_flag_400ms = 0;
-        //ScreenUpdateForce(pressure_display);
-        
+        ScreenUpdateForce(pressure_display);
+        //ScreenUpdateForce(hhmg);
     }
 
     /* 仅在B/C阶段处理持续低压：A阶段只允许一次，后续低压统一回B */

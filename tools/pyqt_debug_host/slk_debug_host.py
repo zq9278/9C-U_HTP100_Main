@@ -43,6 +43,7 @@ TAIL = b"\xff\xff"
 WORK_HEADER = b"\x5a\xa5"
 PRESET_HEADER = b"\x6a\xa6"
 MOTOR_PID_HEADER = b"\x7a\xa7"
+MOTOR_LEVEL_PID_HEADER = b"\x7a\xb7"
 HEAT_PID_HEADER = b"\x9a\xa9"
 
 WORK_COMMANDS: Dict[str, Tuple[int, str]] = {
@@ -154,6 +155,8 @@ class ParsedFrame:
             return "PRESET"
         if self.header == MOTOR_PID_HEADER:
             return "MOTOR_PID"
+        if self.header == MOTOR_LEVEL_PID_HEADER:
+            return "MOTOR_LEVEL_PID"
         if self.header == HEAT_PID_HEADER:
             return "HEAT_PID"
         return "UNKNOWN"
@@ -166,6 +169,8 @@ class ParsedFrame:
             return INCOMING_PRESET_NAMES.get(self.cmd_type, PRESET_BY_CODE.get(self.cmd_type, f"0x{self.cmd_type:04X}"))
         if self.kind == "MOTOR_PID":
             return "电机 PID"
+        if self.kind == "MOTOR_LEVEL_PID":
+            return "电机分档 PID"
         if self.kind == "HEAT_PID":
             return "加热 PID"
         return "未知帧"
@@ -197,7 +202,7 @@ class ProtocolParser:
         return frames
 
     def _find_next_header(self) -> Optional[int]:
-        indexes = [self.buffer.find(h) for h in (WORK_HEADER, PRESET_HEADER, MOTOR_PID_HEADER, HEAT_PID_HEADER)]
+        indexes = [self.buffer.find(h) for h in (WORK_HEADER, PRESET_HEADER, MOTOR_PID_HEADER, MOTOR_LEVEL_PID_HEADER, HEAT_PID_HEADER)]
         indexes = [i for i in indexes if i >= 0]
         return min(indexes) if indexes else None
 
@@ -214,7 +219,7 @@ class ProtocolParser:
             if header == PRESET_HEADER and len(raw) == 11:
                 _, _, _, hi, lo, value, _, _, _ = struct.unpack("<BBB BB H H BB", raw)
                 return ParsedFrame(header, raw, valid, (hi << 8) | lo, preset_value=value)
-            if header in (MOTOR_PID_HEADER, HEAT_PID_HEADER) and len(raw) == 23:
+            if header in (MOTOR_PID_HEADER, MOTOR_LEVEL_PID_HEADER, HEAT_PID_HEADER) and len(raw) == 23:
                 return ParsedFrame(header, raw, valid, pid_values=struct.unpack_from("<ffff", raw, 3))
         except struct.error:
             return ParsedFrame(header, raw, False)
@@ -525,6 +530,21 @@ class MainWindow(QMainWindow):
         motor_form.addRow("Setpoint", self.motor_sp)
         motor_form.addRow(self._button("写入压力 PID", self.send_motor_pid))
         layout.addWidget(motor_group)
+
+        motor_level_group = QGroupBox("压力分档 PID（0x7AB7）")
+        motor_level_form = QFormLayout(motor_level_group)
+        self.motor_level = QComboBox()
+        self.motor_level.addItems(["150", "250", "350", "450", "550"])
+        self.motor_level.setCurrentText("150")
+        self.motor_level_kp = self._double_spin(-10000, 10000, 200, "", 0.001, 3)
+        self.motor_level_ki = self._double_spin(-10000, 10000, 0, "", 0.001, 3)
+        self.motor_level_kd = self._double_spin(-10000, 10000, 0, "", 0.001, 3)
+        motor_level_form.addRow("挡位(mmHg)", self.motor_level)
+        motor_level_form.addRow("Kp", self.motor_level_kp)
+        motor_level_form.addRow("Ki", self.motor_level_ki)
+        motor_level_form.addRow("Kd", self.motor_level_kd)
+        motor_level_form.addRow(self._button("写入分档 PID", self.send_motor_level_pid))
+        layout.addWidget(motor_level_group)
         hint = QLabel("PID 帧直接调用固件 PID_Init；温度输出限幅由固件设为 0..255，压力/电机输出限幅由固件设为 -50000..50000。")
         hint.setObjectName("Hint")
         hint.setWordWrap(True)
@@ -962,6 +982,17 @@ class MainWindow(QMainWindow):
     def send_motor_pid(self) -> None:
         frame = build_pid_frame(MOTOR_PID_HEADER, self.motor_kp.value(), self.motor_ki.value(), self.motor_kd.value(), self.motor_sp.value())
         self.send_frame.emit(frame, "写入压力/电机 PID")
+
+    def send_motor_level_pid(self) -> None:
+        level = float(self.motor_level.currentText())
+        frame = build_pid_frame(
+            MOTOR_LEVEL_PID_HEADER,
+            self.motor_level_kp.value(),
+            self.motor_level_ki.value(),
+            self.motor_level_kd.value(),
+            level,
+        )
+        self.send_frame.emit(frame, f"写入分档 PID level={int(level)}")
 
     def save_all_presets(self) -> None:
         self.send_preset("save_temperature", self.preset_temp.value())
