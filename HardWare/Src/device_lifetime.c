@@ -105,91 +105,6 @@ void Test_EEPROM_FullReadWrite_256B(void)
 
     LOG("? EEPROM 全盘读写测试完成，数据一致！\n");
 }
-// 设置设备为报废状态
-void Device_MarkAsExpired(const char* reason) {
-    uint16_t mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
-    bool is_new_device = (mark == 0xFFFF);
-
-    // 状态变化：设备报废
-    LOG("[STATE] Device expired, reason=\"%s\"\n", reason);
-
-    device_ctx.state = DEVICE_STATE_EXPIRED;
-    device_ctx.connected = false;
-    device_ctx.started_usage = true;
-
-    close_mianAPP();
-    ScreenTimerStop();
-
-    if (xTimerStop(eye_is_existHandle, 0) != pdPASS) {
-        LOG("[ERROR] Failed to stop eye_is_exist timer\n");
-    }
-
-    EYE_status = 0;
-
-    // 第一次使用才更新 EEPROM
-    if (EYE_AT24CXX_ReadUInt16(EYE_EEPROM_USE_COUNT_FLAG) == 0xFFFF) {
-        uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xF2);
-        eye_times += 1;
-        AT24CXX_WriteUInt16(0xF2, eye_times);
-        EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, eye_workingtime_1s);
-        EYE_AT24CXX_WriteUInt16(EYE_EEPROM_USE_COUNT_FLAG, 1234);
-
-        LOG("[STATE] New device usage recorded, count=%u\n", eye_times);
-    }
-}
-
-
-// 外部调用：进入正式使用（切换到B寿命）
-bool Device_StartUsage(void) {
-    // 标记寿命起点
-    EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, eye_workingtime_1s);
-    LOG("[EEPROM] Write MARK_MAP=0x%04X @0x%04X\n", eye_workingtime_1s, EYE_MARK_MAP);
-
-    my_prepare_data_times.cmd_head_high = 0x6A;
-    my_prepare_data_times.cmd_head_low  = 0xA6;
-    my_prepare_data_times.frame_length  = 0x0b;
-    my_prepare_data_times.cmd_type_high = 0x00;
-    my_prepare_data_times.end_high      = 0xFF;
-    my_prepare_data_times.end_low       = 0xFF;
-
-    if (device_ctx.state == DEVICE_STATE_CONNECTED_IDLE) {
-        device_ctx.started_usage = true;
-        device_ctx.time_a_left   = 0;
-        device_ctx.state         = DEVICE_STATE_ACTIVE;
-
-        if (xTimerStart(eye_is_existHandle, 0) != pdPASS) {
-            LOG("[ERROR] Failed to start eye_is_existHandle timer\n");
-        }
-
-        LOG("[STATE] Device entered ACTIVE state (B-life started)\n");
-    } else {
-        LOG("[ERROR] Device not in CONNECTED_IDLE, StartUsage failed (state=%d)\n",
-            device_ctx.state);
-        return false;
-    }
-
-    uint16_t use_flag = EYE_AT24CXX_ReadUInt16(EYE_EEPROM_USE_COUNT_FLAG);
-    LOG("[EEPROM] Read USE_COUNT_FLAG=0x%04X @0x%04X\n", use_flag, EYE_EEPROM_USE_COUNT_FLAG);
-
-    if (use_flag == 0xFFFF) {
-        uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xF2);
-        LOG("[EEPROM] Read usage count=%u @0xF2\n", eye_times);
-
-        eye_times += 1;
-        AT24CXX_WriteUInt16(0xF2, eye_times);
-        LOG("[EEPROM] Write usage count=%u @0xF2\n", eye_times);
-
-        EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, eye_workingtime_1s);
-        LOG("[EEPROM] Write workingtime=%u @MARK_MAP\n", eye_workingtime_1s);
-
-        EYE_AT24CXX_WriteUInt16(EYE_EEPROM_USE_COUNT_FLAG, 1234);
-        LOG("[EEPROM] Write USE_COUNT_FLAG=1234 @0x%04X\n", EYE_EEPROM_USE_COUNT_FLAG);
-
-        LOG("[STATE] New device usage recorded, count=%u\n", eye_times);
-    }
-
-    return true;
-}
 
 // 仅在进入 PRE_* 状态时调用，延后标记未写入过的普通眼盾，
 // 避免设备上电检测到新眼盾后立即写入标记。
@@ -203,6 +118,12 @@ void Device_TryMarkNormalEyeShield(void) {
     if (EYE_AT24CXX_ReadUInt16(super_eyes) == 0x0202) {
         return;
     }
+
+
+        // 新普通眼罩，第一次进入使用流程，主机计数 +1
+    uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xF2);
+    eye_times += 1;
+    AT24CXX_WriteUInt16(0xF2, eye_times);
 
     EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1);
     LOG("[STATE] Normal eye shield marked on PRE state entry\n");
@@ -293,14 +214,14 @@ void DeviceStateMachine_Update(void) {
         osDelay(5);
 
         if (mark == 0xFFFF) {
-            // 新设备
-            eye_times = AT24CXX_ReadOrWriteZero(0xF2);
-            eye_times += 1;
-            AT24CXX_WriteUInt16(0xF2, eye_times);
+            // // 新设备
+            // eye_times = AT24CXX_ReadOrWriteZero(0xF2);
+            // eye_times += 1;
+            // AT24CXX_WriteUInt16(0xF2, eye_times);
 
-            my_prepare_data_times.cmd_type_low = 0xB0;
-            my_prepare_data_times.value = eye_times;
-            Eye_twitching_invalid_master(&my_prepare_data_times);
+            // my_prepare_data_times.cmd_type_low = 0xB0;
+            // my_prepare_data_times.value = eye_times;
+            // Eye_twitching_invalid_master(&my_prepare_data_times);
 
             EYE_status = 1;
             eye_state = ST_ONLINE_NEW;

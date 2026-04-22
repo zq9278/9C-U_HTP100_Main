@@ -1,6 +1,7 @@
 
 #include "main.h"
 #include <stdint.h>
+#include <string.h>
 #include "communication.h"
 #include "pid.h"
 #include "interface_uart.h"
@@ -427,16 +428,16 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         break;
 
     case 0x1046:  // 清理 EEPROM
-        HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
+        // HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
         AT24C02_WriteAllBytes(0xFF);
-        HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
+        // HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
         LOG("[ACTION] Cleared EEPROM all bytes\n");
         break;
 
     case 0x1047:  // 清理眼部 EEPROM
-        HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
+        // HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
         AT24C02_WriteAllBytes_eye(0xFF);
-        HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
+        // HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
         LOG("[ACTION] Cleared EEPROM eye bytes\n");
         break;
 
@@ -723,6 +724,11 @@ void ScreenWorkMode_count(float count) {
 void Serial_data_stream_parsing(uart_data *frameData) {
     if (frameData == NULL) {
         LOG("Error: Invalid frameData pointer or size\n");
+        return;
+    }
+    if (frameData->length < 2) {
+        LOG("Error: Invalid frame length=%u\n", frameData->length);
+        return;
     }
     for (uint16_t i = 0; i < frameData->length - 1; i++) {
         // if (frameData->buffer[i] == FRAME_HEADER_BYTE1 && i + 1 < frameData->length && frameData->buffer[i + 1] == FRAME_HEADER_BYTE2) {
@@ -743,7 +749,10 @@ void Serial_data_stream_parsing(uart_data *frameData) {
                     uint16_t received_crc = (frameData->buffer[j - 2] | (frameData->buffer[j - 1] << 8));
                     uint16_t calculated_crc = Calculate_CRC(&frameData->buffer[i], frame_size - 4); // 不包含CRC和帧尾
                     if (calculated_crc == received_crc) {
-                        command_parsing((uart_data *)&frameData->buffer[i]);
+                        uart_data parsed_frame;
+                        memcpy(parsed_frame.buffer, &frameData->buffer[i], frame_size);
+                        parsed_frame.length = frame_size;
+                        command_parsing(&parsed_frame);
 for(uint16_t i = 0; i < frameData->length; i++) {
                              //LOG("%02X ", frameData->buffer[i]);
                          }

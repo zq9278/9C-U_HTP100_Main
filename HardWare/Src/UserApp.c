@@ -47,7 +47,6 @@ void UART_RECEPT_Task(void *argument) {
         if (xQueueReceive(UART_DMA_IDLE_RECEPT_QUEUEHandle, &frameData_uart, portMAX_DELAY) == pdTRUE) {
             Serial_data_stream_parsing(frameData_uart);
         }
-        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
 
@@ -459,7 +458,7 @@ void Main(void) {
                                             SerialTimeout_Callback);
     xTimerStart(serialTimeoutTimerHandle, 0); // 启动串口超时定时器
 
-    UART_DMA_IDLE_RECEPT_QUEUEHandle = xQueueCreate(3, sizeof(uart_data *));
+    UART_DMA_IDLE_RECEPT_QUEUEHandle = xQueueCreate(UART_BUFFER_QUANTITY, sizeof(uart_data *));
     configASSERT(UART_DMA_IDLE_RECEPT_QUEUEHandle != NULL);
 
     AT24CXX_Init();

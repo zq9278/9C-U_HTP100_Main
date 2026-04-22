@@ -323,6 +323,12 @@ class MainWindow(QMainWindow):
         self.last_eye_time: Optional[float] = None
         self.temperature_points: Deque[Tuple[float, float]] = deque(maxlen=2400)
         self.pressure_points: Deque[Tuple[float, float]] = deque(maxlen=2400)
+        self.stress_sent_count = 0
+        self.stress_rx_count = 0
+        self.stress_error_count = 0
+        self.stress_no_rx_count = 0
+        self.stress_last_rx_count = 0
+        self.stress_sequence_index = 0
         self._setup_worker()
         self._setup_ui()
         self._setup_timers()
@@ -466,6 +472,27 @@ class MainWindow(QMainWindow):
         custom_layout.addWidget(self.custom_work_value)
         custom_layout.addWidget(self._button("发送", self.send_custom_work))
         layout.addWidget(custom_group)
+        stress_group = QGroupBox("命令暴力测试")
+        stress_layout = QGridLayout(stress_group)
+        self.stress_interval = QSpinBox()
+        self.stress_interval.setRange(20, 2000)
+        self.stress_interval.setValue(80)
+        self.stress_interval.setSuffix(" ms")
+        self.stress_total = QSpinBox()
+        self.stress_total.setRange(1, 100000)
+        self.stress_total.setValue(300)
+        self.stress_button = QPushButton("开始暴力测试")
+        self.stress_button.clicked.connect(self.toggle_stress_test)
+        self.stress_status_label = QLabel("未开始")
+        self.stress_status_label.setObjectName("Hint")
+        self.stress_status_label.setWordWrap(True)
+        stress_layout.addWidget(QLabel("间隔"), 0, 0)
+        stress_layout.addWidget(self.stress_interval, 0, 1)
+        stress_layout.addWidget(QLabel("总次数"), 1, 0)
+        stress_layout.addWidget(self.stress_total, 1, 1)
+        stress_layout.addWidget(self.stress_button, 2, 0, 1, 2)
+        stress_layout.addWidget(self.stress_status_label, 3, 0, 1, 2)
+        layout.addWidget(stress_group)
         layout.addStretch(1)
         return page
 
@@ -616,6 +643,8 @@ class MainWindow(QMainWindow):
         self.plot_timer.start(150)
         self.heartbeat_timer = QTimer(self)
         self.heartbeat_timer.timeout.connect(lambda: self.send_work("screen_alive", log_quiet=True))
+        self.stress_timer = QTimer(self)
+        self.stress_timer.timeout.connect(self.send_stress_command)
         self.eye_timeout_timer = QTimer(self)
         self.eye_timeout_timer.timeout.connect(self.update_eye_timeout)
         self.eye_timeout_timer.start(1000)
@@ -706,6 +735,8 @@ class MainWindow(QMainWindow):
         self.append_log("INFO", f"已连接 {text}")
 
     def on_disconnected(self, port: str) -> None:
+        if self.stress_timer.isActive():
+            self.stop_stress_test("串口断开，暴力测试已停止")
         self.connect_button.setText("连接")
         self.connection_label.setText("离线")
         self.connection_label.setStyleSheet("")
@@ -714,6 +745,9 @@ class MainWindow(QMainWindow):
             self.append_log("INFO", f"已断开 {port}")
 
     def on_error(self, message: str) -> None:
+        if self.stress_timer.isActive():
+            self.stress_error_count += 1
+            self.update_stress_status()
         self.append_log("ERR", message)
         self.statusBar().showMessage(message)
 
@@ -759,6 +793,9 @@ class MainWindow(QMainWindow):
         self.load_detail_label.setText(f"负载条件：{detail}")
 
     def on_frame(self, frame: ParsedFrame) -> None:
+        if self.stress_timer.isActive():
+            self.stress_rx_count += 1
+            self.update_stress_status()
         crc_text = "OK" if frame.valid_crc else "CRC_ERR"
         detail = frame.name
         if frame.value is not None and math.isfinite(frame.value):
@@ -811,6 +848,63 @@ class MainWindow(QMainWindow):
         cmd_type, name = WORK_COMMANDS[key]
         description = "" if log_quiet else f"{name} value={value:g}"
         self.send_frame.emit(build_work_frame(cmd_type, value), description)
+
+    def toggle_stress_test(self) -> None:
+        if self.stress_timer.isActive():
+            self.stop_stress_test("手动停止")
+            return
+        if self.connect_button.text() == "连接":
+            QMessageBox.warning(self, "命令暴力测试", "请先连接串口")
+            return
+        self.stress_sent_count = 0
+        self.stress_rx_count = 0
+        self.stress_error_count = 0
+        self.stress_no_rx_count = 0
+        self.stress_last_rx_count = 0
+        self.stress_sequence_index = 0
+        self.stress_button.setText("停止暴力测试")
+        self.append_log("INFO", "命令暴力测试开始：默认发送心跳/应答/目标值/上报次数，不启动加热或挤压")
+        self.update_stress_status()
+        self.stress_timer.start(self.stress_interval.value())
+        self.send_stress_command()
+
+    def stop_stress_test(self, reason: str = "完成") -> None:
+        self.stress_timer.stop()
+        self.stress_button.setText("开始暴力测试")
+        self.update_stress_status(reason)
+        self.append_log("INFO", f"命令暴力测试停止：{reason}")
+
+    def update_stress_status(self, reason: str = "") -> None:
+        text = (
+            f"TX={self.stress_sent_count}/{self.stress_total.value()}  "
+            f"RX={self.stress_rx_count}  ERR={self.stress_error_count}  "
+            f"NO_RX_STEP={self.stress_no_rx_count}"
+        )
+        if reason:
+            text = f"{reason} | {text}"
+        self.stress_status_label.setText(text)
+
+    def send_stress_command(self) -> None:
+        if self.stress_sent_count >= self.stress_total.value():
+            self.stop_stress_test("达到总次数")
+            return
+
+        if self.stress_sent_count > 0 and self.stress_rx_count == self.stress_last_rx_count:
+            self.stress_no_rx_count += 1
+        self.stress_last_rx_count = self.stress_rx_count
+
+        sequence = (
+            ("screen_alive", 0.0),
+            ("screen_ack", 0.0),
+            ("set_temperature", self.temp_set.value()),
+            ("set_pressure", self.press_set.value()),
+            ("report_count", 0.0),
+        )
+        key, value = sequence[self.stress_sequence_index % len(sequence)]
+        self.stress_sequence_index += 1
+        self.stress_sent_count += 1
+        self.send_work(key, value, log_quiet=True)
+        self.update_stress_status()
 
     def start_heat(self) -> None:
         self.send_work("heat_start")
