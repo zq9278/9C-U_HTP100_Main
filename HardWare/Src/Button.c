@@ -34,7 +34,7 @@ void Button_detection(void) {
 
     case STATE_PRE_HEAT: // 进入加热
         currentState = STATE_HEAT;
-        Device_TryMarkNormalEyeShield();
+        Device_RequestMarkNormalEyeShield();
         heat_finish = 0;
         HeatPID.setpoint = 42.5 + temperature_compensation;
         ScreenTimerStart();
@@ -57,7 +57,7 @@ void Button_detection(void) {
 
     case STATE_PRE_PRESS: // 进入挤压
         currentState = STATE_PRESS;
-        Device_TryMarkNormalEyeShield();
+        Device_RequestMarkNormalEyeShield();
         if (motor_homeHandle != NULL) {
             vTaskDelete(motor_homeHandle);
             motor_homeHandle = NULL;
@@ -97,7 +97,7 @@ void Button_detection(void) {
 
     case STATE_PRE_AUTO: // �?动模式准�?
         currentState = STATE_AUTO;
-        Device_TryMarkNormalEyeShield();
+        Device_RequestMarkNormalEyeShield();
         if (motor_homeHandle != NULL) {
             vTaskDelete(motor_homeHandle);
             motor_homeHandle = NULL;

@@ -413,6 +413,7 @@ void USART2_IRQHandler(void)
          BaseType_t xHigherPriorityTaskWoken = pdFALSE;
       if (!button_pressed)
       {
+        button_pressed = 1;
         xSemaphoreGiveFromISR(BUTTON_SEMAPHOREHandle,&xHigherPriorityTaskWoken);
       }
          portYIELD_FROM_ISR(xHigherPriorityTaskWoken);

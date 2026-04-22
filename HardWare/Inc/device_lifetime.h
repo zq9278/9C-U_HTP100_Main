@@ -46,6 +46,8 @@ void DeviceStateMachine_Update(void);
 bool  Device_StartUsage(void);
 
 void Device_TryMarkNormalEyeShield(void);
+void Device_RequestMarkNormalEyeShield(void);
+void Device_HandlePendingMarkRequest(void);
 
 // 设备报废处理
 void Device_MarkAsExpired(const char* reason);

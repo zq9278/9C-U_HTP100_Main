@@ -24,8 +24,14 @@ extern uint8_t EYE_exist_Flag;
 extern uint8_t EYE_working_Flag;
 extern uint8_t EYE_status;
 HAL_StatusTypeDef status;
+/* Deferred mark request flag:
+ * Set by Button flow when entering formal treatment.
+ * Consumed by Device_Check_Task side to avoid transition races.
+ */
+static volatile uint8_t g_pending_mark_normal_eye_shield = 0;
 // 初始化设备状态机（系统启动时调用）
 void Device_Init(void) {
+    /* Reset lifetime context on boot; runtime state is updated by state machine. */
     memset(&device_ctx, 0, sizeof(DeviceContext_t));
     device_ctx.state = DEVICE_STATE_DISCONNECTED;
     LOG("初始化设备状态机完成，等待设备接入\n");
@@ -109,13 +115,35 @@ void Test_EEPROM_FullReadWrite_256B(void)
 // 仅在进入 PRE_* 状态时调用，延后标记未写入过的普通眼盾，
 // 避免设备上电检测到新眼盾后立即写入标记。
 void Device_TryMarkNormalEyeShield(void) {
-    uint16_t mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
+    /* Mark policy:
+     * 1) Only when EYE_MARK_MAP == 0xFFFF.
+     * 2) Skip super eye shield (super_eyes == 0x0202).
+     * 3) Normal eye shield increments host count, then writes mark.
+     * 4) Write must pass read-back verification.
+     */
+    uint16_t mark = 0;
+    uint16_t super_mark = 0;
+    LOG("[MARK] formal-entry mark attempt begin\n");
+
+    if (EYE_AT24CXX_ReadUInt16Ex(EYE_MARK_MAP, &mark) != HAL_OK) {
+        LOG("[ERROR] Read EYE_MARK_MAP failed, skip mark\n");
+        return;
+    }
+    LOG("[MARK] EYE_MARK_MAP=0x%04X\n", mark);
 
     if (mark != 0xFFFF) {
+        LOG("[MARK] skip: already marked\n");
         return;
     }
 
-    if (EYE_AT24CXX_ReadUInt16(super_eyes) == 0x0202) {
+    if (EYE_AT24CXX_ReadUInt16Ex(super_eyes, &super_mark) != HAL_OK) {
+        LOG("[ERROR] Read super_eyes failed, skip mark\n");
+        return;
+    }
+    LOG("[MARK] super_eyes=0x%04X\n", super_mark);
+
+    if (super_mark == 0x0202) {
+        LOG("[MARK] skip: super eye shield (0x0202)\n");
         return;
     }
 
@@ -126,16 +154,39 @@ void Device_TryMarkNormalEyeShield(void) {
     AT24CXX_WriteUInt16(0xF2, eye_times);
 
     for (uint8_t retry = 0; retry < 3; retry++) {
-        if (EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1) == HAL_OK) {
+        uint16_t verify_mark = 0;
+
+        if (EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1) == HAL_OK &&
+            EYE_AT24CXX_ReadUInt16Ex(EYE_MARK_MAP, &verify_mark) == HAL_OK &&
+            verify_mark == 1) {
             LOG("[STATE] Normal eye shield marked on formal state entry, retry=%u\n", retry);
             return;
         }
-        osDelay(5);
+        LOG("[MARK] retry=%u verify failed\n", retry);
+        osDelay(8);
     }
     LOG("[ERROR] Normal eye shield mark failed after 3 retries\n");
 }
 
+void Device_RequestMarkNormalEyeShield(void) {
+    /* Called by formal-mode transition in Button workflow. */
+    g_pending_mark_normal_eye_shield = 1;
+}
+
+void Device_HandlePendingMarkRequest(void) {
+    /* Executed in Device_Check_Task loop; keep pending while offline. */
+    if (g_pending_mark_normal_eye_shield == 0) {
+        return;
+    }
+    if (EYE_status != 1) {
+        return;
+    }
+    g_pending_mark_normal_eye_shield = 0;
+    Device_TryMarkNormalEyeShield();
+}
+
 HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
+    /* Probe with short mutex hold; use consecutive pass/fail filtering. */
     HAL_StatusTypeDef result;
     uint8_t consecutive_success = 0;
     uint8_t consecutive_fail = 0;
@@ -145,43 +196,34 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
         return HAL_ERROR;
     }
 
-    if (xSemaphoreTake(i2c2_mutex, 100) == pdTRUE) {
-        while (1) {
-            result = HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr, 1, 100);
-            if (result == HAL_OK) {
-                consecutive_success++;
-                consecutive_fail = 0;
-            } else {
-                consecutive_fail++;
-                consecutive_success = 0;
-            }
-
-            if (consecutive_success >= retries) {
-                xSemaphoreGive(i2c2_mutex);
-                i2c2_mutex_owner = NULL;
-                // LOG("[STATE] I2C device 0x%02X detected OK (%u consecutive)\n",
-                //     i2c_addr, consecutive_success);
-                return HAL_OK;   // 连续 N 次成功
-            }
-
-            if (consecutive_fail >= retries) {
-                xSemaphoreGive(i2c2_mutex);
-                i2c2_mutex_owner = NULL;
-                // LOG("[ERROR] I2C device 0x%02X not responding (%u consecutive fails)\n",
-                //     i2c_addr, consecutive_fail);
-                return HAL_ERROR; // 连续 N 次失败
-            }
-
-            osDelay(100);
+    while (1) {
+        if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(40)) == pdTRUE) {
+            result = HAL_I2C_IsDeviceReady(&hi2c2, i2c_addr, 1, 50);
+            xSemaphoreGive(i2c2_mutex);
+            i2c2_mutex_owner = NULL;
+        } else {
+            result = HAL_BUSY;
         }
-    } else {
-        LOG("[ERROR] I2C_CheckDevice: failed to get mutex\n");
-        return HAL_ERROR;
+
+        if (result == HAL_OK) {
+            consecutive_success++;
+            consecutive_fail = 0;
+        } else {
+            consecutive_fail++;
+            consecutive_success = 0;
+        }
+
+        if (consecutive_success >= retries) {
+            return HAL_OK;
+        }
+
+        if (consecutive_fail >= retries) {
+            return HAL_ERROR;
+        }
+
+        osDelay(20);
     }
 }
-
-
-
 
 typedef enum {
     ST_CHECK_ONLINE = 0,
@@ -191,6 +233,7 @@ typedef enum {
     ST_ONLINE_OLD
 } EyeState;
 void DeviceStateMachine_Update(void) {
+    /* State flow: OFFLINE -> CHECK_MARK -> ONLINE_NEW/ONLINE_OLD. */
     bool online = (I2C_CheckDevice(0x91, 4) == HAL_OK);
     uint16_t mark = 0;
     uint16_t eye_times = 0;
@@ -201,6 +244,7 @@ void DeviceStateMachine_Update(void) {
     switch (eye_state) {
     case ST_OFFLINE:
         if (!online) {
+            g_pending_mark_normal_eye_shield = 0;
             if (EYE_status != 0) {
                 EYE_status = 0;
                 close_mianAPP();
@@ -214,12 +258,24 @@ void DeviceStateMachine_Update(void) {
         break;
 
     case ST_CHECK_MARK:
+        /* Read eye EEPROM mark in a stable task context.
+         * Any read failure is treated as offline for safety.
+         */
         vTaskDelay(10);
-        mark = EYE_AT24CXX_ReadUInt16(EYE_MARK_MAP);
+        if (EYE_AT24CXX_ReadUInt16Ex(EYE_MARK_MAP, &mark) != HAL_OK) {
+            LOG("[EEPROM] Read EYE_MARK_MAP failed\n");
+            g_pending_mark_normal_eye_shield = 0;
+            eye_state = ST_OFFLINE;
+            EYE_status = 0;
+            close_mianAPP();
+            break;
+        }
         LOG("[EEPROM] Read EYE_MARK_MAP=0x%04X\n", mark);
         osDelay(5);
 
         if (mark == 0xFFFF) {
+            /* New eye shield path: allow use; clear stale pending request. */
+            g_pending_mark_normal_eye_shield = 0;
             // // 新设备
             // eye_times = AT24CXX_ReadOrWriteZero(0xF2);
             // eye_times += 1;
@@ -243,6 +299,7 @@ void DeviceStateMachine_Update(void) {
 
     case ST_ONLINE_NEW:
         if (!online) {
+            g_pending_mark_normal_eye_shield = 0;
             EYE_status = 0;
             close_mianAPP();
             eye_state = ST_OFFLINE;
@@ -254,6 +311,7 @@ void DeviceStateMachine_Update(void) {
 
     case ST_ONLINE_OLD:
         if (!online) {
+            g_pending_mark_normal_eye_shield = 0;
             eye_state = ST_OFFLINE;
             LOG("[STATE] Transition: ONLINE_OLD -> OFFLINE (removed)\n");
         } else {

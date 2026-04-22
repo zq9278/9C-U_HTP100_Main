@@ -177,29 +177,31 @@ void Button_State_Task(void *argument) {
     /* USER CODE BEGIN Button_State_Task */
     /* Infinite loop */
     for (;;) {
-        // 等待按钮中断信号
         if (xSemaphoreTake(BUTTON_SEMAPHOREHandle, portMAX_DELAY) == pdTRUE) {
-            osDelay(100); // 延时 100ms，避免按键抖动造成误触发
-            // 读取按键状态，如果仍然按下则认为按键有效
-            if ((HAL_GPIO_ReadPin(SW_CNT_GPIO_Port, SW_CNT_Pin) == GPIO_PIN_RESET) || (soft_button == 1)) {
-                // 按键有效后执行相应处理逻辑
+            if (soft_button == 1) {
+                soft_button = 0;
                 if (EYE_status == 1) {
                     Button_detection();
-                    // 等待按键释放
-                    while (HAL_GPIO_ReadPin(SW_CNT_GPIO_Port, SW_CNT_Pin) == GPIO_PIN_RESET) {
-                        osDelay(10);
-                    }
-                    button_pressed = 0; // 准备处理下一次按键事件
                 }
-                soft_button = 0;
+                button_pressed = 0;
+                continue;
             }
+
+            osDelay(50); // Physical button debounce only.
+            if (HAL_GPIO_ReadPin(SW_CNT_GPIO_Port, SW_CNT_Pin) == GPIO_PIN_RESET) {
+                if (EYE_status == 1) {
+                    Button_detection();
+                }
+                while (HAL_GPIO_ReadPin(SW_CNT_GPIO_Port, SW_CNT_Pin) == GPIO_PIN_RESET) {
+                    osDelay(10);
+                }
+            }
+            button_pressed = 0;
         }
-        // 这里不使用延时，以避免占用过多 CPU 时间
         // vTaskDelay(100);
     }
     /* USER CODE END Button_State_Task */
 }
-
 void APP_task(void *argument) {
     (void)argument;
     osDelay(1000);//the breath of frequency
@@ -217,7 +219,6 @@ void APP_task(void *argument) {
 
     }
 }
-
 void Motor_go_home_task(void *argument) {
     (void)argument;
     vTaskDelay(100); // 延时 100ms，避免与 TMC5130 初始化过程冲突，等待电机回零
@@ -230,8 +231,6 @@ void Motor_go_home_task(void *argument) {
         //vTaskDelay(1000);
     }
 }
-
-
 // 设备自检任务
 void Device_Check_Task(void *argument) {
     (void)argument;
@@ -245,6 +244,7 @@ void Device_Check_Task(void *argument) {
         //HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
         //Test_EYE_AT24CXX_ReadWrite_FullCycle();
         DeviceStateMachine_Update();
+        Device_HandlePendingMarkRequest();
         //EYE_status=1;
         EYE_checkout(EYE_status);
         osDelay(100);

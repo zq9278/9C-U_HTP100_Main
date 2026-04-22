@@ -286,7 +286,7 @@ extern char *i2c2_mutex_owner; // 当前持有锁的函数/任务�?
 //    HAL_StatusTypeDef status;
 //
 //    // 1. 获取 I2C2 的互斥锁，最长等�? 100ms
-//    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+//    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) != pdTRUE) {
 //        LOG("EYE_AT24CXX_Read：获�? I2C2 互斥锁失败！\n");
 //        return 0xFFFF; // 错�??返回
 //    }
@@ -298,7 +298,7 @@ extern char *i2c2_mutex_owner; // 当前持有锁的函数/任务�?
 //        return 0xFFFF;
 //    }
 //    // 3. 等待 DMA 读取完成（回调中释放 xI2C2CompleteSem�?
-//    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+//    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(200)) != pdTRUE) {
 //        LOG("EYE_AT24CXX_Read：DMA 读取超时！\n");
 //        xSemaphoreGive(i2c2_mutex);
 //        return 0xFFFF;
@@ -331,7 +331,7 @@ extern char *i2c2_mutex_owner; // 当前持有锁的函数/任务�?
 //        return HAL_ERROR;
 //    }
 //    // 4. 等待 DMA 完成信号�?100ms�?
-//    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+//    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(200)) != pdTRUE) {
 //        LOG("EYE_AT24CXX_Write：DMA 写入超时！�?��?�可能已拔出！\n");
 //        xSemaphoreGive(i2c2_mutex);
 //        return HAL_TIMEOUT;
@@ -363,14 +363,14 @@ HAL_StatusTypeDef EYE_AT24CXX_WriteByte(uint16_t addr, uint8_t data)
 //    HAL_StatusTypeDef status;
 //    uint8_t data = 0;
 //
-//    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+//    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) != pdTRUE) {
 //        *status_out = HAL_ERROR;
 //        return 0x00;
 //    }
 //
 //    xSemaphoreTake(I2C2_DMA_Sem, 0);
 //    status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, addr, I2C_MEMADD_SIZE_8BIT, &data, 1);
-//    if (status != HAL_OK || xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+//    if (status != HAL_OK || xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(200)) != pdTRUE) {
 //        xSemaphoreGive(i2c2_mutex);
 //        *status_out = HAL_ERROR;
 //        return 0x00;
@@ -384,10 +384,10 @@ uint8_t EYE_AT24CXX_ReadByte(uint16_t addr, HAL_StatusTypeDef* status_out)
 {
     HAL_StatusTypeDef status;
     uint8_t data = 0;
-    int retry = 1; // 重试次数
+    int retry = 3; // 重试次数
 
     for (int i = 0; i < retry; ++i) {
-        if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+        if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) != pdTRUE) {
             status = HAL_ERROR;
             LOG("[EYE_AT24CXX_ReadByte] �?%d次重�?: 获取i2c2_mutex失败\n", i+1);
         } else {
@@ -396,7 +396,7 @@ uint8_t EYE_AT24CXX_ReadByte(uint16_t addr, HAL_StatusTypeDef* status_out)
             if (status != HAL_OK) {
                 LOG("[EYE_AT24CXX_ReadByte] �?%d次重�?: HAL_I2C_Mem_Read_DMA失败, status=%d\n", i+1, status);
             }
-            if (status == HAL_OK && xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(100)) == pdTRUE) {
+            if (status == HAL_OK && xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(200)) == pdTRUE) {
                 xSemaphoreGive(i2c2_mutex);
                 *status_out = HAL_OK;
                 return data;
@@ -423,15 +423,33 @@ HAL_StatusTypeDef EYE_AT24CXX_WriteUInt16(uint16_t addr, uint16_t value)
     return status;
 }
 
-uint16_t EYE_AT24CXX_ReadUInt16(uint16_t addr)
+HAL_StatusTypeDef EYE_AT24CXX_ReadUInt16Ex(uint16_t addr, uint16_t *value_out)
 {
-    HAL_StatusTypeDef dummy;
-    uint8_t high = EYE_AT24CXX_ReadByte(addr, &dummy);
-    uint8_t low  = EYE_AT24CXX_ReadByte(addr + 1, &dummy);
-    return ((uint16_t)high << 8) | low;
+    HAL_StatusTypeDef status_high = HAL_ERROR;
+    HAL_StatusTypeDef status_low = HAL_ERROR;
+    uint8_t high = EYE_AT24CXX_ReadByte(addr, &status_high);
+    uint8_t low  = EYE_AT24CXX_ReadByte(addr + 1, &status_low);
+
+    if ((status_high != HAL_OK) || (status_low != HAL_OK)) {
+        if (value_out != NULL) {
+            *value_out = 0;
+        }
+        return HAL_ERROR;
+    }
+
+    if (value_out != NULL) {
+        *value_out = ((uint16_t)high << 8) | low;
+    }
+
+    return HAL_OK;
 }
 
-
+uint16_t EYE_AT24CXX_ReadUInt16(uint16_t addr)
+{
+    uint16_t value = 0xFFFF;
+    (void)EYE_AT24CXX_ReadUInt16Ex(addr, &value);
+    return value;
+}
 
 
 prepare_data my_prepare_data;
