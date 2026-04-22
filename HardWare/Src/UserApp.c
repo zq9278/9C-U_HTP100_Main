@@ -150,6 +150,7 @@ void Press_Task(void *argument) {
         Discard_dirty_data();
         weight0 = ADS1220_ReadPressure();           // 读取初始压力基准值
         PressureDisplayTargetFilterReset();
+        PressureControlReset();
         while (1) {
             // 1. 检查是否收到停止任务的通知
             if (ulTaskNotifyTake(pdTRUE, 0) > 0) {

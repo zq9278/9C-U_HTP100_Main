@@ -32,5 +32,6 @@ void SetMotorSpeed(int speed);
 
 void PressureDisplayTargetFilterReset(void);
 float PressureDisplayTargetFilterUpdate(float measured_value, float target_value);
+void PressureControlReset(void);
 void PressureControl(void);
 #endif
