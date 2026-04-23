@@ -1,4 +1,6 @@
-
+/*
+ * 鏂囦欢: tmc5130.c
+ * 璇存槑: HardWare 妯″潡婧愮爜鏂囦欢锛岀紪鐮佺粺涓€涓?UTF-8銆? * 娉ㄩ噴瑙勮寖: 涓枃娉ㄩ噴缁熶竴浣跨敤 UTF-8銆? */
 #include "main.h"
 #include <stdint.h>
 #include "tmc5130.h"
@@ -10,12 +12,7 @@
 #define FORCE_FILTER_ALPHA 0.9f
 #define PRESSURE_DISPLAY_TARGET_FILTER_SIZE 8u
 
-/*
- * 不同压力挡位对应的力值换算系数�?
- *
- * 当前先保留原来的默�?��? 80.0f，避免这次重构直接改变现有标定结果�?
- * 后续你只需要按实际标定结果�?改下�? 5 �?宏，不需要再改控制代码�?
- */
+
 #define PRESSURE_COEFF_150_MMHG 80.0f
 #define PRESSURE_COEFF_250_MMHG 80.0f
 #define PRESSURE_COEFF_350_MMHG 80.0f
@@ -24,6 +21,7 @@
 PID_TypeDef MotorPID;
 
 typedef struct {
+
     float kp;
     float ki;
     float kd;
@@ -31,10 +29,12 @@ typedef struct {
 
 #if ENABLE_PRESSURE_LEVEL_PID_TUNING
 static PressurePidProfile_t g_pid_150 = {200.0f, 0.0f, 0.0f};
-static PressurePidProfile_t g_pid_250 = {50.0f, 0.36f, 0.0f};
-static PressurePidProfile_t g_pid_350 = {25.0f, 0.40f, 0.0f};
-static PressurePidProfile_t g_pid_450 = {20.0f, 0.36f, 0.0f};
-static PressurePidProfile_t g_pid_550 = {20.0f, 0.36f, 0.0f};
+static PressurePidProfile_t g_pid_250 = {100.0f, 10.0f, 0.0f};
+static PressurePidProfile_t g_pid_350 = {200.0f, 10.0f, 0.0f};
+static PressurePidProfile_t g_pid_450 = {200.0f, 10.0f, 0.0f};
+static PressurePidProfile_t g_pid_550 = {200.0f, 10.0f, 0.0f};
+
+
 
 static PressurePidProfile_t *GetPressurePidProfile(float pressure_level_mmhg) {
     if (pressure_level_mmhg <= 200.0f) {
@@ -52,7 +52,17 @@ static PressurePidProfile_t *GetPressurePidProfile(float pressure_level_mmhg) {
     return &g_pid_550;
 }
 
+
+
+
+/**
+ * @brief ApplyPressurePidBySetpoint 鍑芥暟瀹炵幇銆? * @param pressure_setpoint_mmhg 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 static void ApplyPressurePidBySetpoint(float pressure_setpoint_mmhg) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     PressurePidProfile_t *pid_profile = GetPressurePidProfile(pressure_setpoint_mmhg);
     MotorPID.Kp = pid_profile->kp;
     MotorPID.Ki = pid_profile->ki;
@@ -60,7 +70,16 @@ static void ApplyPressurePidBySetpoint(float pressure_setpoint_mmhg) {
 }
 
 #if ENABLE_PRESSURE_LEVEL_PID_TUNING
+
+
+/**
+ * @brief PressurePIDSetByLevel 鍑芥暟瀹炵幇銆? * @param pressure_level_mmhg 鍙傛暟銆? * @param kp 鍙傛暟銆? * @param ki 鍙傛暟銆? * @param kd 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 uint8_t PressurePIDSetByLevel(float pressure_level_mmhg, float kp, float ki, float kd) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     PressurePidProfile_t *pid_profile = GetPressurePidProfile(pressure_level_mmhg);
     if (pid_profile == NULL) {
         return 0;
@@ -70,7 +89,6 @@ uint8_t PressurePIDSetByLevel(float pressure_level_mmhg, float kp, float ki, flo
     pid_profile->ki = ki;
     pid_profile->kd = kd;
 
-    /* 如果当前正在该挡位运行，立即生效。 */
     if (((pressure_level_mmhg <= 200.0f) && (MotorPID.setpoint <= 200.0f)) ||
         ((pressure_level_mmhg > 200.0f) && (pressure_level_mmhg <= 300.0f) && (MotorPID.setpoint > 200.0f) && (MotorPID.setpoint <= 300.0f)) ||
         ((pressure_level_mmhg > 300.0f) && (pressure_level_mmhg <= 400.0f) && (MotorPID.setpoint > 300.0f) && (MotorPID.setpoint <= 400.0f)) ||
@@ -82,7 +100,15 @@ uint8_t PressurePIDSetByLevel(float pressure_level_mmhg, float kp, float ki, flo
 }
 #endif
 #else
+
+/**
+ * @brief ApplyPressurePidBySetpoint 鍑芥暟瀹炵幇銆? * @param pressure_setpoint_mmhg 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 static void ApplyPressurePidBySetpoint(float pressure_setpoint_mmhg) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     if (pressure_setpoint_mmhg <= 200.0f) {
         MotorPID.Kp = 200.0f;
         MotorPID.Ki = 0.0f;
@@ -99,13 +125,16 @@ static void ApplyPressurePidBySetpoint(float pressure_setpoint_mmhg) {
 }
 #endif
 
-/*
- * 根据当前�?标压力挡位，返回对应的换算系数�?
- *
- * 这里直接使用 MotorPID.setpoint 作为当前压力挡位来源�?
- * 如果后续上位机下发的不是精确�? 150/250/350/450/550，也会按最近区间归档�?
- */
+
+
+/**
+ * @brief GetPressureConvertCoeff 鍑芥暟瀹炵幇銆? * @param pressure_setpoint_mmhg 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 static float GetPressureConvertCoeff(float pressure_setpoint_mmhg) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     ApplyPressurePidBySetpoint(pressure_setpoint_mmhg);
 
     if (pressure_setpoint_mmhg <= 200.0f) {
@@ -123,8 +152,16 @@ static float GetPressureConvertCoeff(float pressure_setpoint_mmhg) {
     return PRESSURE_COEFF_550_MMHG;
 }
 
-// Low-pass filter to smooth pressure readings before reporting them
+
+
+/**
+ * @brief FilterForce 鍑芥暟瀹炵幇銆? * @param force 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 static float FilterForce(float force) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     static float filtered_force = 0.0f;
     static uint8_t initialized = 0;
 
@@ -144,18 +181,45 @@ static uint8_t pressure_display_target_index = 0;
 static uint8_t pressure_display_target_valid = 0;
 static float pressure_display_last_target = 0.0f;
 
+
+
+/**
+ * @brief PressureAbs 鍑芥暟瀹炵幇銆? * @param value 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 static float PressureAbs(float value) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     return (value >= 0.0f) ? value : -value;
 }
 
+
+
+/**
+ * @brief PressureDisplayTargetFilterReset 鍑芥暟瀹炵幇銆? */
 void PressureDisplayTargetFilterReset(void) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     pressure_display_target_count = 0;
     pressure_display_target_index = 0;
     pressure_display_target_valid = 0;
     pressure_display_last_target = 0.0f;
 }
 
+
+
+/**
+ * @brief PressureDisplayTargetFilterUpdate 鍑芥暟瀹炵幇銆? * @param measured_value 鍙傛暟銆? * @param target_value 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 float PressureDisplayTargetFilterUpdate(float measured_value, float target_value) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     float best_value;
     float best_error;
     uint8_t best_found = 0;
@@ -197,78 +261,96 @@ float PressureDisplayTargetFilterUpdate(float measured_value, float target_value
 
     return best_found ? best_value : measured_value;
 }
-/*motor*/
+
+
 uint32_t MotorSpeed = 0x4000;
 
 extern SPI_HandleTypeDef hspi1;
 
-void TMC5130_Init(void) {
-    //	TMC_ENN(0);// ���õ������
-    //HAL_Delay(20);
-    TMC5130_Write(0x81, 0x00000001); // reset
-    TMC5130_Write(0xec, 0x000300c3); // CHOPCONF: vsense=1,TOFF=3, HSTRT=4,
-    // HEND=1, TBL=2, CHM=0 (spreadCycle)
 
-    TMC5130_Write(0x90, 0x00001006); // IHOLD=6, IRUN=16, IHOLDDELAY=6
-    /*
-     * IHOLD: ���ֵ���ֵ
-     * IRUN: ���е���ֵ
-     * IHOLDDELAY: �ӳ�ʱ�䣬Խ��Խƽ����Խ��Խͻأ
+
+/**
+ * @brief TMC5130_Init 鍑芥暟瀹炵幇銆? */
+void TMC5130_Init(void) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
      */
+
+    TMC5130_Write(0x81, 0x00000001);
+    TMC5130_Write(0xec, 0x000300c3);
+
+
+    TMC5130_Write(0x90, 0x00001006);
+
     TMC5130_Write(
             0x91,
-            0x0000000a); // TPOWERDOWN=10: Delay before power down in stand still
+            0x0000000a);
     TMC5130_Write(
             0x80,
-            0x00000004); // EN_PWM_MODE=1 enables stealthChop (with default PWM_CONF)
-    TMC5130_Write(0x93, 0x000001f4); // TPWM_THRS=500 yields a switching velocity
-    // about 35000 = ca. 30RPM
-    TMC5130_Write(0xf0, 0x000701c8); // PWM_CONF: AUTO=1, 2/1024 Fclk, Switch
-    // amplitude limit=200, Grad=1
+            0x00000004);
+    TMC5130_Write(0x93, 0x000001f4);
+
+    TMC5130_Write(0xf0, 0x000701c8);
 
 
-    TMC5130_Write(0xa5,0x00015000); // V1 = 50 000 Acceleration threshold velocity V1
-    //TMC5130_Write(0xa4, 0x00011000); // A1 = 1 000 First acceleration
-    //TMC5130_Write(0xa6, 0x00018fff); // AMAX = 500 Acceleration above V1
-    TMC5130_Write(0xA4, 0x00000001); // A1: ��С��ʼ���ٶȣ�����Ϊ0��СΪ1
-    TMC5130_Write(0xA6, 0x00001001); // AMAX: �����ٶȣ�����Ϊ0��СΪ1
-    TMC5130_Write(0xa7, MotorSpeed); // VMAX = 200 000
-    TMC5130_Write(0xa8, 0x00001fff); // DMAX = 700 Deceleration above V1
-    TMC5130_Write(0xaa, 0x00008000); // D1 = 1400 Deceleration below V1
-    TMC5130_Write(0xab, 0x0000000a); // VSTOP = 10 Stop velocity (Near to zero)
-    // TMC5130_Write(0xac, 0x00000000);
-    // TMC5130_Write(0xb4, 0x0000075f);
-    TMC5130_Write(0xa0, 0x00000000); // ֹͣ����˶�
+
+    TMC5130_Write(0xa5,0x00015000);
+
+
+    TMC5130_Write(0xA4, 0x00000001);
+    TMC5130_Write(0xA6, 0x00001001);
+    TMC5130_Write(0xa7, MotorSpeed);
+    TMC5130_Write(0xa8, 0x00001fff);
+    TMC5130_Write(0xaa, 0x00008000);
+    TMC5130_Write(0xab, 0x0000000a);
+
+
+    TMC5130_Write(0xa0, 0x00000000);
     PID_Init(&MotorPID, 300, 0, 0, 5000, -5000, (float) (50000), (float) (-50000),
-             0); // 0.03,0.05//0.02, 0.01, 0.02,
+             0);
 }
 
-// SPI ͨ�����
-// ȫ�� SPI �������״̬��־
+
 volatile uint8_t SPI_RxComplete = 0;
 uint8_t TxBuffer[5];
 uint8_t RxBuffer[4];
 
+
+
+/**
+ * @brief TMC5130_Read 鍑芥暟瀹炵幇銆? * @param ReadAddr 鍙傛暟銆? * @param pBuffer 鍙傛暟銆? */
 void TMC5130_Read(uint8_t ReadAddr, uint8_t *pBuffer) {
-    // ������ձ�־
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     SPI_RxComplete = 0;
-    // ��ʼ��������
     TxBuffer[0] = ReadAddr;
-    // �ȷ���һ���ֽڵĵ�ַ
     TMC_CSN(0);
     HAL_SPI_Transmit_IT(&hspi1, TxBuffer, 5);
     TMC_CSN(1);
-    // ��ʱȷ��Ӳ��������ɣ�Ƭѡ�źű��ֵ͵�ƽ��Ӳ���������
-    // HAL_Delay(1); // ����ʵ�� TMC ָ���ͻ
+
     TMC_CSN(0);
     HAL_SPI_Transmit_IT(&hspi1, TxBuffer, 1);
-    SPI_RxComplete = 0; // �ٴ�������ձ�־
+    SPI_RxComplete = 0;
     HAL_SPI_Receive_IT(&hspi1, pBuffer, 4);
-    while (!SPI_RxComplete); // �ȴ��������
+    while (!SPI_RxComplete);
     TMC_CSN(1);
 }
 
+
+
+/**
+ * @brief TMC5130_Write 鍑芥暟瀹炵幇銆? * @param WriteAddr 鍙傛暟銆? * @param WriteData 鍙傛暟銆? */
 void TMC5130_Write(uint8_t WriteAddr, uint32_t WriteData) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     uint8_t Data[5];
     Data[0] = WriteAddr;
     Data[1] = (uint8_t) ((WriteData) >> 24);
@@ -280,14 +362,30 @@ void TMC5130_Write(uint8_t WriteAddr, uint32_t WriteData) {
     TMC_CSN(1);
 }
 
+
+
+/**
+ * @brief MotorSetHome 鍑芥暟瀹炵幇銆? */
 void MotorSetHome(void) {
-    // ���õ�ǰλ�üĴ��� XACTUAL ��ֵΪ 0
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     TMC5130_Write(0xA1, 0);
-    // ����Ŀ��λ�üĴ��� XTARGET ��ֵΪ 0
     TMC5130_Write(0xAD, 0);
 }
 
+
+
+/**
+ * @brief MotorCtrl 鍑芥暟瀹炵幇銆? * @param Step 鍙傛暟銆? */
 void MotorCtrl(int32_t Step) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     uint8_t Data[5];
     Data[0] = 0xad;
     Data[1] = (uint8_t) ((Step) >> 24);
@@ -299,7 +397,16 @@ void MotorCtrl(int32_t Step) {
     TMC_CSN(1);
 }
 
+
+
+/**
+ * @brief VelocityModeMove 鍑芥暟瀹炵幇銆? * @param direction 鍙傛暟銆? */
 void VelocityModeMove(uint8_t direction) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     uint8_t Data[5];
     Data[0] = 0xa0;
     Data[1] = 0x00;
@@ -311,7 +418,16 @@ void VelocityModeMove(uint8_t direction) {
     TMC_CSN(1);
 }
 
+
+
+/**
+ * @brief StepMinMax 鍑芥暟瀹炵幇銆? * @param Step 鍙傛暟銆? * @param MinValue 鍙傛暟銆? * @param MaxValue 鍙傛暟銆? */
 void StepMinMax(int32_t *Step, int32_t MinValue, int32_t MaxValue) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     if (*Step < MinValue) {
         *Step = MinValue;
     }
@@ -321,41 +437,54 @@ void StepMinMax(int32_t *Step, int32_t MinValue, int32_t MaxValue) {
 }
 
 
+
+/**
+ * @brief MotorChecking 鍑芥暟瀹炵幇銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 uint8_t MotorChecking() {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     uint8_t ReadData[4];
 
-    TMC_ENN(0); //
+    TMC_ENN(0);
     TMC5130_Write(0xa7, 0x10000);
     VelocityModeMove(Positive);
 
     while (1) {
-        // ��ȡ���״̬�Ĵ���
         TMC5130_Read(0x04, ReadData);
 
-        // ���״̬�Ĵ����ĵ�3�ֽڵ� bit1 Ϊ 1
         if ((ReadData[3] & 0x02) == 0x02) {
-            // ״̬��ȷ���˳�ѭ��
             break;
         }
         vTaskDelay(100);
     }
 
     MotorSetHome();
-    TMC5130_Write(0xa0, 0x00000000); // ֹͣ����˶�
+    TMC5130_Write(0xa0, 0x00000000);
     TMC_ENN(1);
 
     return 1;
 }
 
+
+/**
+ * @brief MotorCompare 鍑芥暟瀹炵幇銆? * @param SetData 鍙傛暟銆? * @param CompareData 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 uint8_t MotorCompare(int32_t SetData, int32_t CompareData) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     int32_t SubData;
     SubData = CompareData - SetData;
-    if (SubData > 0) // ForceSen ����
+    if (SubData > 0)
     {
         TMC5130_Write(0xa7, 0x6000);
         TMC5130_Write(0xa0, 2);
         return 2;
-    } else if (SubData < 0) // ����
+    } else if (SubData < 0)
     {
         TMC5130_Write(0xa7, 0x4000);
         TMC5130_Write(0xa0, 1);
@@ -367,17 +496,29 @@ uint8_t MotorCompare(int32_t SetData, int32_t CompareData) {
     }
 }
 
-// TMC_ENN(0); // ���õ������
-// TMC5130_Write(0xad, 115000); // ����Ŀ��λ��
-/* PID ���õ��λ�� */
+
+/**
+ * @brief SetMotorposition 鍑芥暟瀹炵幇銆? * @param position 鍙傛暟銆? */
 void SetMotorposition(int position) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     TMC5130_Write(0xa7, 1000);
     TMC5130_Write(0xa0, 0);
     TMC5130_Write(0xad, (uint32_t) position);
 }
 
-/* PID ���õ���ٶ� */
+
+/**
+ * @brief SetMotorSpeed 鍑芥暟瀹炵幇銆? * @param speed 鍙傛暟銆? */
 void SetMotorSpeed(int speed) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     if (speed < 0) {
         TMC5130_Write(0xa0, 1);
         TMC5130_Write(0xa7, (uint32_t) (-speed));
@@ -389,36 +530,38 @@ void SetMotorSpeed(int speed) {
 
 float weight1;
 float weight;
-float MotorPWM;       // ?????????????
-extern float weight0; // ????(Press_Task ?????)
+float MotorPWM;
+extern float weight0;
 
-uint8_t PressureModeStart = 1; // ???????,??????
+uint8_t PressureModeStart = 1;
 
 typedef enum {
-    PRESS_STAGE_A_RECOVERY = 1,   // ??????:????
-    PRESS_STAGE_B_APPROACH = 2,   // ????:????
-    PRESS_STAGE_C_CLOSED_LOOP = 3,// ????:PID ??
-    PRESS_STAGE_D_RETRACT = 4     // ????:????,???? B
+    PRESS_STAGE_A_RECOVERY = 1,
+    PRESS_STAGE_B_APPROACH = 2,
+    PRESS_STAGE_C_CLOSED_LOOP = 3,
+    PRESS_STAGE_D_RETRACT = 4
 } PressureStage_t;
 
 typedef struct {
-    float speed_a;         // A阶段（低压恢复）前进速度：持续低于目标时用较高速度追压
-    float speed_b;         // B阶段（快速接近）前进速度：首次接近目标前的过渡速度
-    float speed_d;         // D阶段（回退）回退速度：闭环保持后短时卸压使用
-    float threshold_a_to_b_mmhg; // A->B切换阈值(mmHg)：压力 >= 该值时进入B
-    float threshold_b_to_c_mmhg; // B->C切换阈值(mmHg)：压力 >= 该值时进入C
-    uint32_t hold_ms_c;    // C阶段保持时长(ms)：闭环控制持续时间，超时后转入D
-    uint32_t retract_ms_d; // D阶段回退时长(ms)：到时后回到B，不直接跳A
-    float low_band;        // 低压判定带宽(mmHg)：当 hhmg < target - low_band 视为偏低
-    uint32_t low_enter_ms; // 持续低压判定时长(ms)：在B/C中连续低压超过该时间才切回A
+    float speed_a;
+    float speed_b;
+    float speed_d;
+    float threshold_a_to_b_mmhg;
+    float threshold_b_to_c_mmhg;
+    uint32_t hold_ms_c;
+    uint32_t retract_ms_d;
+    float low_band;
+    uint32_t low_enter_ms;
 } PressureStageProfile_t;
 
-/*                                                   speed_a冲压  speed_b快速   speed_d退  th_a_to_b  th_b_to_c  hold_ms_c  retract_ms_d  low_band  low_enter_ms */
-static const PressureStageProfile_t g_profile_150 = {20000.0f,     5000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   600u,           100.0f,      1000u};
-static const PressureStageProfile_t g_profile_250 = {35000.0f,     5000.0f,    10000.0f, 100.0f,     110.5f,    1500u,   800u,           200.0f,      1000u};
-static const PressureStageProfile_t g_profile_350 = {50000.0f,     5000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   800u,           300.0f,      1000u};
-static const PressureStageProfile_t g_profile_450 = {50000.0f,     5000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   800u,           400.0f,      1000u};
-static const PressureStageProfile_t g_profile_550 = {50000.0f,     5000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   1000u,          500.0f,      1000u};
+
+static const PressureStageProfile_t g_profile_150 = {20000.0f,    4000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   600u,           100.0f,      1000u};
+static const PressureStageProfile_t g_profile_250 = {35000.0f,    4000.0f,    10000.0f, 100.0f,     110.5f,    1500u,   800u,           200.0f,      1000u};
+static const PressureStageProfile_t g_profile_350 = {50000.0f,    4000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   800u,           300.0f,      1000u};
+static const PressureStageProfile_t g_profile_450 = {50000.0f,    4000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   800u,           400.0f,      1000u};
+static const PressureStageProfile_t g_profile_550 = {50000.0f,    4000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   1000u,          500.0f,      1000u};
+
+
 
 static const PressureStageProfile_t *GetPressureStageProfile(float pressure_setpoint_mmhg) {
     if (pressure_setpoint_mmhg <= 200.0f) {
@@ -440,13 +583,22 @@ static PressureStage_t g_pressure_stage = PRESS_STAGE_A_RECOVERY;
 static uint32_t g_stage_enter_ms = 0;
 static uint32_t g_low_begin_ms = 0;
 static uint8_t g_low_active = 0;
-static uint8_t g_a_used_once = 0; /* 每次开始命令仅允许进入一次A阶段 */
+static uint8_t g_a_used_once = 0;
 
 extern float p, i, d;
 extern uint8_t flag_200ms;
 extern uint8_t press_flag_400ms;
 
+
+
+/**
+ * @brief PressureControlReset 鍑芥暟瀹炵幇銆? */
 void PressureControlReset(void) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     g_pressure_stage = PRESS_STAGE_A_RECOVERY;
     g_stage_enter_ms = HAL_GetTick();
     g_low_begin_ms = 0;
@@ -460,7 +612,16 @@ void PressureControlReset(void) {
     MotorPID.derivative_filtered = 0.0f;
 }
 
-void PressureControl() {
+
+
+/**
+ * @brief PressureControl 鍑芥暟瀹炵幇銆? * @param pid_dt_s 鍙傛暟銆? */
+void PressureControl(float pid_dt_s) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     float raw = ADS1220_ReadPressure();
     float force = Limit(raw - weight0, 0, raw - weight0);
     float target = MotorPID.setpoint;
@@ -469,14 +630,15 @@ void PressureControl() {
     float hhmg = (force / 1000.0f) * 9.8f * convert_coeff;
     float pressure_display = PressureDisplayTargetFilterUpdate(hhmg, target);
     uint32_t now_ms = HAL_GetTick();
-    
+
     if (press_flag_400ms) {
         press_flag_400ms = 0;
         ScreenUpdateForce(pressure_display);
         //ScreenUpdateForce(hhmg);
+
     }
 
-    /* 仅在B/C阶段处理持续低压：A阶段只允许一次，后续低压统一回B */
+
     if ((g_pressure_stage == PRESS_STAGE_B_APPROACH) ||
         (g_pressure_stage == PRESS_STAGE_C_CLOSED_LOOP)) {
         if (hhmg < (target - profile->low_band)) {
@@ -496,7 +658,7 @@ void PressureControl() {
         g_low_active = 0;
     }
 
-    /* A阶段已用过后，不允许再次停留在A */
+
     if (g_a_used_once && (g_pressure_stage == PRESS_STAGE_A_RECOVERY)) {
         g_pressure_stage = PRESS_STAGE_B_APPROACH;
         g_stage_enter_ms = now_ms;
@@ -525,7 +687,7 @@ void PressureControl() {
             break;
 
         case PRESS_STAGE_C_CLOSED_LOOP:
-            MotorPWM = PID_Compute_motor(&MotorPID, hhmg);
+            MotorPWM = PID_Compute_motor_dt(&MotorPID, hhmg, pid_dt_s);
             SetMotorSpeed((int)MotorPWM);
             if ((now_ms - g_stage_enter_ms) >= profile->hold_ms_c) {
                 g_pressure_stage = PRESS_STAGE_D_RETRACT;
@@ -536,7 +698,7 @@ void PressureControl() {
         case PRESS_STAGE_D_RETRACT:
             SetMotorSpeed((int)(-profile->speed_d));
             if ((now_ms - g_stage_enter_ms) >= profile->retract_ms_d) {
-                g_pressure_stage = PRESS_STAGE_B_APPROACH; /* D ?? B */
+                g_pressure_stage = PRESS_STAGE_B_APPROACH;
                 g_stage_enter_ms = now_ms;
             }
             break;
@@ -550,3 +712,5 @@ void PressureControl() {
 
     PressureModeStart = (uint8_t)g_pressure_stage;
 }
+
+

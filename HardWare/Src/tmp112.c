@@ -1,4 +1,6 @@
-
+/*
+ * 鏂囦欢: tmp112.c
+ * 璇存槑: HardWare 妯″潡婧愮爜鏂囦欢锛岀紪鐮佺粺涓€涓?UTF-8銆? * 娉ㄩ噴瑙勮寖: 涓枃娉ㄩ噴缁熶竴浣跨敤 UTF-8銆? */
 #include "main.h"
 #include "UserApp.h"
 #include "tmp112.h"
@@ -14,47 +16,53 @@ extern DMA_HandleTypeDef hdma_i2c2_rx;
 
 void TMP112_Init(void)
 {
-    // 配置寄存器设置（示例：连续转换模式+8Hz采样）
+
     uint8_t config[2] = {
-            0x60 | 0x03 << 5, // 高字节：扩展模式(bit7) | 转换速率11(8Hz)
-            0xA0              // 低字节：ALERT极性(bit0)
+            0x60 | 0x03 << 5,
+            0xA0
     };
     TMP112_WriteWord( 0x01, config);
-}  
+}
 
-//void TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer)   
-// { 	while (hdma_i2c2_rx.State != HAL_DMA_STATE_READY)
-//    ; // 绛?寰?DMA瀹???
-//	
-//   // 使用 HAL_I2C_Mem_Read_DMA 进行读操作
-//   HAL_I2C_Mem_Read_DMA(&hi2c2, 0x91, ReadAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, 2) ;
-//   
-//}
 
+
+
+
+
+
+
+
+/**
+ * @brief TMP112_Read 鍑芥暟瀹炵幇銆? * @param ReadAddr 鍙傛暟銆? * @param pBuffer 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     HAL_StatusTypeDef status;
-    // 1. 获取 I2C2 的互斥锁，最长等待100ms
+
     if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(60)) != pdTRUE) {
-        LOG("TMP112_Read：获取 I2C2 互斥锁失败\r\n");
+        LOG("TMP112_Read锛氳幏鍙?I2C2 浜掓枼閿佸け璐r\n");
         return HAL_ERROR;
     }
 
-    // 2. 启动 I2C2 的 DMA 读取
+
     status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0x91, ReadAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, 2);
     if (status != HAL_OK) {
-        LOG("TMP112_Read：DMA 启动失败，状态码：%d\r\n", status);
-        xSemaphoreGive(i2c2_mutex); // 启动失败也要释放互斥锁
+        LOG("TMP112_Read锛欴MA 鍚姩澶辫触锛岀姸鎬佺爜锛?d\r\n", status);
+        xSemaphoreGive(i2c2_mutex);
         return status;
     }
 
-    // 3. 等待 DMA 读取完成信号（由回调释放）
+
     if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(80)) != pdTRUE) {
-        LOG("TMP112_Read：DMA读取超时\r\n");
+        LOG("TMP112_Read锛欴MA璇诲彇瓒呮椂\r\n");
         xSemaphoreGive(i2c2_mutex);
         return HAL_TIMEOUT;
     }
 
-    // 4. 操作完成，释放 I2C2 互斥锁
+
     xSemaphoreGive(i2c2_mutex);
     return HAL_OK;
 }
@@ -65,23 +73,37 @@ HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
  {
  	HAL_I2C_Mem_Write_DMA(&hi2c2, 0x92, WriteAddr,I2C_MEMADD_SIZE_8BIT, WriteData, 2);
  }
+/**
+ * @brief Kalman_Init 鍑芥暟瀹炵幇銆? * @param kf 鍙傛暟銆? * @param Q 鍙傛暟銆? * @param R 鍙傛暟銆? */
 void Kalman_Init(KalmanFilter *kf, float Q, float R) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     kf->Q = Q;
     kf->R = R;
     kf->P = 1;
     kf->x = 0;
 }
+/**
+ * @brief Kalman_Update 鍑芥暟瀹炵幇銆? * @param kf 鍙傛暟銆? * @param measurement 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 float Kalman_Update(KalmanFilter *kf, float measurement) {
-    // 预测更新
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
+
     kf->P += kf->Q;
 
-    // 计算卡尔曼增益
+
     kf->K = kf->P / (kf->P + kf->R);
 
-    // 更新估计值
+
     kf->x += kf->K * (measurement - kf->x);
 
-    // 更新误差协方差
+
     kf->P *= (1 - kf->K);
 
     return kf->x;
@@ -94,18 +116,39 @@ static uint8_t temp_display_target_index = 0;
 static uint8_t temp_display_target_valid = 0;
 static float temp_display_last_target = 0.0f;
 
+/**
+ * @brief TempAbs 鍑芥暟瀹炵幇銆? * @param value 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 static float TempAbs(float value) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     return (value >= 0.0f) ? value : -value;
 }
 
+/**
+ * @brief TempDisplayTargetFilterReset 鍑芥暟瀹炵幇銆? */
 void TempDisplayTargetFilterReset(void) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     temp_display_target_count = 0;
     temp_display_target_index = 0;
     temp_display_target_valid = 0;
     temp_display_last_target = 0.0f;
 }
 
+/**
+ * @brief TempDisplayTargetFilterUpdate 鍑芥暟瀹炵幇銆? * @param measured_value 鍙傛暟銆? * @param target_value 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 float TempDisplayTargetFilterUpdate(float measured_value, float target_value) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     float best_value;
     float best_error;
 
@@ -143,30 +186,32 @@ float TempDisplayTargetFilterUpdate(float measured_value, float target_value) {
     return best_value;
 }
 
-#define ALPHA 0.1  // 设置平滑因子，值越大对最新数据的权重越大
-float previousEMA = 0.0;  // 之前的平滑值
+#define ALPHA 0.1
+float previousEMA = 0.0;
 int16_t TmpData;
 float TmpRaw2Ture(void)
 {       HAL_StatusTypeDef status = TMP112_Read(0x00, EyeTmpRaw);
     if (status != HAL_OK) {
-        LOG("温度读取失败，返回上一次的EMA或NAN");
-        // 可以选择：
-        // 1. 返回 NAN，代表无效
-        // return NAN;
+        LOG("娓╁害璇诲彇澶辫触锛岃繑鍥炰笂涓€娆＄殑EMA鎴朜AN");
 
-        // 2. 返回上次的 previousEMA，不更新
+
+
+
+
         return previousEMA;
     }
     TmpData=(EyeTmpRaw[0]<<8) | EyeTmpRaw[1];
     TmpData = TmpData >> 4;
     float tempature=TmpData*0.0625;
-    // 阈值突变检测（示例伪代码）
+
     if (previousEMA==0) {
-        previousEMA = tempature; // 突变时直接采用新值
+        previousEMA = tempature;
     }
-//    // 计算EMA
+
     previousEMA = ALPHA * tempature + (1 - ALPHA) * previousEMA;
-    //return previousEMA;
-     //previousEMA = Kalman_Update(&kf, tempature);
+
+
     return previousEMA;
 }
+
+

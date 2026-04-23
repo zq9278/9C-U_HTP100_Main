@@ -1,17 +1,22 @@
+/*
+ * æ–‡ä»¶: bq25895.h
+ * è¯´æ˜: HardWare æ¨¡å—æºç æ–‡ä»¶ï¼Œç¼–ç ç»Ÿä¸€ä¸º UTF-8ã€‚
+ * æ³¨é‡Šè§„èŒƒ: ä¸­æ–‡æ³¨é‡Šç»Ÿä¸€ä½¿ç”¨ UTF-8ã€‚
+ */
 #ifndef __BQ25895_H
 #define __BQ25895_H
 
 #include "stm32g0xx_hal.h"
 #define CHG_CE(n)			(n?HAL_GPIO_WritePin(CHG_CE_GPIO_Port,CHG_CE_Pin,GPIO_PIN_SET):HAL_GPIO_WritePin(CHG_CE_GPIO_Port,CHG_CE_Pin,GPIO_PIN_RESET))
 #define BQ25895Address	0xd4
-#define I2C_TIMEOUT_MS 200  // ³¬Ê±Ê±¼ä
+#define I2C_TIMEOUT_MS 200
 typedef enum {
-    STATE_POWER_ON,       // ¿ª»ú£º°×É«³£ÁÁ
-    STATE_WORKING,        // ¹¤×÷£º°×É«³£ÁÁ
-    STATE_LOW_BATTERY,    // µçÁ¿²»×ã£º°×É«ÉÁË¸
-    STATE_CHARGING,       // ³äµç£º°×É«ºôÎü
-    STATE_CHARGED,        // ³äÂúµç£º°×É«³£ÁÁ
-    STATE_EMERGENCY_STOP  // ¼±Í££º»ÆÉ«³£ÁÁ
+    STATE_POWER_ON,
+    STATE_WORKING,
+    STATE_LOW_BATTERY,
+    STATE_CHARGING,
+    STATE_CHARGED,
+    STATE_EMERGENCY_STOP
 } ChargeState_t;
 extern uint8_t charging_flag;
 void BQ25895_Init(void);
@@ -24,6 +29,8 @@ void bq25895_reinitialize_if_vbus_inserted(void);
 HAL_StatusTypeDef BQ25895_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t size) ;
 void BQ25895_AutoRecover(void);
 
-		 
+
 #endif
+
+
 

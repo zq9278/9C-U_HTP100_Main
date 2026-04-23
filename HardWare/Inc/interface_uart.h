@@ -1,17 +1,22 @@
+/*
+ * æ–‡ä»¶: interface_uart.h
+ * è¯´æ˜: HardWare æ¨¡å—æºç æ–‡ä»¶ï¼Œç¼–ç ç»Ÿä¸€ä¸º UTF-8ã€‚
+ * æ³¨é‡Šè§„èŒƒ: ä¸­æ–‡æ³¨é‡Šç»Ÿä¸€ä½¿ç”¨ UTF-8ã€‚
+ */
 #ifndef __INTERFACE_UART_H__
 #define __INTERFACE_UART_H__
 #include "main.h"
 #include <stdarg.h>
-int __io_putchar(int ch) __attribute__((weak));//¼Ì³Ğº¯Êı
+int __io_putchar(int ch) __attribute__((weak));
 int __io_getchar(void) __attribute__((weak));
 uint16_t Calculate_CRC(uint8_t *data, uint16_t length);
-// ·â×°µÄÈÕÖ¾º¯Êı (Ö§³Ö¿É±ä²ÎÊı)
+
 void LOG(const char *format, ...);
 #define USART2_TX_BUFFER_SIZE 256
 
 typedef struct {
-    uint8_t txBuffer[2][USART2_TX_BUFFER_SIZE]; // Ë«»º³å
-    uint8_t activeBuffer;                       // µ±Ç°»î¶¯»º³åÇø
+    uint8_t txBuffer[2][USART2_TX_BUFFER_SIZE];
+    uint8_t activeBuffer;
 
 } USART2_DMA_HandleTypeDef;
 
@@ -22,3 +27,5 @@ void USART2_DMA_Send(uint8_t *data, uint16_t length);
 void LOG_ISR(const char *format, ...);
 
 #endif
+
+

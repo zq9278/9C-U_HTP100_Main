@@ -1,12 +1,7 @@
 /*
- * @Author: zhangqi zq9278@gmail.com
- * @Date: 2024-06-15 13:31:10
- * @LastEditors: zhangqi zq9278@gmail.com
- * @LastEditTime: 2024-06-20 11:04:03
- * @FilePath: \EIDEd:\Project\SLK01\Software\SLK-01-new\MDK-ARM\USER\tmc5130\tmc5130.h
- * @Description:
- *
- * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
+ * 文件: tmc5130.h
+ * 说明: HardWare 模块源码文件，编码统一为 UTF-8。
+ * 注释规范: 中文注释统一使用 UTF-8。
  */
 #ifndef __TMC5130_H
 #define __TMC5130_H
@@ -39,5 +34,8 @@ float PressureDisplayTargetFilterUpdate(float measured_value, float target_value
 uint8_t PressurePIDSetByLevel(float pressure_level_mmhg, float kp, float ki, float kd);
 #endif
 void PressureControlReset(void);
-void PressureControl(void);
+void PressureControl(float pid_dt_s);
 #endif
+
+
+

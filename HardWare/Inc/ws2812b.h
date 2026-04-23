@@ -1,25 +1,30 @@
+/*
+ * 文件: ws2812b.h
+ * 说明: HardWare 模块源码文件，编码统一为 UTF-8。
+ * 注释规范: 中文注释统一使用 UTF-8。
+ */
 #ifndef _WS2812B_H
 #define _WS2812B_H
-#include "stm32g0xx_hal.h"	  
+#include "stm32g0xx_hal.h"
 #include "bq25895.h"
 
 #define WS2812B_HIGH   HAL_GPIO_WritePin(WS2812B_GPIO_Port,WS2812B_Pin,GPIO_PIN_SET)
 #define WS2812B_LOW	   HAL_GPIO_WritePin(WS2812B_GPIO_Port,WS2812B_Pin,GPIO_PIN_RESET)
 
 
-//typedef unsigned char bool;
+
 #define true 1
 #define false 0
 
 
 
 
-#define WS2812B_ARR 80		
-#define T0H 16					
-#define T1H 52		
+#define WS2812B_ARR 80
+#define T0H 16
+#define T1H 52
 
 #define LED_NUM  15
-#define DATA_SIZE  24 	    
+#define DATA_SIZE  24
 
 void PWM_WS2812B_Init(void);
 void WS2812B_Reset(void);
@@ -34,3 +39,5 @@ void UpdateState(uint8_t emergency_stop, uint8_t charging, uint8_t low_battery, 
 void UpdateLightState(ChargeState_t state);
 void UpdateBreathingLight(void);
 #endif
+
+

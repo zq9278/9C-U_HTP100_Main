@@ -1,9 +1,6 @@
 /*
- * @Author: zhangqi
- * @Date: 2024-12-28 11:50:08
- * @Last Modified by: zhangqi
- * @Last Modified time: 2024-12-30 13:08:02
- */
+ * 鏂囦欢: Button.c
+ * 璇存槑: HardWare 妯″潡婧愮爜鏂囦欢锛岀紪鐮佺粺涓€涓?UTF-8銆? * 娉ㄩ噴瑙勮寖: 涓枃娉ㄩ噴缁熶竴浣跨敤 UTF-8銆? */
 #include "main.h"
 #include "interface_uart.h"
 #include "Button.h"
@@ -14,10 +11,10 @@
 #include "tmp112.h"
 #include "UserApp.h"
 #include "tmc5130.h"
-//extern osEventFlagsId_t PRESS_ONHandle;
-//extern osEventFlagsId_t HEAT_ONHandle;
-//extern osMessageQueueId_t HEAT_DATAHandle;
-//extern osMessageQueueId_t PRESS_DATAHandle;
+
+
+
+
 volatile SystemState_t currentState = STATE_OFF;
 extern uint8_t heat_finish, press_finish, auto_finish;
 extern PID_TypeDef HeatPID;
@@ -25,14 +22,21 @@ extern uint8_t emergency_stop;
 extern int motor_go_home;
 volatile uint8_t button_pressed = 0;
 
+/**
+ * @brief Button_detection 鍑芥暟瀹炵幇銆? */
 void Button_detection(void) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     switch (currentState) {
     case STATE_OFF:
         ScreenWorkModeQuit();
         LOG("[STATE] -> OFF\r\n");
         break;
 
-    case STATE_PRE_HEAT: // 进入加热
+    case STATE_PRE_HEAT:
         currentState = STATE_HEAT;
         Device_RequestMarkNormalEyeShield();
         heat_finish = 0;
@@ -41,7 +45,7 @@ void Button_detection(void) {
         LOG("[STATE] PRE_HEAT -> HEAT, setpoint=%.2f\r\n", HeatPID.setpoint);
         break;
 
-    case STATE_HEAT: // 从加�?进入关闭
+    case STATE_HEAT:
         EYE_working_Flag = 0;
         currentState = STATE_OFF;
         emergency_stop = 1;
@@ -55,7 +59,7 @@ void Button_detection(void) {
         LOG("[STATE] HEAT -> OFF (emergency_stop=%d)\r\n", emergency_stop);
         break;
 
-    case STATE_PRE_PRESS: // 进入挤压
+    case STATE_PRE_PRESS:
         currentState = STATE_PRESS;
         Device_RequestMarkNormalEyeShield();
         if (motor_homeHandle != NULL) {
@@ -71,7 +75,7 @@ void Button_detection(void) {
         LOG("[STATE] PRE_PRESS -> PRESS\r\n");
         break;
 
-    case STATE_PRESS: // 挤压关闭进入 OFF
+    case STATE_PRESS:
         EYE_working_Flag = 0;
         currentState = STATE_OFF;
         emergency_stop = 1;
@@ -95,7 +99,7 @@ void Button_detection(void) {
         LOG("[STATE] PRESS -> OFF\r\n");
         break;
 
-    case STATE_PRE_AUTO: // �?动模式准�?
+    case STATE_PRE_AUTO:
         currentState = STATE_AUTO;
         Device_RequestMarkNormalEyeShield();
         if (motor_homeHandle != NULL) {
@@ -144,3 +148,5 @@ void Button_detection(void) {
         break;
     }
 }
+
+

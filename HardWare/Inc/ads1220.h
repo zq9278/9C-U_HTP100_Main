@@ -1,40 +1,39 @@
-﻿/*
- * @Author: zhangqi 
- * @Date: 2024-12-30 17:40:27 
- * @Last Modified by: zhangqi
- * @Last Modified time: 2025-01-05 17:01:42
+/*
+ * 文件: ads1220.h
+ * 说明: HardWare 模块源码文件，编码统一为 UTF-8。
+ * 注释规范: 中文注释统一使用 UTF-8。
  */
 #ifndef __ADS1220_H
 #define __ADS1220_H
 #include "stm32g0xx_hal.h"
-// 定义ADS1220的SPI命令
-#define ADS1220_CMD_RESET 0x06      // 重置命令
-#define ADS1220_CMD_SELFCAL 0xF0      // 重置命令
-#define ADS1220_CMD_START_SYNC 0x08 // 开始/同步命令
-#define ADS1220_CMD_RDATA 0x10      // 读取数据命令
-#define ADS1220_CMD_POWERDOWN 0x02  // 低功耗模式命令
-#define ADS1220_CMD_RREG 0x23       // 读取寄存器命令
 
-// 定义ADS1220的寄存器地址
-#define ADS1220_REG_CONFIG0 0x00 // 配置寄存器0
-#define ADS1220_REG_CONFIG1 0x01 // 配置寄存器1
-#define ADS1220_REG_CONFIG2 0x02 // 配置寄存器2
-#define ADS1220_REG_CONFIG3 0x03 // 配置寄存器3
+#define ADS1220_CMD_RESET 0x06
+#define ADS1220_CMD_SELFCAL 0xF0
+#define ADS1220_CMD_START_SYNC 0x08
+#define ADS1220_CMD_RDATA 0x10
+#define ADS1220_CMD_POWERDOWN 0x02
+#define ADS1220_CMD_RREG 0x23
 
-// 定义传感器参数
-#define SENSITIVITY 0.365           // 默认灵敏度 (mV/V)
-#define SENSITIVITY_150 0.380       // 150档灵敏度 (mV/V)
-#define SENSITIVITY_250 0.350       // 250档灵敏度 (mV/V)
-#define SENSITIVITY_350 0.350       // 350档灵敏度 (mV/V)
-#define SENSITIVITY_450 0.340       // 450档灵敏度 (mV/V)
-#define SENSITIVITY_550 0.340       // 550档灵敏度 (mV/V)
-#define MAX_WEIGHT 2.0            // 满量程重量 (kg)
-#define EXCITATION_VOLTAGE 3.3    // 激励电压 (V)
-#define GAIN 128                    // 放大倍数
-#define VREF 3.3               // 基准电压
+
+#define ADS1220_REG_CONFIG0 0x00
+#define ADS1220_REG_CONFIG1 0x01
+#define ADS1220_REG_CONFIG2 0x02
+#define ADS1220_REG_CONFIG3 0x03
+
+
+#define SENSITIVITY 0.365
+#define SENSITIVITY_150 0.380
+#define SENSITIVITY_250 0.370
+#define SENSITIVITY_350 0.370
+#define SENSITIVITY_450 0.370
+#define SENSITIVITY_550 0.370
+#define MAX_WEIGHT 2.0
+#define EXCITATION_VOLTAGE 3.3
+#define GAIN 128
+#define VREF 3.3
 extern SPI_HandleTypeDef hspi2;
 
-// SPI片选控制（与平台相关）
+
 #define ADS1220_CS_LOW()                                                       \
   HAL_GPIO_WritePin(SPI2_CS_GPIO_Port, SPI2_CS_Pin, GPIO_PIN_RESET)
 #define ADS1220_CS_HIGH()                                                      \
@@ -49,30 +48,27 @@ float ADS1220_ReadPressure(void);
 void Discard_dirty_data(void);
 
 
-/*
- * @Author: zhangqi
- * @Date: 2024-12-30 17:40:27
- * @Last Modified by: zhangqi
- * @Last Modified time: 2025-01-05 16:37:52
- */
 
-// SPI接口代码，用于与MCU通信的ADS1220
+
+
 #include "main.h"
 #include <stdint.h>
 
 
 
 
-// 初始化信号量（在系统初始化时调用）
+
 void SPI2_DMA_Semaphores_Init(void);
 
-// SPI 收发封装函数（使用DMA + 信号量）
+
 HAL_StatusTypeDef SPI2_TransmitReceive_DMA(uint8_t *txData, uint8_t *rxData, uint16_t size, uint32_t timeout);
-// SPI 发送封装函数（DMA + 信号量）
+
 HAL_StatusTypeDef SPI2_Transmit_DMA(uint8_t *txData, uint16_t size, uint32_t timeout);
-// SPI 接收封装函数（DMA + 信号量）
+
 HAL_StatusTypeDef SPI2_Receive_DMA(uint8_t *rxData, uint16_t size, uint32_t timeout);
 
-#endif /* __ADS1220_H */
+#endif
+
+
 
 

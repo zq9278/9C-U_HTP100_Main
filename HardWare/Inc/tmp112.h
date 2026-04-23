@@ -1,24 +1,29 @@
+/*
+ * 文件: tmp112.h
+ * 说明: HardWare 模块源码文件，编码统一为 UTF-8。
+ * 注释规范: 中文注释统一使用 UTF-8。
+ */
 #ifndef __TMP112_H
 #define __TMP112_H
 #include "stm32g0xx_hal.h"
 
-//#define TMP112_ADDR 0x92//地址接vcc
-#define TMP112_ADDR 0x91//地址接GND
 
-//#define TMP112_ADDR 0x49//地址接vcc
-//#define TMP112_ADDR 0x48//地址接GND
+#define TMP112_ADDR 0x91
 
-//#define TMP112_ADDR 0x49<<1//地址接vcc
-//#define TMP112_ADDR 0x48<<1//地址接GND
+
+
+
+
+
 
 
 
 typedef struct {
-    float Q; // 过程噪声协方差
-    float R; // 测量噪声协方差
-    float P; // 估计误差协方差
-    float K; // 卡尔曼增益
-    float x; // 估计值
+    float Q;
+    float R;
+    float P;
+    float K;
+    float x;
 } KalmanFilter;
 extern KalmanFilter kf;
 void Kalman_Init(KalmanFilter *kf, float Q, float R);
@@ -28,12 +33,14 @@ float TempDisplayTargetFilterUpdate(float measured_value, float target_value);
 void TMP112_Init(void);
 void TMP112_WriteWord(uint8_t WriteAddr,uint8_t*  WriteData);
 HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer);
-//void TMP112_MultiRead(uint8_t* pBuffer);
-// void TMP112_WriteByte(uint8_t WriteAddr,uint8_t WriteData);
-// void TMP112_WriteWord(uint8_t WriteAddr,u16 WriteData);
+
+
+
 float TmpRaw2Ture(void);
 uint8_t TMP112_IsDevicePresent(void);
-extern uint8_t IIC_EYETimeoutFlag;//眼盾是否存在
+extern uint8_t IIC_EYETimeoutFlag;
 extern uint8_t EYE_exist_Flag, EYE_working_Flag, EYE_exist_new_Flag,EYE_status;
 #endif
+
+
 

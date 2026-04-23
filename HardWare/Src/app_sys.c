@@ -1,3 +1,6 @@
+/*
+ * 鏂囦欢: app_sys.c
+ * 璇存槑: HardWare 妯″潡婧愮爜鏂囦欢锛岀紪鐮佺粺涓€涓?UTF-8銆? * 娉ㄩ噴瑙勮寖: 涓枃娉ㄩ噴缁熶竴浣跨敤 UTF-8銆? */
 #include "bq25895.h"
 #include "main.h"
 #include <stdint.h>
@@ -7,14 +10,21 @@
 #include "interface_uart.h"
 uint8_t STATE_POWER_5V;
 uint8_t reset=0;
+/**
+ * @brief STATE_POWER_5V_Update 鍑芥暟瀹炵幇銆? */
 void STATE_POWER_5V_Update(void) {
-  //if (HAL_GPIO_ReadPin(PWR_SENSE_GPIO_Port, PWR_SENSE_Pin) == 1) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
+
     if (reset==1) {
 
-  //NVIC_SystemReset();
-  STATE_POWER_5V = 1; // 开关开
+
+  STATE_POWER_5V = 1;
 } else {
-  STATE_POWER_5V = 0; // 开关关
+  STATE_POWER_5V = 0;
 };
 }
 void close_mianAPP(void)
@@ -25,9 +35,9 @@ void close_mianAPP(void)
             ScreenTimerStop();
         }
 
-        taskENTER_CRITICAL();  // ✅进入临界区，禁止上下文切换
+        taskENTER_CRITICAL();
         currentState = STATE_OFF;
-        //    HeatPWM(0); // 关闭加热PWM
+
         if (PressHandle != NULL && eTaskGetState(PressHandle) != eSuspended) {
             xTaskNotifyGive(PressHandle);
         }
@@ -42,7 +52,9 @@ void close_mianAPP(void)
         } else {
             LOG("motor_homeHandle task already exists.\r\n");
         }
-        //xTaskNotifyGive(i2c2_recovery_task_handle);
-        taskEXIT_CRITICAL();   // ✅退出临界区
+
+        taskEXIT_CRITICAL();
     }
 }
+
+

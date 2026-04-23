@@ -1,11 +1,27 @@
-// Created by zq on 2025/2/19.
-//
-
+/*
+ * 文件: time_callback.h
+ * 说明: HardWare 模块源码文件，编码统一为 UTF-8。
+ * 注释规范: 中文注释统一使用 UTF-8。
+ */
 #ifndef TIME_CALLBACK_H
 #define TIME_CALLBACK_H
+
 #include "main.h"
 #include "UserApp.h"
-extern TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle, motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle, press_updateHandle, serialTimeoutTimerHandle, IIC_EYETimeoutTimerHandle, eye_is_existHandle, breathTimer;
+
+
+#define PRESS_PID_TIMER_PERIOD_MS      20u
+
+#define PRESS_DISPLAY_UPDATE_PERIOD_MS 400u
+
+extern TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle,
+        motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,
+        press_updateHandle, serialTimeoutTimerHandle, IIC_EYETimeoutTimerHandle,
+        eye_is_existHandle, breathTimer;
+
+extern volatile uint8_t press_pid_tick_flag;
+extern uint8_t serialTimeoutFlag;
+
 void ws2812_white_delay_callback(TimerHandle_t xTimer);
 void ws2812_yellow_callback(TimerHandle_t xTimer);
 void breath_delay_Callback(TimerHandle_t xTimer);
@@ -14,10 +30,11 @@ void motor_back_1sCallback(TimerHandle_t xTimer);
 void buttton_Callback(TimerHandle_t xTimer);
 void tempareture_pid_timer(TimerHandle_t xTimer);
 void press_update_timer(TimerHandle_t xTimer);
-// ���ڳ�ʱ��������
 void SerialTimeout_Callback(TimerHandle_t xTimer);
 void IIC_EYETimeout_Callback(TimerHandle_t xTimer);
-extern uint8_t serialTimeoutFlag;
-void eye_is_exist_callback(TimerHandle_t xTimer);//�۶ܼ��ʱ��
+void eye_is_exist_callback(TimerHandle_t xTimer);
 void BreathingLightCallback(TimerHandle_t xTimer);
-#endif //SLK_01_V1_0_TIME_CALLBACK_H
+
+#endif
+
+

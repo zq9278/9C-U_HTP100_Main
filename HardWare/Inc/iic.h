@@ -1,19 +1,14 @@
 /*
- * @Author: zhangqi zq9278@gmail.com
- * @Date: 2024-06-13 10:38:11
- * @LastEditors: zhangqi zq9278@gmail.com
- * @LastEditTime: 2024-06-15 08:51:59
- * @FilePath: \software\HardWare\Inc\IIC.h
- * @Description: 
- * 
- * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved. 
+ * æ–‡ä»¶: iic.h
+ * è¯´æ˜Ž: HardWare æ¨¡å—æºç æ–‡ä»¶ï¼Œç¼–ç ç»Ÿä¸€ä¸º UTF-8ã€‚
+ * æ³¨é‡Šè§„èŒƒ: ä¸­æ–‡æ³¨é‡Šç»Ÿä¸€ä½¿ç”¨ UTF-8ã€‚
  */
 #ifndef __iic_H
 #define __iic_H
 
 #include "stm32g0xx_hal.h"
 
-// I2C½á¹¹Ìå¶¨Òå
+
 typedef struct
 {
     GPIO_TypeDef *SDA_Port;
@@ -22,7 +17,7 @@ typedef struct
     uint16_t SCL_Pin;
 } SoftwareI2C;
 
-// GPIO³õÊ¼»¯ºê¶¨Òå
+
 #define SDA_IN(i2c)                                                            \
     {                                                                          \
         (i2c)->SDA_Port->MODER &= ~(GPIO_MODER_MODE0 << ((i2c)->SDA_Pin * 2)); \
@@ -35,7 +30,7 @@ typedef struct
         (i2c)->SDA_Port->MODER |= 1 << (i2c)->SDA_Pin * 2;                     \
     }
 
-// I2Cº¯ÊýÉùÃ÷
+
 void I2C_Start(SoftwareI2C *i2c);
 void I2C_Stop(SoftwareI2C *i2c);
 uint8_t I2C_Wait_Ack(SoftwareI2C *i2c);
@@ -48,5 +43,7 @@ void RD_Reg_SoftI2C(SoftwareI2C *i2c, uint16_t reg, uint8_t *buf, uint8_t len);
 
 
 
-/*SoftwareI2C i2c1 = {EYE_SDA1_GPIO_Port, EYE_SDA1_Pin, EYE_SCL1_GPIO_Port, EYE_SCL1_Pin};*/
-#endif // SOFTWARE_I2C_H
+
+#endif
+
+

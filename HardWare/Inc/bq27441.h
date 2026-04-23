@@ -1,3 +1,8 @@
+/*
+ * 文件: bq27441.h
+ * 说明: HardWare 模块源码文件，编码统一为 UTF-8。
+ * 注释规范: 中文注释统一使用 UTF-8。
+ */
 #ifndef __BQ27441_H
 #define __BQ27441_H
 #include "stm32g0xx_hal.h"
@@ -6,7 +11,7 @@
 #define BQ27441_I2C_ADDRESS    (0x55 << 1)
 #define BQ27441_COMMAND_FLAGS         0x06
 
-// Extended Data
+
 #define BQ27441_EXTENDED_CONTROL      0x61
 #define BQ27441_EXTENDED_DATACLASS    0x3E
 #define BQ27441_EXTENDED_DATABLOCK    0x3F
@@ -30,8 +35,8 @@ typedef struct {
     int16_t AvgPower;
     uint16_t SOC;
     uint16_t InternalTemp;
-    uint8_t percent;  // �����ٷֱȣ�0x20��
-    uint8_t status;   // ״̬�루0x21��
+    uint8_t percent;
+    uint8_t status;
 } BQ27441_typedef;
 extern BQ27441_typedef BQ27441;
 void I2C_Semaphore_Init(void);
@@ -48,6 +53,8 @@ void BQ27441_VerifyConfig(void);
 void BQ27441_PrintRaTable(void);
 bool BQ27441_EnableIT(void);
 #endif
+
+
 
 
 

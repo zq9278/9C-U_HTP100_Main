@@ -1,5 +1,8 @@
-// pid.h
-
+/*
+ * æ–‡ä»¶: pid.h
+ * è¯´æ˜: HardWare æ¨¡å—æºç æ–‡ä»¶ï¼Œç¼–ç ç»Ÿä¸€ä¸º UTF-8ã€‚
+ * æ³¨é‡Šè§„èŒƒ: ä¸­æ–‡æ³¨é‡Šç»Ÿä¸€ä½¿ç”¨ UTF-8ã€‚
+ */
 #ifndef PID_H
 #define PID_H
 #include "stm32g0xx_hal.h"
@@ -9,23 +12,27 @@ typedef struct {
     float Kd;
     float previous_error;
     float integral;
-    float integral_max;   // »ı·ÖÏŞ·ùÖµ
-    float integral_min;   // »ı·ÖÏÂÏŞ·ùÖµ
-    float output_max;     // Êä³öÏŞ·ùÖµ
-    float output_min;     // Êä³öÏÂÏŞ·ùÖµ
-    float setpoint;       // Éè¶¨Öµ
+    float integral_max;
+    float integral_min;
+    float output_max;
+    float output_min;
+    float setpoint;
     float previous_measured_value ;
     float derivative_filtered ;
 } PID_TypeDef;
 
-// ³õÊ¼»¯PID¿ØÖÆÆ÷
+
 void PID_Init(PID_TypeDef *pid, float Kp, float Ki, float Kd, float integral_max, float integral_min, float output_max, float output_min, float setpoint);
 
-// ¼ÆËãPID¿ØÖÆÊä³ö
+
 float PID_Compute(PID_TypeDef *pid, float measured_value);
 float PID_Compute_motor(PID_TypeDef *pid, float measured_value);
-// ÏŞ·ùºê
-//#define Limit(x, min, max) ((x) = (((x) <= (min)) ? (min) : (((x) >= (max)) ? (max) : (x))))
+float PID_Compute_motor_dt(PID_TypeDef *pid, float measured_value, float dt_s);
+
+
 #define Limit(x, min, max) (((x) <= (min)) ? (min) : (((x) >= (max)) ? (max) : (x)))
 
-#endif // PID_H
+#endif
+
+
+

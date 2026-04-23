@@ -1,8 +1,6 @@
 /*
- * device_lifetime.c
- * 设备寿命管理模块 - 状态机实现
- */
-
+ * 鏂囦欢: device_lifetime.c
+ * 璇存槑: HardWare 妯″潡婧愮爜鏂囦欢锛岀紪鐮佺粺涓€涓?UTF-8銆? * 娉ㄩ噴瑙勮寖: 涓枃娉ㄩ噴缁熶竴浣跨敤 UTF-8銆? */
 #include "device_lifetime.h"
 #include <string.h>
 #include "UserApp.h"
@@ -10,7 +8,7 @@
 #include "24cxx.h"
 #include "app_sys.h"
 #include "Button.h"
-// 静态上下文实例
+
 DeviceContext_t device_ctx;
 extern I2C_HandleTypeDef hi2c2;
 extern SemaphoreHandle_t i2c2_mutex;
@@ -24,39 +22,43 @@ extern uint8_t EYE_exist_Flag;
 extern uint8_t EYE_working_Flag;
 extern uint8_t EYE_status;
 HAL_StatusTypeDef status;
-/* Deferred mark request flag:
- * Set by Button flow when entering formal treatment.
- * Consumed by Device_Check_Task side to avoid transition races.
- */
+
 static volatile uint8_t g_pending_mark_normal_eye_shield = 0;
-// 初始化设备状态机（系统启动时调用）
+
+/**
+ * @brief Device_Init 鍑芥暟瀹炵幇銆? */
 void Device_Init(void) {
-    /* Reset lifetime context on boot; runtime state is updated by state machine. */
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
+
     memset(&device_ctx, 0, sizeof(DeviceContext_t));
     device_ctx.state = DEVICE_STATE_DISCONNECTED;
-    LOG("初始化设备状态机完成，等待设备接入\n");
+    LOG("鍒濆鍖栬澶囩姸鎬佹満瀹屾垚锛岀瓑寰呰澶囨帴鍏n");
 }
 void Test_EYE_AT24CXX_ReadWrite_FullCycle(void)
 {
     const uint16_t start_addr = 0x00;
-    const uint16_t end_addr   = 0xFE;  // 注意：每次写2字节，最大地址必须为偶数
+    const uint16_t end_addr   = 0xFE;
     const uint16_t test_base  = 0x5A00;
 
-    LOG("? 开始 EYE_AT24CXX 读写测试 (0x00 ~ 0xFE)...\n");
+    LOG("? 寮€濮?EYE_AT24CXX 璇诲啓娴嬭瘯 (0x00 ~ 0xFE)...\n");
 
-    // 写入数据
+
     for (uint16_t addr = start_addr; addr <= end_addr; addr += 2) {
         uint16_t value = test_base + addr;
 
         if (EYE_AT24CXX_WriteUInt16(addr, value) != HAL_OK) {
-            LOG("? 写入失败：地址 0x%02X，值 0x%04X\n", addr, value);
+            LOG("? 鍐欏叆澶辫触锛氬湴鍧€ 0x%02X锛屽€?0x%04X\n", addr, value);
             return;
         }
     }
 
-    LOG("? 写入完成，开始校验...\n");
+    LOG("? 鍐欏叆瀹屾垚锛屽紑濮嬫牎楠?..\n");
 
-    // 读取校验
+
     for (uint16_t addr = start_addr; addr <= end_addr; addr += 2) {
         HAL_StatusTypeDef status;
         uint16_t expected = test_base + addr;
@@ -65,62 +67,64 @@ void Test_EYE_AT24CXX_ReadWrite_FullCycle(void)
 
 
         if (actual != expected) {
-            LOG("? 校验失败：地址 0x%02X，期望 0x%04X，读出 0x%04X\n", addr, expected, actual);
+            LOG("? 鏍￠獙澶辫触锛氬湴鍧€ 0x%02X锛屾湡鏈?0x%04X锛岃鍑?0x%04X\n", addr, expected, actual);
         }
 
         if ((addr % 16) == 0) {
-            LOG("? 校验进度：0x%02X\n", addr);
+            LOG("? 鏍￠獙杩涘害锛?x%02X\n", addr);
         }
     }
 
-    LOG("? EEPROM 测试完成，数据一致无误！\n");
+    LOG("? EEPROM 娴嬭瘯瀹屾垚锛屾暟鎹竴鑷存棤璇紒\n");
 }
 
 
 void Test_EEPROM_FullReadWrite_256B(void)
 {
     const uint16_t start_addr = 0x00;
-    const uint16_t end_addr   = 0xFF;  // 最大地址 256 字节 EEPROM
+    const uint16_t end_addr   = 0xFF;
     const uint8_t  test_pattern_base = 0x5A;
 
-    LOG("? 开始 EEPROM 全盘写入测试 (0x00 ~ 0xFF)...\n");
+    LOG("? 寮€濮?EEPROM 鍏ㄧ洏鍐欏叆娴嬭瘯 (0x00 ~ 0xFF)...\n");
 
-    // 写入测试数据
+
     for (uint16_t addr = start_addr; addr <= end_addr; addr++) {
         uint8_t data = test_pattern_base + (addr & 0xFF);
         AT24CXX_WriteOneByte(addr, data);
-        osDelay(5);  // 等待写完成
+        osDelay(5);
     }
 
-    LOG("? 写入完成，开始校验...\n");
+    LOG("? 鍐欏叆瀹屾垚锛屽紑濮嬫牎楠?..\n");
 
-    // 校验每个地址
+
     for (uint16_t addr = start_addr; addr <= end_addr; addr++) {
         uint8_t expected = test_pattern_base + (addr & 0xFF);
         uint8_t actual = AT24CXX_ReadOneByte(addr);
 
         if (actual != expected) {
-            LOG("? 校验失败：地址 0x%02X，期望 0x%02X，读出 0x%02X\n", addr, expected, actual);
+            LOG("? 鏍￠獙澶辫触锛氬湴鍧€ 0x%02X锛屾湡鏈?0x%02X锛岃鍑?0x%02X\n", addr, expected, actual);
             return;
         }
 
         if ((addr % 16) == 0) {
-            LOG("? 校验进度：0x%02X\n", addr);
+            LOG("? 鏍￠獙杩涘害锛?x%02X\n", addr);
         }
     }
 
-    LOG("? EEPROM 全盘读写测试完成，数据一致！\n");
+    LOG("? EEPROM 鍏ㄧ洏璇诲啓娴嬭瘯瀹屾垚锛屾暟鎹竴鑷达紒\n");
 }
 
-// 仅在进入 PRE_* 状态时调用，延后标记未写入过的普通眼盾，
-// 避免设备上电检测到新眼盾后立即写入标记。
+
+
+/**
+ * @brief Device_TryMarkNormalEyeShield 鍑芥暟瀹炵幇銆? */
 void Device_TryMarkNormalEyeShield(void) {
-    /* Mark policy:
-     * 1) Only when EYE_MARK_MAP == 0xFFFF.
-     * 2) Skip super eye shield (super_eyes == 0x0202).
-     * 3) Normal eye shield increments host count, then writes mark.
-     * 4) Write must pass read-back verification.
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
      */
+
     uint16_t mark = 0;
     uint16_t super_mark = 0;
     LOG("[MARK] formal-entry mark attempt begin\n");
@@ -148,7 +152,7 @@ void Device_TryMarkNormalEyeShield(void) {
     }
 
 
-        // 新普通眼罩，第一次进入使用流程，主机计数 +1
+
     uint16_t eye_times = AT24CXX_ReadOrWriteZero(0xF2);
     eye_times += 1;
     AT24CXX_WriteUInt16(0xF2, eye_times);
@@ -168,13 +172,27 @@ void Device_TryMarkNormalEyeShield(void) {
     LOG("[ERROR] Normal eye shield mark failed after 3 retries\n");
 }
 
+/**
+ * @brief Device_RequestMarkNormalEyeShield 鍑芥暟瀹炵幇銆? */
 void Device_RequestMarkNormalEyeShield(void) {
-    /* Called by formal-mode transition in Button workflow. */
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
+
     g_pending_mark_normal_eye_shield = 1;
 }
 
+/**
+ * @brief Device_HandlePendingMarkRequest 鍑芥暟瀹炵幇銆? */
 void Device_HandlePendingMarkRequest(void) {
-    /* Executed in Device_Check_Task loop; keep pending while offline. */
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
+
     if (g_pending_mark_normal_eye_shield == 0) {
         return;
     }
@@ -185,8 +203,15 @@ void Device_HandlePendingMarkRequest(void) {
     Device_TryMarkNormalEyeShield();
 }
 
+/**
+ * @brief I2C_CheckDevice 鍑芥暟瀹炵幇銆? * @param i2c_addr 鍙傛暟銆? * @param retries 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
-    /* Probe with short mutex hold; use consecutive pass/fail filtering. */
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
+
     HAL_StatusTypeDef result;
     uint8_t consecutive_success = 0;
     uint8_t consecutive_fail = 0;
@@ -232,14 +257,21 @@ typedef enum {
     ST_ONLINE_NEW,
     ST_ONLINE_OLD
 } EyeState;
+/**
+ * @brief DeviceStateMachine_Update 鍑芥暟瀹炵幇銆? */
 void DeviceStateMachine_Update(void) {
-    /* State flow: OFFLINE -> CHECK_MARK -> ONLINE_NEW/ONLINE_OLD. */
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
+
     bool online = (I2C_CheckDevice(0x91, 4) == HAL_OK);
     uint16_t mark = 0;
     uint16_t eye_times = 0;
 
     static EyeState eye_state = ST_CHECK_ONLINE;
-    EyeState prev_state = eye_state; // 保存上一次状态，方便判断是否切换
+    EyeState prev_state = eye_state;
 
     switch (eye_state) {
     case ST_OFFLINE:
@@ -250,17 +282,15 @@ void DeviceStateMachine_Update(void) {
                 close_mianAPP();
                 LOG("[STATE] EYE set OFFLINE\n");
             }
-            break; // 保持离线
+            break;
         }
-        // -> 上线
+
         eye_state = ST_CHECK_MARK;
         LOG("[STATE] Transition: OFFLINE -> CHECK_MARK\n");
         break;
 
     case ST_CHECK_MARK:
-        /* Read eye EEPROM mark in a stable task context.
-         * Any read failure is treated as offline for safety.
-         */
+
         vTaskDelay(10);
         if (EYE_AT24CXX_ReadUInt16Ex(EYE_MARK_MAP, &mark) != HAL_OK) {
             LOG("[EEPROM] Read EYE_MARK_MAP failed\n");
@@ -274,22 +304,22 @@ void DeviceStateMachine_Update(void) {
         osDelay(5);
 
         if (mark == 0xFFFF) {
-            /* New eye shield path: allow use; clear stale pending request. */
-            g_pending_mark_normal_eye_shield = 0;
-            // // 新设备
-            // eye_times = AT24CXX_ReadOrWriteZero(0xF2);
-            // eye_times += 1;
-            // AT24CXX_WriteUInt16(0xF2, eye_times);
 
-            // my_prepare_data_times.cmd_type_low = 0xB0;
-            // my_prepare_data_times.value = eye_times;
-            // Eye_twitching_invalid_master(&my_prepare_data_times);
+            g_pending_mark_normal_eye_shield = 0;
+
+
+
+
+
+
+
+
 
             EYE_status = 1;
             eye_state = ST_ONLINE_NEW;
             LOG("[STATE] New device ONLINE, count=%u\n", eye_times);
         } else {
-            // 旧设备
+
             EYE_status = 0;
             close_mianAPP();
             eye_state = ST_ONLINE_OLD;
@@ -305,7 +335,7 @@ void DeviceStateMachine_Update(void) {
             eye_state = ST_OFFLINE;
             LOG("[STATE] Transition: ONLINE_NEW -> OFFLINE (removed)\n");
         } else {
-            EYE_status = 1; // 保持在线新设备
+            EYE_status = 1;
         }
         break;
 
@@ -329,8 +359,10 @@ void DeviceStateMachine_Update(void) {
         break;
     }
 
-    // 调试辅助：状态切换检测
+
     if (eye_state != prev_state) {
         LOG("[DEBUG] State changed: %d -> %d\n", prev_state, eye_state);
     }
 }
+
+

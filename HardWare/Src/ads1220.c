@@ -1,11 +1,6 @@
-﻿/*
- * @Author: zhangqi
- * @Date: 2024-12-30 17:40:27
- * @Last Modified by: zhangqi
- * @Last Modified time: 2025-01-05 16:37:52
- */
-
-// SPI接口代码，用于与MCU通信的ADS1220
+/*
+ * 鏂囦欢: ads1220.c
+ * 璇存槑: HardWare 妯″潡婧愮爜鏂囦欢锛岀紪鐮佺粺涓€涓?UTF-8銆? * 娉ㄩ噴瑙勮寖: 涓枃娉ㄩ噴缁熶竴浣跨敤 UTF-8銆? */
 #include "main.h"
 #include <stdint.h>
 #include "ads1220.h"
@@ -14,18 +9,13 @@
 #include "pid.h"
 
 
-// 定义全局变量
+
 volatile uint8_t spi_rx_buffer[3];
 volatile int32_t ads1220_result = 0;
-volatile uint8_t data_ready = 0; // 标志位
+volatile uint8_t data_ready = 0;
 extern SPI_HandleTypeDef hspi2;
 extern PID_TypeDef MotorPID;
-/*
- * SPI2 DMA + 完成信号量封装 (ADS1220 支持，发送与接收分离信号量)
- * 作者: zhangqi
- * 日期: 2024-12-30
- * 修改日期: 2025-01-05
- */
+
 
 #include "main.h"
 #include "cmsis_os.h"
@@ -33,133 +23,186 @@ extern PID_TypeDef MotorPID;
 
 extern SPI_HandleTypeDef hspi2;
 
-// ============================
-// 信号量初始化
-// ============================
+
+
+
+/**
+ * @brief SPI2_DMA_Semaphores_Init 鍑芥暟瀹炵幇銆? */
 void SPI2_DMA_Semaphores_Init(void) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     spi2TxDmaSemaphoreHandle = xSemaphoreCreateBinary();
     spi2RxDmaSemaphoreHandle = xSemaphoreCreateBinary();
 
     if (spi2TxDmaSemaphoreHandle != NULL) {
-        xSemaphoreGive(spi2TxDmaSemaphoreHandle);  // 初始释放发送信号量
+        xSemaphoreGive(spi2TxDmaSemaphoreHandle);
     }
     if (spi2RxDmaSemaphoreHandle != NULL) {
-        xSemaphoreGive(spi2RxDmaSemaphoreHandle);  // 初始释放接收信号量
+        xSemaphoreGive(spi2RxDmaSemaphoreHandle);
     }
 }
-// ============================
-// SPI 发送封装（DMA + 发送信号量）
-// ============================
+
+
+
+/**
+ * @brief SPI2_Transmit_DMA 鍑芥暟瀹炵幇銆? * @param txData 鍙傛暟銆? * @param size 鍙傛暟銆? * @param timeout 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 HAL_StatusTypeDef SPI2_Transmit_DMA(uint8_t *txData, uint16_t size, uint32_t timeout) {
-    // 1?? 等待前一次传输完成
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     if (xSemaphoreTake(spi2TxDmaSemaphoreHandle, pdMS_TO_TICKS(timeout)) != pdPASS) {
-        return HAL_BUSY;  // 上一次传输未完成
+        return HAL_BUSY;
     }
-    // 2?? 启动 SPI DMA 传输
     HAL_StatusTypeDef status = HAL_SPI_Transmit_DMA(&hspi2, txData, size);
 
     if (status != HAL_OK) {
-        xSemaphoreGive(spi2TxDmaSemaphoreHandle);  // 启动失败立即释放信号量，防止死锁
+        xSemaphoreGive(spi2TxDmaSemaphoreHandle);
     }
 
     return status;
 }
 
-// ============================
-// SPI 接收封装（DMA + 接收信号量）
-// ============================
+
+
+
+/**
+ * @brief SPI2_Receive_DMA 鍑芥暟瀹炵幇銆? * @param rxData 鍙傛暟銆? * @param size 鍙傛暟銆? * @param timeout 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 HAL_StatusTypeDef SPI2_Receive_DMA(uint8_t *rxData, uint16_t size, uint32_t timeout) {
-    //xSemaphoreGive(spi2RxDmaSemaphoreHandle);  // 初始释放一次
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
+
     if (xSemaphoreTake(spi2RxDmaSemaphoreHandle, pdMS_TO_TICKS(timeout)) != pdPASS) {
-        return HAL_BUSY;  // 上一次接收未完成
+        return HAL_BUSY;
     }
-    // 2?? 启动 SPI DMA 传输
     HAL_StatusTypeDef status = HAL_SPI_Receive_DMA(&hspi2, rxData, size);
     if (status != HAL_OK) {
-        xSemaphoreGive(spi2RxDmaSemaphoreHandle);  // 启动失败立即释放信号量，防止死锁
+        xSemaphoreGive(spi2RxDmaSemaphoreHandle);
     }
     return status;
 }
 
-// ============================
-// 写寄存器函数
-// ============================
+
+
+
+/**
+ * @brief ADS1220_WriteRegister 鍑芥暟瀹炵幇銆? * @param reg 鍙傛暟銆? * @param value 鍙傛暟銆? */
 void ADS1220_WriteRegister(uint8_t reg, uint8_t value) {
-    uint8_t cmd[2] = {0x40 | (reg << 2), value};  // WREG命令 + 地址 + 数据
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
+    uint8_t cmd[2] = {0x40 | (reg << 2), value};
     ADS1220_CS_LOW();
     if (SPI2_Transmit_DMA(cmd, 2, 100) != HAL_OK) {
-        LOG("写寄存器失败 - REG: 0x%02X\n", reg);
+        LOG("鍐欏瘎瀛樺櫒澶辫触 - REG: 0x%02X\n", reg);
     }
     ADS1220_CS_HIGH();
 }
 
-// ============================
-// ADS1220 初始化
-// ============================
+
+
+
+/**
+ * @brief ADS1220_Init 鍑芥暟瀹炵幇銆? */
 void ADS1220_Init(void) {
-    HAL_Delay(1);  // 上电稳定时间
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
+    HAL_Delay(1);
 
     uint8_t reset_cmd = ADS1220_CMD_RESET;
     ADS1220_CS_LOW();
     SPI2_Transmit_DMA(&reset_cmd, 1, 100);
-    //HAL_SPI_Transmit_DMA(&hspi2, &reset_cmd, 1);
+
     ADS1220_CS_HIGH();
-    osDelay(50);  // 等待复位完成
+    osDelay(50);
 
     uint8_t selfcal_cmd = ADS1220_CMD_SELFCAL;
     ADS1220_CS_LOW();
     SPI2_Transmit_DMA(&selfcal_cmd, 1, 100);
-    //HAL_SPI_Transmit_DMA(&hspi2, &selfcal_cmd, 1);
-    ADS1220_CS_HIGH();
-    osDelay(50);  // 自校准完成等待
 
-    // 配置寄存器
+    ADS1220_CS_HIGH();
+    osDelay(50);
+
+
     ADS1220_WriteRegister(ADS1220_REG_CONFIG0, 0x3E);
     ADS1220_WriteRegister(ADS1220_REG_CONFIG1, 0x94);
     ADS1220_WriteRegister(ADS1220_REG_CONFIG2, 0x98);
     ADS1220_WriteRegister(ADS1220_REG_CONFIG3, 0x00);
 }
 
-// ============================
-// 启动连续转换模式
-// ============================
+
+
+
+/**
+ * @brief ADS1220_StartConversion 鍑芥暟瀹炵幇銆? */
 void ADS1220_StartConversion(void) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     uint8_t start_cmd = ADS1220_CMD_START_SYNC;
     ADS1220_CS_LOW();
     SPI2_Transmit_DMA(&start_cmd, 1, 100);
     ADS1220_CS_HIGH();
 }
 
-// ============================
-// 停止连续转换
-// ============================
+
+
+
+/**
+ * @brief ADS1220_StopConversion 鍑芥暟瀹炵幇銆? */
 void ADS1220_StopConversion(void) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     uint8_t stop_cmd = ADS1220_CMD_POWERDOWN;
     ADS1220_CS_LOW();
     SPI2_Transmit_DMA(&stop_cmd, 1, 100);
     ADS1220_CS_HIGH();
 }
 
-// ============================
-// 读取数据函数 (DMA + 分离信号量处理)
-// ============================
+
+
+
+/**
+ * @brief ADS1220_ReadData 鍑芥暟瀹炵幇銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 int32_t ADS1220_ReadData(void) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     uint8_t read_cmd = ADS1220_CMD_RDATA;
     uint8_t rx_buffer[3] = {0};
 
     ADS1220_CS_LOW();
 
-    // 发送读取命令
+
     if (SPI2_Transmit_DMA(&read_cmd, 1, 100) != HAL_OK) {
         ADS1220_CS_HIGH();
-        LOG("读取命令发送失败\n");
+        LOG("璇诲彇鍛戒护鍙戦€佸け璐n");
         return -1;
     }
 
-    // 接收数据
+
     if (SPI2_Receive_DMA(rx_buffer, 3, 100) != HAL_OK) {
         ADS1220_CS_HIGH();
-        LOG("数据接收失败\n");
+        LOG("鏁版嵁鎺ユ敹澶辫触\n");
         return -1;
     }
 
@@ -169,13 +212,20 @@ int32_t ADS1220_ReadData(void) {
                      ((int32_t)rx_buffer[1] << 8)  |
                      rx_buffer[2];
 
-    return (result & 0x800000) ? (result | 0xFF000000) : result;  // 符号扩展
+    return (result & 0x800000) ? (result | 0xFF000000) : result;
 }
 
-// ============================
-// 读取压力值函数
-// ============================
+
+
+
+/**
+ * @brief ADS1220_GetSensitivityBySetpoint 鍑芥暟瀹炵幇銆? * @param pressure_setpoint_mmhg 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 static float ADS1220_GetSensitivityBySetpoint(float pressure_setpoint_mmhg) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     if (pressure_setpoint_mmhg <= 200.0f) {
         return SENSITIVITY_150;
     }
@@ -191,40 +241,63 @@ static float ADS1220_GetSensitivityBySetpoint(float pressure_setpoint_mmhg) {
     return SENSITIVITY_550;
 }
 
+/**
+ * @brief ADS1220_ReadPressure 鍑芥暟瀹炵幇銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 float ADS1220_ReadPressure(void) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     int32_t raw_data = ADS1220_ReadData();
-    if (raw_data == -1) return -1.0f;  // 读取失败处理
+    if (raw_data == -1) return -1.0f;
 
-    raw_data = -raw_data;  // 方向修正
+    raw_data = -raw_data;
     float V_in = (raw_data * VREF) / 8388607.0f;
     float V_load = V_in / GAIN;
     float sensitivity = ADS1220_GetSensitivityBySetpoint(MotorPID.setpoint);
     float weight = V_load / ((sensitivity / 1000.0f) * EXCITATION_VOLTAGE);
 
-    return weight * 1000.0f;  // 返回压力值 (g)
+    return weight * 1000.0f;
 }
 
-// ============================
-// 丢弃无效数据 (启动后读取无效值清除)
-// ============================
+
+
+
+/**
+ * @brief Discard_dirty_data 鍑芥暟瀹炵幇銆? */
 void Discard_dirty_data(void) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     for (int i = 0; i < 5; i++) {
         ADS1220_ReadPressure();
-        HAL_Delay(10);  // 间隔读取，避免过快
+        HAL_Delay(10);
     }
 }
 
-// ============================
-// 示例任务: 周期性读取压力
-// ============================
+
+
+
+/**
+ * @brief Start_SPI_Task 鍑芥暟瀹炵幇銆? * @param argument 鍙傛暟銆? */
 void Start_SPI_Task(void const *argument) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
     for (;;) {
         float pressure = ADS1220_ReadPressure();
         if (pressure >= 0) {
-            LOG("压力: %.2f g\n", pressure);
+            LOG("鍘嬪姏: %.2f g\n", pressure);
         } else {
-            LOG("读取压力失败\n");
+            LOG("璇诲彇鍘嬪姏澶辫触\n");
         }
-        osDelay(500);  // 500ms间隔读取
+        osDelay(500);
     }
 }
+
+
