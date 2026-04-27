@@ -193,7 +193,7 @@ void Press_Task(void *argument) {
                 press_pid_tick_flag = 0;
                 PressureControl((float)PRESS_PID_TIMER_PERIOD_MS / 1000.0f);
             }
-            osDelay(1);
+            osDelay(5);
         }
         vTaskSuspend(NULL);
     }
@@ -277,7 +277,6 @@ void Motor_go_home_task(void *argument) {
         MotorChecking();
         motor_homeHandle = NULL;
         vTaskDelete(NULL);
-
     }
 }
 
@@ -294,22 +293,14 @@ void Device_Check_Task(void *argument) {
     EYE_checkout(1.0);
     vTaskDelay(1200);
     xTimerStart(eye_is_existHandle, 0);
-
     Device_Init();
     for (;;) {
-
-
         DeviceStateMachine_Update();
         Device_HandlePendingMarkRequest();
-
         EYE_checkout(EYE_status);
         osDelay(100);
-
-
     }
 }
-
-
 extern I2C_HandleTypeDef hi2c2;
 extern DMA_HandleTypeDef hdma_i2c2_rx;
 
@@ -323,37 +314,20 @@ void I2C2_RecoveryTask(void *argument) {
      */
     (void)argument;
     for (;;) {
-
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
         i2c2_error_flag = 1;
-
         uint32_t isr = hi2c2.Instance->ISR;
         LOG("[I2C2 闁挎瑨顕 ISR=0x%08lX\n", isr);
-
         if (xSemaphoreTake(i2c2_mutex, portMAX_DELAY) == pdTRUE) {
             __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_BERR);
             __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_ARLO);
-
-
-
-
-
-
             __HAL_I2C_DISABLE(&hi2c2);
-
-
             __HAL_RCC_I2C2_FORCE_RESET();
             __HAL_RCC_I2C2_RELEASE_RESET();
-
-
             HAL_I2C_DeInit(&hi2c2);
             HAL_I2C_Init(&hi2c2);
-
-
             HAL_DMA_DeInit(&hdma_i2c2_rx);
             HAL_DMA_Init(&hdma_i2c2_rx);
-
             xSemaphoreGive(i2c2_mutex);
         }
 

@@ -61,13 +61,13 @@ PID_TypeDef HeatPID;
 #define HEAT_STARTUP_INTEGRAL_BLEED               0.70f
 
 
-#define HEAT_SEGMENT_SWITCH_ERROR                 10.0f
+#define HEAT_SEGMENT_SWITCH_ERROR                 3.0f
 
-#define HEAT_SEGMENT_FAR_KP                       8.0f
+#define HEAT_SEGMENT_FAR_KP                       12.0f
 #define HEAT_SEGMENT_FAR_KI                       0.0f
 #define HEAT_SEGMENT_FAR_KD                       0.0f
 
-#define HEAT_SEGMENT_NEAR_KP                      34.0f
+#define HEAT_SEGMENT_NEAR_KP                      35.0f
 #define HEAT_SEGMENT_NEAR_KI                      0.8f
 #define HEAT_SEGMENT_NEAR_KD                      20.0f
 
