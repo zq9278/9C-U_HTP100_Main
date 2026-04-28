@@ -533,7 +533,7 @@ void Main(void) {
 
 
 
-    xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 350, NULL, 10, &UART_RECEPTHandle);
+    xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 500, NULL, 10, &UART_RECEPTHandle);
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 9, &Button_StateHandle);
     xTaskCreate(APP_task, "APP", 512, NULL, 6, &APPHandle);
     xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle);
