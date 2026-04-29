@@ -1,12 +1,15 @@
 # 忽略 build 文件夹
 build/
 
-
 # 忽略 Drivers 文件夹
 Drivers/
 
-# 忽略 Middlewares 文件夹
-Middlewares/
+# 默认忽略 Middlewares 文件夹，仅保留本项目新增的 SEGGER RTT 源码
+Middlewares/*
+!Middlewares/Third_Party/
+Middlewares/Third_Party/*
+!Middlewares/Third_Party/SEGGER_RTT/
+!Middlewares/Third_Party/SEGGER_RTT/**
 
 # 忽略 .mxproject 文件
 *.mxproject

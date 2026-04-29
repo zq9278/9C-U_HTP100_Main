@@ -19,6 +19,10 @@ typedef struct {
     float setpoint;
     float previous_measured_value ;
     float derivative_filtered ;
+    float error;
+    float derivative;
+    float output;
+    float output_limited;
 } PID_TypeDef;
 
 
@@ -26,6 +30,7 @@ void PID_Init(PID_TypeDef *pid, float Kp, float Ki, float Kd, float integral_max
 
 
 float PID_Compute(PID_TypeDef *pid, float measured_value);
+float PID_Compute_dt(PID_TypeDef *pid, float measured_value, float dt_s);
 float PID_Compute_motor(PID_TypeDef *pid, float measured_value);
 float PID_Compute_motor_dt(PID_TypeDef *pid, float measured_value, float dt_s);
 
@@ -33,6 +38,4 @@ float PID_Compute_motor_dt(PID_TypeDef *pid, float measured_value, float dt_s);
 #define Limit(x, min, max) (((x) <= (min)) ? (min) : (((x) >= (max)) ? (max) : (x)))
 
 #endif
-
-
 

@@ -8,12 +8,22 @@ set(CMAKE_CXX_COMPILER_ID GNU)
 # arm-none-eabi- must be part of path environment
 set(TOOLCHAIN_PREFIX                arm-none-eabi-)
 
-set(CMAKE_C_COMPILER                ${TOOLCHAIN_PREFIX}gcc)
+file(GLOB STM32CUBE_TOOLCHAIN_BINS
+    "$ENV{LOCALAPPDATA}/stm32cube/bundles/gnu-tools-for-stm32/*/bin"
+)
+list(SORT STM32CUBE_TOOLCHAIN_BINS COMPARE NATURAL ORDER DESCENDING)
+
+find_program(ARM_NONE_EABI_GCC ${TOOLCHAIN_PREFIX}gcc HINTS ${STM32CUBE_TOOLCHAIN_BINS})
+find_program(ARM_NONE_EABI_GXX ${TOOLCHAIN_PREFIX}g++ HINTS ${STM32CUBE_TOOLCHAIN_BINS})
+find_program(ARM_NONE_EABI_OBJCOPY ${TOOLCHAIN_PREFIX}objcopy HINTS ${STM32CUBE_TOOLCHAIN_BINS})
+find_program(ARM_NONE_EABI_SIZE ${TOOLCHAIN_PREFIX}size HINTS ${STM32CUBE_TOOLCHAIN_BINS})
+
+set(CMAKE_C_COMPILER                ${ARM_NONE_EABI_GCC})
 set(CMAKE_ASM_COMPILER              ${CMAKE_C_COMPILER})
-set(CMAKE_CXX_COMPILER              ${TOOLCHAIN_PREFIX}g++)
-set(CMAKE_LINKER                    ${TOOLCHAIN_PREFIX}g++)
-set(CMAKE_OBJCOPY                   ${TOOLCHAIN_PREFIX}objcopy)
-set(CMAKE_SIZE                      ${TOOLCHAIN_PREFIX}size)
+set(CMAKE_CXX_COMPILER              ${ARM_NONE_EABI_GXX})
+set(CMAKE_LINKER                    ${ARM_NONE_EABI_GXX})
+set(CMAKE_OBJCOPY                   ${ARM_NONE_EABI_OBJCOPY})
+set(CMAKE_SIZE                      ${ARM_NONE_EABI_SIZE})
 
 set(CMAKE_EXECUTABLE_SUFFIX_ASM     ".elf")
 set(CMAKE_EXECUTABLE_SUFFIX_C       ".elf")

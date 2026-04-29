@@ -43,21 +43,21 @@ HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
     HAL_StatusTypeDef status;
 
     if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(60)) != pdTRUE) {
-        LOG("TMP112_Read锛氳幏鍙?I2C2 浜掓枼閿佸け璐r\n");
+        LOGE("[Temp] Event\n");
         return HAL_ERROR;
     }
 
 
     status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0x91, ReadAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, 2);
     if (status != HAL_OK) {
-        LOG("TMP112_Read锛欴MA 鍚姩澶辫触锛岀姸鎬佺爜锛?d\r\n", status);
+        LOGE("[Temp] DMA start failed, status=%d\r\n", status);
         xSemaphoreGive(i2c2_mutex);
         return status;
     }
 
 
     if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(80)) != pdTRUE) {
-        LOG("TMP112_Read锛欴MA璇诲彇瓒呮椂\r\n");
+        LOGE("[Temp] Event\r\n");
         xSemaphoreGive(i2c2_mutex);
         return HAL_TIMEOUT;
     }
@@ -192,7 +192,7 @@ int16_t TmpData;
 float TmpRaw2Ture(void)
 {       HAL_StatusTypeDef status = TMP112_Read(0x00, EyeTmpRaw);
     if (status != HAL_OK) {
-        LOG("娓╁害璇诲彇澶辫触锛岃繑鍥炰笂涓€娆＄殑EMA鎴朜AN");
+        LOGE("[Temp] Event");
 
 
 
@@ -213,5 +213,4 @@ float TmpRaw2Ture(void)
 
     return previousEMA;
 }
-
 

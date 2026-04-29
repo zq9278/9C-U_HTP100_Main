@@ -42,6 +42,19 @@ void MX_DMA_Init(void)
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
 
+  /* USER CODE BEGIN DMA_Pending_Clear */
+  DMA1->IFCR = DMA_IFCR_CGIF1 | DMA_IFCR_CGIF2 | DMA_IFCR_CGIF3 |
+               DMA_IFCR_CGIF4 | DMA_IFCR_CGIF5 | DMA_IFCR_CGIF6 |
+               DMA_IFCR_CGIF7;
+  DMAMUX1_ChannelStatus->CFR = DMAMUX_CFR_CSOF0 | DMAMUX_CFR_CSOF1 |
+                               DMAMUX_CFR_CSOF2 | DMAMUX_CFR_CSOF3 |
+                               DMAMUX_CFR_CSOF4 | DMAMUX_CFR_CSOF5 |
+                               DMAMUX_CFR_CSOF6;
+  HAL_NVIC_ClearPendingIRQ(DMA1_Channel1_IRQn);
+  HAL_NVIC_ClearPendingIRQ(DMA1_Channel2_3_IRQn);
+  HAL_NVIC_ClearPendingIRQ(DMA1_Ch4_7_DMAMUX1_OVR_IRQn);
+  /* USER CODE END DMA_Pending_Clear */
+
   /* DMA interrupt init */
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 3, 0);

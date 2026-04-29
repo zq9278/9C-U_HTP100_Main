@@ -154,7 +154,7 @@ void BQ25895_AutoRecover(void) {
     uint8_t chrg_stat = (reg0b & 0x18) >> 3;
 
     if (chrg_stat == 0x03) {
-        LOG("Charge complete: BQ25895 detected Charge Termination Done\n");
+        LOGI("[Charger] Event\n");
         return;
     }
 
@@ -166,7 +166,7 @@ void BQ25895_AutoRecover(void) {
 
 
     if (reg0c & (1 << 3)) {
-        LOG("Battery fault: BAT_FAULT = 1 (battery disconnect or VBAT high)\n");
+        LOGW("[Charger] Event\n");
         fault = true;
     }
 
@@ -174,27 +174,27 @@ void BQ25895_AutoRecover(void) {
     if (chrg_fault != 0x00) {
         switch (chrg_fault) {
             case 0x01:
-                LOG("Charge fault: input voltage abnormal (VBUS or VBAT issue)\n");
+                LOGW("[Charger] Event\n");
                 break;
             case 0x02:
-                LOG("Charge fault: thermal protection triggered\n");
+                LOGW("[Charger] Event\n");
                 break;
             case 0x03:
-                LOG("Charge fault: safety timer timeout\n");
+                LOGW("[Charger] Event\n");
                 break;
         }
         fault = true;
     }
 
     if (reg0c & (1 << 7)) {
-        LOG("Watchdog fault: WATCHDOG_FAULT = 1 (check I2C activity or watchdog config)\n");
+        LOGW("[Charger] Event\n");
         fault = true;
     }
 
 
     if (1) {
         BQ25895_Init();
-        LOG("Charger has been reinitialized\n");
+        LOGI("[Charger] Event\n");
     }
 }
 
@@ -287,7 +287,7 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
 
     if (((vbus_status & 0x80) || (vbus_status == 0x16)) &&
         !((last_vbus_status & 0x80) || (last_vbus_status == 0x16))) {
-        LOG("Charger plugged in, reinitializing bq25895...\n");
+        LOGI("[Charger] Event\n");
 
         BQ25895_Init();
         charging_flag=1;
@@ -297,7 +297,7 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
     if (!(vbus_status & 0x80) && !(vbus_status == 0x16) &&
         ((last_vbus_status & 0x80) || (last_vbus_status == 0x16))) {
 
-        LOG("Charger unplugged, clearing init flag...\n");
+        LOGW("[Charger] Event\n");
         charging_flag=0;
         NVIC_SystemReset();
     }

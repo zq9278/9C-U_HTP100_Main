@@ -333,29 +333,29 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
     uint32_t error = HAL_UART_GetError(huart);
     // 根据错误类型分别处理
     if (error & HAL_UART_ERROR_ORE) {
-      LOG_ISR("UART 溢出错误\n");
+      LOG_ISR("[UART] Event\n");
       __HAL_UART_CLEAR_OREFLAG(huart); // 清除溢出错误标志
       while (__HAL_UART_GET_FLAG(huart, UART_FLAG_RXNE)) {
         (huart->Instance->RDR & 0xFF); // 读取接收寄存器，清空接收缓冲
       }
     }
     if (error & HAL_UART_ERROR_FE) {
-      LOG_ISR("UART 帧错误\n");
+      LOG_ISR("[UART] Event\n");
       __HAL_UART_CLEAR_FEFLAG(huart); // 清除帧错误标志
     }
     if (error & HAL_UART_ERROR_NE) {
-      LOG_ISR("UART 噪声错误\n");
+      LOG_ISR("[UART] Event\n");
       __HAL_UART_CLEAR_NEFLAG(huart); // 清除噪声错误标志
     }
     if (error & HAL_UART_ERROR_DMA) {
-      LOG_ISR("UART DMA 错误\n");
+      LOG_ISR("[UART] Event\n");
       HAL_DMA_Abort(huart->hdmarx); // 停止 DMA
     }
     // 重新启动 UART DMA接收
     if (HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart2_data.buffer, sizeof(uart2_data.buffer)) == HAL_OK) {
-      LOG_ISR("重新启动DMA接收成功\n");
+      LOG_ISR("[UART] Event\n");
     } else {
-      LOG_ISR("重新启动DMA接收失败\n");
+      LOG_ISR("[UART] Event\n");
     }
   }
 }

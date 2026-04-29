@@ -36,7 +36,7 @@ void Device_Init(void) {
 
     memset(&device_ctx, 0, sizeof(DeviceContext_t));
     device_ctx.state = DEVICE_STATE_DISCONNECTED;
-    LOG("鍒濆鍖栬澶囩姸鎬佹満瀹屾垚锛岀瓑寰呰澶囨帴鍏n");
+    LOGI("[Device] Event");
 }
 void Test_EYE_AT24CXX_ReadWrite_FullCycle(void)
 {
@@ -44,19 +44,19 @@ void Test_EYE_AT24CXX_ReadWrite_FullCycle(void)
     const uint16_t end_addr   = 0xFE;
     const uint16_t test_base  = 0x5A00;
 
-    LOG("? 寮€濮?EYE_AT24CXX 璇诲啓娴嬭瘯 (0x00 ~ 0xFE)...\n");
+    LOGI("[Device] Event\n");
 
 
     for (uint16_t addr = start_addr; addr <= end_addr; addr += 2) {
         uint16_t value = test_base + addr;
 
         if (EYE_AT24CXX_WriteUInt16(addr, value) != HAL_OK) {
-            LOG("? 鍐欏叆澶辫触锛氬湴鍧€ 0x%02X锛屽€?0x%04X\n", addr, value);
+            LOGE("[Device] Write failed: addr=0x%02X, value=0x%04X\n", addr, value);
             return;
         }
     }
 
-    LOG("? 鍐欏叆瀹屾垚锛屽紑濮嬫牎楠?..\n");
+    LOGI("[Device] Event\n");
 
 
     for (uint16_t addr = start_addr; addr <= end_addr; addr += 2) {
@@ -67,15 +67,15 @@ void Test_EYE_AT24CXX_ReadWrite_FullCycle(void)
 
 
         if (actual != expected) {
-            LOG("? 鏍￠獙澶辫触锛氬湴鍧€ 0x%02X锛屾湡鏈?0x%04X锛岃鍑?0x%04X\n", addr, expected, actual);
+            LOGE("[Device] Verify failed: addr=0x%02X, expected=0x%04X, actual=0x%04X\n", addr, expected, actual);
         }
 
         if ((addr % 16) == 0) {
-            LOG("? 鏍￠獙杩涘害锛?x%02X\n", addr);
+            LOGI("[Device] Verify progress: addr=0x%02X\n", addr);
         }
     }
 
-    LOG("? EEPROM 娴嬭瘯瀹屾垚锛屾暟鎹竴鑷存棤璇紒\n");
+    LOGI("[Device] Event\n");
 }
 
 
@@ -85,7 +85,7 @@ void Test_EEPROM_FullReadWrite_256B(void)
     const uint16_t end_addr   = 0xFF;
     const uint8_t  test_pattern_base = 0x5A;
 
-    LOG("? 寮€濮?EEPROM 鍏ㄧ洏鍐欏叆娴嬭瘯 (0x00 ~ 0xFF)...\n");
+    LOGI("[Device] Event\n");
 
 
     for (uint16_t addr = start_addr; addr <= end_addr; addr++) {
@@ -94,7 +94,7 @@ void Test_EEPROM_FullReadWrite_256B(void)
         osDelay(5);
     }
 
-    LOG("? 鍐欏叆瀹屾垚锛屽紑濮嬫牎楠?..\n");
+    LOGI("[Device] Event\n");
 
 
     for (uint16_t addr = start_addr; addr <= end_addr; addr++) {
@@ -102,16 +102,16 @@ void Test_EEPROM_FullReadWrite_256B(void)
         uint8_t actual = AT24CXX_ReadOneByte(addr);
 
         if (actual != expected) {
-            LOG("? 鏍￠獙澶辫触锛氬湴鍧€ 0x%02X锛屾湡鏈?0x%02X锛岃鍑?0x%02X\n", addr, expected, actual);
+            LOGE("[Device] Verify failed: addr=0x%02X, expected=0x%02X, actual=0x%02X\n", addr, expected, actual);
             return;
         }
 
         if ((addr % 16) == 0) {
-            LOG("? 鏍￠獙杩涘害锛?x%02X\n", addr);
+            LOGI("[Device] Verify progress: addr=0x%02X\n", addr);
         }
     }
 
-    LOG("? EEPROM 鍏ㄧ洏璇诲啓娴嬭瘯瀹屾垚锛屾暟鎹竴鑷达紒\n");
+    LOGI("[Device] Event\n");
 }
 
 
@@ -127,27 +127,27 @@ void Device_TryMarkNormalEyeShield(void) {
 
     uint16_t mark = 0;
     uint16_t super_mark = 0;
-    LOG("[MARK] formal-entry mark attempt begin\n");
+    LOGI("[Device] Event\n");
 
     if (EYE_AT24CXX_ReadUInt16Ex(EYE_MARK_MAP, &mark) != HAL_OK) {
-        LOG("[ERROR] Read EYE_MARK_MAP failed, skip mark\n");
+        LOGE("[Device] Event\n");
         return;
     }
-    LOG("[MARK] EYE_MARK_MAP=0x%04X\n", mark);
+    LOGI("[Device] Read EYE_MARK_MAP=0x%04X\n", mark);
 
     if (mark != 0xFFFF) {
-        LOG("[MARK] skip: already marked\n");
+        LOGW("[Device] Event\n");
         return;
     }
 
     if (EYE_AT24CXX_ReadUInt16Ex(super_eyes, &super_mark) != HAL_OK) {
-        LOG("[ERROR] Read super_eyes failed, skip mark\n");
+        LOGE("[Device] Event\n");
         return;
     }
-    LOG("[MARK] super_eyes=0x%04X\n", super_mark);
+    LOGI("[Device] Read super_eyes=0x%04X\n", super_mark);
 
     if (super_mark == 0x0202) {
-        LOG("[MARK] skip: super eye shield (0x0202)\n");
+        LOGW("[Device] Event\n");
         return;
     }
 
@@ -163,13 +163,13 @@ void Device_TryMarkNormalEyeShield(void) {
         if (EYE_AT24CXX_WriteUInt16(EYE_MARK_MAP, 1) == HAL_OK &&
             EYE_AT24CXX_ReadUInt16Ex(EYE_MARK_MAP, &verify_mark) == HAL_OK &&
             verify_mark == 1) {
-            LOG("[STATE] Normal eye shield marked on formal state entry, retry=%u\n", retry);
+            LOGI("[Device] Normal eye shield marked, retry=%u\n", retry);
             return;
         }
-        LOG("[MARK] retry=%u verify failed\n", retry);
+        LOGI("[Device] Mark verify retry=%u\n", retry);
         osDelay(8);
     }
-    LOG("[ERROR] Normal eye shield mark failed after 3 retries\n");
+    LOGE("[Device] Event\n");
 }
 
 /**
@@ -217,7 +217,7 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
     uint8_t consecutive_fail = 0;
 
     if (i2c2_mutex == NULL) {
-        LOG("[ERROR] I2C mutex not initialized!\n");
+        LOGE("[Device] Event\n");
         return HAL_ERROR;
     }
 
@@ -280,27 +280,27 @@ void DeviceStateMachine_Update(void) {
             if (EYE_status != 0) {
                 EYE_status = 0;
                 close_mianAPP();
-                LOG("[STATE] EYE set OFFLINE\n");
+                LOGW("[Device] Event\n");
             }
             break;
         }
 
         eye_state = ST_CHECK_MARK;
-        LOG("[STATE] Transition: OFFLINE -> CHECK_MARK\n");
+        LOGW("[Device] Event\n");
         break;
 
     case ST_CHECK_MARK:
 
         vTaskDelay(10);
         if (EYE_AT24CXX_ReadUInt16Ex(EYE_MARK_MAP, &mark) != HAL_OK) {
-            LOG("[EEPROM] Read EYE_MARK_MAP failed\n");
+            LOGE("[Device] Event\n");
             g_pending_mark_normal_eye_shield = 0;
             eye_state = ST_OFFLINE;
             EYE_status = 0;
             close_mianAPP();
             break;
         }
-        LOG("[EEPROM] Read EYE_MARK_MAP=0x%04X\n", mark);
+        LOGI("[Device] Read EYE_MARK_MAP=0x%04X\n", mark);
         osDelay(5);
 
         if (mark == 0xFFFF) {
@@ -317,13 +317,13 @@ void DeviceStateMachine_Update(void) {
 
             EYE_status = 1;
             eye_state = ST_ONLINE_NEW;
-            LOG("[STATE] New device ONLINE, count=%u\n", eye_times);
+            LOGI("[Device] New device online, count=%u\n", eye_times);
         } else {
 
             EYE_status = 0;
             close_mianAPP();
             eye_state = ST_ONLINE_OLD;
-            LOG("[STATE] Old device ONLINE, usage denied\n");
+            LOGW("[Device] Event\n");
         }
         break;
 
@@ -333,7 +333,7 @@ void DeviceStateMachine_Update(void) {
             EYE_status = 0;
             close_mianAPP();
             eye_state = ST_OFFLINE;
-            LOG("[STATE] Transition: ONLINE_NEW -> OFFLINE (removed)\n");
+            LOGW("[Device] Event\n");
         } else {
             EYE_status = 1;
         }
@@ -343,26 +343,25 @@ void DeviceStateMachine_Update(void) {
         if (!online) {
             g_pending_mark_normal_eye_shield = 0;
             eye_state = ST_OFFLINE;
-            LOG("[STATE] Transition: ONLINE_OLD -> OFFLINE (removed)\n");
+            LOGW("[Device] Event\n");
         } else {
             if (EYE_status != 0) {
                 EYE_status = 0;
                 close_mianAPP();
-                LOG("[STATE] Old device still ONLINE, access denied\n");
+                LOGW("[Device] Event\n");
             }
         }
         break;
 
     default:
         eye_state = ST_OFFLINE;
-        LOG("[WARN] Invalid state detected, reset -> OFFLINE\n");
+        LOGW("[Device] Event\n");
         break;
     }
 
 
     if (eye_state != prev_state) {
-        LOG("[DEBUG] State changed: %d -> %d\n", prev_state, eye_state);
+        LOGI("[Device] State changed: %d -> %d\n", prev_state, eye_state);
     }
 }
-
 

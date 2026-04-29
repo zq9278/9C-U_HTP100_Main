@@ -43,7 +43,7 @@ void UART1_CMDHandler(recept_data_p msg) {
 
 
     if (msg == NULL) {
-        LOG("[ERROR] CMDHandler: msg is NULL!\n");
+        LOGE("[Screen] Event\n");
         return;
     }
 
@@ -51,13 +51,13 @@ void UART1_CMDHandler(recept_data_p msg) {
     uint16_t cmd_type = ((msg->cmd_type_high) << 8) | (msg->cmd_type_low);
     float data = (float) msg->data;
 
-    LOG("[CMD] Received: cmd_type=0x%04X, data=%.2f, currentState=%d\n",
+    LOGI("[Screen] CMD received: cmd=0x%04X, data=%.2f, state=%d\n",
         cmd_type, data, currentState);
 
 
     switch (cmd_type) {
     case 0x8900:
-        LOG("[INFO] Finish signal received\n");
+        LOGI("[Screen] Event\n");
         if (currentState == STATE_HEAT) {
             heat_finish = 1;
             hot_count = AT24CXX_ReadOrWriteZero(0x00);
@@ -65,7 +65,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             my_prepare_data.cmd_type_low = 0xA0;
             my_prepare_data.value = hot_count + 1;
             Eye_twitching_invalid_master(&my_prepare_data);
-            LOG("[STATE] HEAT finished, total=%d\n", hot_count + 1);
+            LOGI("[Screen] HEAT finished, total=%d\n", hot_count + 1);
         }
         else if (currentState == STATE_PRESS) {
             press_finish = 1;
@@ -74,7 +74,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             my_prepare_data.cmd_type_low = 0xA1;
             my_prepare_data.value = crimp_count + 1;
             Eye_twitching_invalid_master(&my_prepare_data);
-            LOG("[STATE] PRESS finished, total=%d\n", crimp_count + 1);
+            LOGI("[Screen] PRESS finished, total=%d\n", crimp_count + 1);
         }
         else if (currentState == STATE_AUTO) {
             auto_finish = 1;
@@ -83,16 +83,16 @@ void UART1_CMDHandler(recept_data_p msg) {
             my_prepare_data.cmd_type_low = 0xA2;
             my_prepare_data.value = auto_count + 1;
             Eye_twitching_invalid_master(&my_prepare_data);
-            LOG("[STATE] AUTO finished, total=%d\n", auto_count + 1);
+            LOGI("[Screen] AUTO finished, total=%d\n", auto_count + 1);
         }
         else {
-            LOG("[WARN] Finish signal ignored (state=%d)\n", currentState);
+            LOGW("[Screen] Finish signal ignored, state=%d\n", currentState);
         }
         break;
 
     case 0x1041:
         if (EYE_status == 0) {
-            LOG("[WARN] Skip HEAT start: EYE_status=0\n");
+            LOGW("[Screen] Event\n");
             break;
         }
         currentState = STATE_PRE_HEAT;
@@ -101,67 +101,67 @@ void UART1_CMDHandler(recept_data_p msg) {
         HeatPID.setpoint = 40 + temperature_compensation;
         if (HeatHandle != NULL) {
             vTaskResume(HeatHandle);
-            LOG("[TASK] HeatHandle resumed\n");
+            LOGI("[Screen] Event\n");
         }
-        LOG("[STATE] -> PRE_HEAT, setpoint=%.2f\n", HeatPID.setpoint);
+        LOGI("[Screen] Heat setpoint=%.2f\n", HeatPID.setpoint);
         break;
 
     case 0x1030:
         if (currentState == STATE_HEAT || currentState == STATE_PRE_HEAT) {
             HeatPWM(0);
-            LOG("[ACTION] HeatPWM stopped\n");
+            LOGI("[Screen] Event\n");
             if (HeatHandle != NULL) {
                 xTaskNotifyGive(HeatHandle);
-                LOG("[TASK] HeatHandle notified to exit\n");
+                LOGI("[Screen] Event\n");
             }
             if (heat_finish == 0 && currentState == STATE_HEAT) {
                 emergency_stop = 1;
-                LOG("[WARN] Emergency stop triggered in HEAT unfinished\n");
+                LOGW("[Screen] Event\n");
             }
         }
         currentState = STATE_OFF;
-        LOG("[STATE] -> OFF (from HEAT stop)\n");
+        LOGI("[Screen] Event\n");
         break;
 
     case 0x1005:
         if (EYE_status == 0) {
-            LOG("[WARN] Skip PRESS start: EYE_status=0\n");
+            LOGW("[Screen] Event\n");
             break;
         }
         currentState = STATE_PRE_PRESS;
         emergency_stop = 0;
         MotorPID.setpoint = data;
-        LOG("[STATE] -> PRE_PRESS, MotorPID.setpoint=%.2f\n", MotorPID.setpoint);
+        LOGI("[Screen] Motor setpoint=%.2f\n", MotorPID.setpoint);
         break;
 
     case 0x1034:
         if (currentState == STATE_PRESS) {
             if (press_finish == 0) {
                 emergency_stop = 1;
-                LOG("[WARN] Emergency stop triggered in PRESS unfinished\n");
+                LOGW("[Screen] Event\n");
             }
             if (PressHandle != NULL) {
                 xTaskNotifyGive(PressHandle);
-                LOG("[TASK] PressHandle notified to suspend\n");
+                LOGI("[Screen] Event\n");
             }
             if (motor_homeHandle == NULL) {
                 if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2,
                                 &motor_homeHandle) == pdPASS) {
-                    LOG("[TASK] Motor_go_home created\n");
+                    LOGI("[Screen] Event\n");
                 } else {
-                    LOG("[ERROR] Failed to create Motor_go_home task\n");
+                    LOGE("[Screen] Event\n");
                 }
             } else {
-                LOG("[INFO] Motor_go_home already running\n");
+                LOGW("[Screen] Event\n");
             }
         }
         currentState = STATE_OFF;
-        LOG("[STATE] -> OFF (from PRESS stop)\n");
+        LOGI("[Screen] Event\n");
         break;
 
     case 0x1037:
         if (EYE_status == 0) {
-            LOG("[WARN] Skip AUTO start: EYE_status=0\n");
+            LOGW("[Screen] Event\n");
             break;
         }
         currentState = STATE_PRE_AUTO;
@@ -172,9 +172,9 @@ void UART1_CMDHandler(recept_data_p msg) {
         MotorPID.setpoint = data;
         if (HeatHandle != NULL) {
             vTaskResume(HeatHandle);
-            LOG("[TASK] HeatHandle resumed\n");
+            LOGI("[Screen] Event\n");
         }
-        LOG("[STATE] -> PRE_AUTO, HeatSP=%.2f, MotorSP=%.2f\n",
+        LOGI("[Screen] Auto setpoint: heat=%.2f, motor=%.2f\n",
             HeatPID.setpoint, MotorPID.setpoint);
         break;
 
@@ -183,7 +183,7 @@ void UART1_CMDHandler(recept_data_p msg) {
             HeatPWM(0);
             if (HeatHandle != NULL) {
                 xTaskNotifyGive(HeatHandle);
-                LOG("[TASK] HeatHandle notified to exit\n");
+                LOGI("[Screen] Event\n");
             }
         }
         if (currentState == STATE_AUTO) {
@@ -191,11 +191,11 @@ void UART1_CMDHandler(recept_data_p msg) {
             close_mianAPP();
             if (auto_finish == 0) {
                 emergency_stop = 1;
-                LOG("[WARN] Emergency stop in AUTO unfinished\n");
+                LOGW("[Screen] Event\n");
             }
         }
         currentState = STATE_OFF;
-        LOG("[STATE] -> OFF (from AUTO stop)\n");
+        LOGI("[Screen] Event\n");
         break;
 
     case 0x1040:
@@ -203,13 +203,13 @@ void UART1_CMDHandler(recept_data_p msg) {
     case 0x1036:
         soft_button = 1;
         xSemaphoreGive(BUTTON_SEMAPHOREHandle);
-        LOG("[EVENT] Soft button pressed, semaphore released\n");
+        LOGI("[Screen] Event\n");
         break;
 
     case 0x1051:
         serialTimeoutFlag = 0;
         xTimerReset(serialTimeoutTimerHandle, 0);
-        LOG("[EVENT] Screen alive signal, timer reset\n");
+        LOGI("[Screen] Event\n");
         break;
 
     case 0x1050:
@@ -217,21 +217,21 @@ void UART1_CMDHandler(recept_data_p msg) {
         prepare_data_set();
         currentState = STATE_OFF;
         vTaskResume(deviceCheckHandle);
-        LOG("[EVENT] Screen power-on, deviceCheck resumed\n");
+        LOGI("[Screen] Event\n");
         break;
 
     case 0x1052:
-        LOG("[EVENT] Screen is open\n");
+        LOGI("[Screen] Event\n");
         break;
 
     case 0x1053:
         HeatPID.setpoint = data + temperature_compensation;
-        LOG("[PARAM] HeatPID.setpoint=%.2f\n", HeatPID.setpoint);
+        LOGI("[Screen] Heat setpoint=%.2f\n", HeatPID.setpoint);
         break;
 
     case 0x1054:
         MotorPID.setpoint = data;
-        LOG("[PARAM] MotorPID.setpoint=%.2f\n", MotorPID.setpoint);
+        LOGI("[Screen] Motor setpoint=%.2f\n", MotorPID.setpoint);
         break;
 
     case 0x1055:
@@ -241,19 +241,19 @@ void UART1_CMDHandler(recept_data_p msg) {
         HeatPWM(1);
         if (HeatHandle != NULL) {
             vTaskResume(HeatHandle);
-            LOG("[TASK] HeatHandle resumed (factory)\n");
+            LOGI("[Screen] Event\n");
         }
         if (motor_homeHandle == NULL) {
             if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2,
                             &motor_homeHandle) == pdPASS) {
-                LOG("[TASK] Motor_go_home created (factory)\n");
+                LOGI("[Screen] Event\n");
             } else {
-                LOG("[ERROR] Failed to create Motor_go_home task (factory)\n");
+                LOGE("[Screen] Event\n");
             }
         } else {
-            LOG("[INFO] Motor_go_home already running (factory)\n");
+            LOGI("[Screen] Event\n");
         }
-        LOG("[STATE] -> PRE_AUTO (factory)\n");
+        LOGI("[Screen] Event\n");
         break;
 
     case 0x1056:
@@ -270,12 +270,12 @@ void UART1_CMDHandler(recept_data_p msg) {
         my_prepare_data_times.cmd_type_low = 0xb0;
         my_prepare_data_times.value = eye_times;
         Eye_twitching_invalid_master(&my_prepare_data_times);
-        LOG("[REPORT] eye_times=%d\n", eye_times);
+        LOGI("[Screen] Report eye_times=%d\n", eye_times);
     }
         break;
 
     default:
-        LOG("[WARN] Unknown cmd_type=0x%04X\n", cmd_type);
+        LOGW("[Screen] Unknown cmd=0x%04X\n", cmd_type);
         break;
     }
 }
@@ -289,7 +289,7 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
 
 
     if (msg == NULL) {
-        LOG("[ERROR] prepare: msg NULL\n");
+        LOGE("[Screen] Event\n");
         return;
     }
 
@@ -304,45 +304,45 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
     my_prepare_data.end_high = 0xFF;
     my_prepare_data.end_low = 0xFF;
 
-    LOG("[CMD_PREPARE] cmd_type=0x%04X, data=%u, save_prepare=%u set_prepare=%u\n",
+    LOGI("[Screen] Prepare CMD: cmd=0x%04X, data=%u, save=%u, set=%u\n",
         cmd_type, data, save_prepare, set_prepare);
 
 
     switch (cmd_type) {
     case 0x1042:
         save_prepare = data;
-        LOG("[STATE] Save prepare=%u\n", save_prepare);
+        LOGI("[Screen] Save prepare=%u\n", save_prepare);
 
         switch (save_prepare) {
         case 0:
             prepare_press_pre = 150;
             prepare_temperature_pre = 42;
             prepare_time_pre = 1;
-            LOG("[PRESET] Default: press=150, temp=42, time=1\n");
+            LOGI("[Screen] Event\n");
             break;
         case 1:
             prepare_temperature_pre = AT24CXX_ReadOrWriteZero(0x08);
             prepare_press_pre = AT24CXX_ReadOrWriteZero(0x0A);
             prepare_time_pre    = AT24CXX_ReadOrWriteZero(0x0C);
-            LOG("[PRESET] Read slot1: temp=%u, press=%u, time=%u\n",
+            LOGI("[Screen] Read slot1: temp=%u, press=%u, time=%u\n",
                 prepare_temperature_pre, prepare_press_pre, prepare_time_pre);
             break;
         case 2:
             prepare_temperature_pre = AT24CXX_ReadOrWriteZero(0x10);
             prepare_press_pre = AT24CXX_ReadOrWriteZero(0x12);
             prepare_time_pre    = AT24CXX_ReadOrWriteZero(0x14);
-            LOG("[PRESET] Read slot2: temp=%u, press=%u, time=%u\n",
+            LOGI("[Screen] Read slot2: temp=%u, press=%u, time=%u\n",
                 prepare_temperature_pre, prepare_press_pre, prepare_time_pre);
             break;
         case 3:
             prepare_temperature_pre = AT24CXX_ReadOrWriteZero(0x18);
             prepare_press_pre = AT24CXX_ReadOrWriteZero(0x1A);
             prepare_time_pre    = AT24CXX_ReadOrWriteZero(0x1C);
-            LOG("[PRESET] Read slot3: temp=%u, press=%u, time=%u\n",
+            LOGI("[Screen] Read slot3: temp=%u, press=%u, time=%u\n",
                 prepare_temperature_pre, prepare_press_pre, prepare_time_pre);
             break;
         default:
-            LOG("[WARN] Invalid save_prepare=%u\n", save_prepare);
+            LOGW("[Screen] Invalid save_prepare=%u\n", save_prepare);
             break;
         }
 
@@ -362,13 +362,13 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
     case 0x1044:
         set_prepare = data;
         AT24CXX_WriteUInt16(0xFC, set_prepare);
-        LOG("[STATE] Set prepare=%u saved @0xFC\n", set_prepare);
+        LOGI("[Screen] Set prepare=%u saved\n", set_prepare);
         switch (set_prepare) {
         case 0:
             prepare_press_pre = 150;
             prepare_temperature_pre = 42;
             prepare_time_pre = 1;
-            LOG("[PRESET] Default: press=150, temp=42, time=1\n");
+            LOGI("[Screen] Event\n");
             break;
         case 1:
             prepare_press_pre = AT24CXX_ReadOrWriteZero(0x08);
@@ -386,10 +386,10 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
             prepare_time_pre    = AT24CXX_ReadOrWriteZero(0x1C);
             break;
         default:
-            LOG("[WARN] Invalid set_prepare=%u\n", set_prepare);
+            LOGW("[Screen] Invalid set_prepare=%u\n", set_prepare);
             break;
         }
-        LOG("[PRESET] Apply slot%u: press=%u, temp=%u, time=%u\n",
+        LOGI("[Screen] Apply slot%u: press=%u, temp=%u, time=%u\n",
             set_prepare, prepare_press_pre, prepare_temperature_pre, prepare_time_pre);
 
         my_prepare_data.cmd_type_low = 0xA4;
@@ -411,9 +411,9 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         case 1: AT24CXX_WriteUInt16(0x08, data); break;
         case 2: AT24CXX_WriteUInt16(0x10, data); break;
         case 3: AT24CXX_WriteUInt16(0x18, data); break;
-        default: LOG("[WARN] Invalid save_prepare=%u for temp\n", save_prepare); break;
+        default: LOGW("[Screen] Invalid save_prepare=%u for temp\n", save_prepare); break;
         }
-        LOG("[PARAM] Save slot%u temp=%u\n", save_prepare, data);
+        LOGI("[Screen] Save slot%u temp=%u\n", save_prepare, data);
         break;
 
     case 0x1040:
@@ -422,9 +422,9 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         case 1: AT24CXX_WriteUInt16(0x0A, data); break;
         case 2: AT24CXX_WriteUInt16(0x12, data); break;
         case 3: AT24CXX_WriteUInt16(0x1A, data); break;
-        default: LOG("[WARN] Invalid save_prepare=%u for press\n", save_prepare); break;
+        default: LOGW("[Screen] Invalid save_prepare=%u for press\n", save_prepare); break;
         }
-        LOG("[PARAM] Save slot%u press=%u\n", save_prepare, data);
+        LOGI("[Screen] Save slot%u press=%u\n", save_prepare, data);
         break;
 
     case 0x1041:
@@ -433,32 +433,32 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
         case 1: AT24CXX_WriteUInt16(0x0C, data); break;
         case 2: AT24CXX_WriteUInt16(0x14, data); break;
         case 3: AT24CXX_WriteUInt16(0x1C, data); break;
-        default: LOG("[WARN] Invalid save_prepare=%u for time\n", save_prepare); break;
+        default: LOGW("[Screen] Invalid save_prepare=%u for time\n", save_prepare); break;
         }
-        LOG("[PARAM] Save slot%u time=%u\n", save_prepare, data);
+        LOGI("[Screen] Save slot%u time=%u\n", save_prepare, data);
         break;
 
     case 0x1043:
         AT24CXX_WriteUInt16(0xF8, data);
-        LOG("[PARAM] Saved param@0xF8=%u\n", data);
+        LOGI("[Screen] Saved param@0xF8=%u\n", data);
         break;
 
     case 0x1046:
 
         AT24C02_WriteAllBytes(0xFF);
 
-        LOG("[ACTION] Cleared EEPROM all bytes\n");
+        LOGI("[Screen] Event\n");
         break;
 
     case 0x1047:
 
         AT24C02_WriteAllBytes_eye(0xFF);
 
-        LOG("[ACTION] Cleared EEPROM eye bytes\n");
+        LOGI("[Screen] Event\n");
         break;
 
     default:
-        LOG("[WARN] Unknown prepare cmd_type=0x%04X\n", cmd_type);
+        LOGW("[Screen] Unknown prepare cmd=0x%04X\n", cmd_type);
         break;
     }
 }
@@ -471,12 +471,12 @@ void command_parsing(uart_data *received_data) {
 
 
     if (received_data == NULL) {
-        LOG("[ERROR] command_parsing: received_data NULL\n");
+        LOGE("[Screen] Event\n");
         return;
     }
 
     if (received_data->length < 2) {
-        LOG("[ERROR] command_parsing: invalid length=%u\n", received_data->length);
+        LOGE("[Screen] Invalid frame length=%u\n", received_data->length);
         return;
     }
 
@@ -484,26 +484,26 @@ void command_parsing(uart_data *received_data) {
         (received_data->buffer[0] << 8) |
         received_data->buffer[1];
 
-    LOG("[CMD_PARSE] New frame: cmd_type=0x%04X, length=%u\n",
+    LOGI("[Screen] Parse frame: cmd=0x%04X, length=%u\n",
         cmd_type, received_data->length);
 
 
     switch (cmd_type) {
     case 0x5aa5: {
-        LOG("[DISPATCH] -> UART1_CMDHandler\n");
+        LOGI("[Screen] Event\n");
         UART1_CMDHandler((recept_data *)received_data->buffer);
         break;
     }
 
     case 0x6aa6: {
-        LOG("[DISPATCH] -> UART1_CMDHandler_prepare\n");
+        LOGI("[Screen] Event\n");
         UART1_CMDHandler_prepare((prepare_data *)received_data->buffer);
         break;
     }
 
     case 0x7aa7: {
         recept_data_debug_p press_pid_data = (recept_data_debug *) received_data->buffer;
-        LOG("[PID] Motor update: P=%.3f, I=%.3f, D=%.3f, setpoint=%.2f\n",
+        LOGI("[Screen] Motor PID: P=%.3f, I=%.3f, D=%.3f, setpoint=%.2f\n",
             press_pid_data->p,
             press_pid_data->i,
             press_pid_data->d,
@@ -512,7 +512,7 @@ void command_parsing(uart_data *received_data) {
         PID_Init(&MotorPID,
                  press_pid_data->p, press_pid_data->i, press_pid_data->d,
                  5000, -5000, 50000, -50000, press_pid_data->setpoint);
-        LOG("[PID] MotorPID initialized\n");
+        LOGI("[Screen] Event\n");
         break;
     }
 
@@ -523,7 +523,7 @@ void command_parsing(uart_data *received_data) {
                                            level_pid_data->p,
                                            level_pid_data->i,
                                            level_pid_data->d);
-        LOG("[PID_LEVEL] level=%.2f, P=%.3f, I=%.3f, D=%.3f, ok=%u\n",
+        LOGI("[Screen] Level PID: setpoint=%.2f, P=%.3f, I=%.3f, D=%.3f, ok=%u\n",
             level_pid_data->setpoint,
             level_pid_data->p,
             level_pid_data->i,
@@ -535,7 +535,7 @@ void command_parsing(uart_data *received_data) {
 
     case 0x9aa9: {
         recept_data_debug_p heat_pid_data = (recept_data_debug *) received_data->buffer;
-        LOG("[PID] Heat update: P=%.3f, I=%.3f, D=%.3f, setpoint=%.2f\n",
+        LOGI("[Screen] Heat PID: P=%.3f, I=%.3f, D=%.3f, setpoint=%.2f\n",
             heat_pid_data->p,
             heat_pid_data->i,
             heat_pid_data->d,
@@ -544,12 +544,12 @@ void command_parsing(uart_data *received_data) {
         PID_Init(&HeatPID,
                  heat_pid_data->p, heat_pid_data->i, heat_pid_data->d,
                  300, -300, 255, 0, heat_pid_data->setpoint);
-        LOG("[PID] HeatPID initialized\n");
+        LOGI("[Screen] Event\n");
         break;
     }
 
     default:
-        LOG("[WARN] Unknown cmd_type=0x%04X, ignored\n", cmd_type);
+        LOGW("[Screen] Unknown parsed cmd=0x%04X\n", cmd_type);
         break;
     }
 }
@@ -847,11 +847,11 @@ void Serial_data_stream_parsing(uart_data *frameData) {
 
 
     if (frameData == NULL) {
-        LOG("Error: Invalid frameData pointer or size\n");
+        LOGE("[Screen] Event\n");
         return;
     }
     if (frameData->length < 2) {
-        LOG("Error: Invalid frame length=%u\n", frameData->length);
+        LOGE("[Screen] Invalid stream frame length=%u\n", frameData->length);
         return;
     }
 
@@ -869,7 +869,7 @@ void Serial_data_stream_parsing(uart_data *frameData) {
                     frameData->buffer[j + 1] == FRAME_TAIL_BYTE2) {
                     uint16_t frame_size = j - i + 2;
                     if (frame_size > UART_RX_BUFFER_SIZE) {
-                        LOG("Error: Frame size exceeds buffer limit\n");
+                        LOGE("[Screen] Event\n");
                         break;
                     }
 
@@ -884,9 +884,9 @@ void Serial_data_stream_parsing(uart_data *frameData) {
 for(uint16_t i = 0; i < frameData->length; i++) {
 
                          }
-                         LOG("\n");
+                         LOGI("\n");
                     } else {
-                        LOG("Error: CRC mismatch\n");
+                        LOGE("[Screen] Event\n");
                     }
 
                     i = j + 1;
@@ -897,6 +897,5 @@ for(uint16_t i = 0; i < frameData->length; i++) {
     }
 
 }
-
 
 

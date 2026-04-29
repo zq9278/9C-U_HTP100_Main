@@ -4,9 +4,11 @@
 #include "main.h"
 #include "heat.h"
 #include "pid.h"
+#include "interface_uart.h"
 
 uint8_t HeatPWMVal = 0;
 PID_TypeDef HeatPID;
+extern float p, i, d;
 
 
 
@@ -61,15 +63,15 @@ PID_TypeDef HeatPID;
 #define HEAT_STARTUP_INTEGRAL_BLEED               0.70f
 
 
-#define HEAT_SEGMENT_SWITCH_ERROR                 3.0f
+#define HEAT_SEGMENT_SWITCH_ERROR                 10.0f
 
 #define HEAT_SEGMENT_FAR_KP                       12.0f
 #define HEAT_SEGMENT_FAR_KI                       0.0f
 #define HEAT_SEGMENT_FAR_KD                       0.0f
 
-#define HEAT_SEGMENT_NEAR_KP                      35.0f
-#define HEAT_SEGMENT_NEAR_KI                      0.8f
-#define HEAT_SEGMENT_NEAR_KD                      20.0f
+#define HEAT_SEGMENT_NEAR_KP                      15.0f
+#define HEAT_SEGMENT_NEAR_KI                      2.0f
+#define HEAT_SEGMENT_NEAR_KD                      0.5f
 
 #define HEAT_SEGMENT_MODE_FAR                     0u
 #define HEAT_SEGMENT_MODE_NEAR                    1u
@@ -165,6 +167,10 @@ void HeatSegmentedPIDReset(void) {
 /**
  * @brief HeatSegmentedPIDCompute 鍑芥暟瀹炵幇銆? * @param pid 鍙傛暟銆? * @param measured_value 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 float HeatSegmentedPIDCompute(PID_TypeDef *pid, float measured_value) {
+    return HeatSegmentedPIDComputeDt(pid, measured_value, (float)HEAT_PID_PERIOD_MS / 1000.0f);
+}
+
+float HeatSegmentedPIDComputeDt(PID_TypeDef *pid, float measured_value, float dt_s) {
     /* 步骤说明：
      * 1) 处理输入参数与前置条件。
      * 2) 执行本函数核心业务逻辑。
@@ -192,7 +198,40 @@ float HeatSegmentedPIDCompute(PID_TypeDef *pid, float measured_value) {
         pid->Kd = HEAT_SEGMENT_NEAR_KD;
     }
 
-    return PID_Compute(pid, measured_value);
+    float output = PID_Compute_dt(pid, measured_value, dt_s);
+
+    //heat_segment_rtt_seq++;
+
+    // RTT_VAR("$VAR,heat_seq=%lu,heat_dt_ms=%u,heat_temp=%.2f,heat_target=%.2f,heat_error=%.2f,"
+    //         "heat_integral=%.3f,heat_derivative=%.3f,heat_derivative_filtered=%.3f,"
+    //         "heat_kp=%.3f,heat_ki=%.3f,heat_kd=%.3f,heat_pid_mode=%u\r\n",
+    //         (unsigned long)heat_segment_rtt_seq,
+    //         (unsigned int)HEAT_PID_PERIOD_MS,
+    //         measured_value,
+    //         pid->setpoint,
+    //         pid->error,
+    //         pid->integral,
+    //         pid->derivative,
+    //         pid->derivative_filtered,
+    //         pid->Kp,
+    //         pid->Ki,
+    //         pid->Kd,
+    //         (unsigned int)heat_segment_pid_mode);
+
+    // RTT_VAR("$VAR,heat_p=%.3f,heat_i=%.3f,heat_d=%.3f,"
+    //         "heat_pwm=%.3f,heat_pwm_pct=%.2f,heat_output_raw=%.3f,"
+    //         "heat_output_limited=%.3f,heat_output_min=%.2f,heat_output_max=%.2f\r\n",
+    //         p,
+    //         i,
+    //         d,
+    //         output,
+    //         (output / 254.0f) * 100.0f,
+    //         pid->output,
+    //         pid->output_limited,
+    //         pid->output_min,
+    //         pid->output_max);
+
+    return output;
 }
 
 /**
@@ -295,6 +334,10 @@ uint16_t HeatAdaptiveGetStatus(void) {
 /**
  * @brief HeatAdaptivePIDCompute 鍑芥暟瀹炵幇銆? * @param pid 鍙傛暟銆? * @param measured_value 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 float HeatAdaptivePIDCompute(PID_TypeDef *pid, float measured_value) {
+    return HeatAdaptivePIDComputeDt(pid, measured_value, (float)HEAT_PID_PERIOD_MS / 1000.0f);
+}
+
+float HeatAdaptivePIDComputeDt(PID_TypeDef *pid, float measured_value, float dt_s) {
     /* 步骤说明：
      * 1) 处理输入参数与前置条件。
      * 2) 执行本函数核心业务逻辑。
@@ -389,7 +432,7 @@ float HeatAdaptivePIDCompute(PID_TypeDef *pid, float measured_value) {
         pid->Kp = kp * HEAT_LOAD_KP_SCALE;
         pid->Ki = ki * HEAT_LOAD_KI_SCALE;
         pid->Kd = kd * HEAT_LOAD_KD_SCALE;
-        output = PID_Compute(pid, measured_value);
+        output = PID_Compute_dt(pid, measured_value, dt_s);
 
 
         pid->Kp = kp;
@@ -417,7 +460,7 @@ float HeatAdaptivePIDCompute(PID_TypeDef *pid, float measured_value) {
 
     heat_last_temperature = measured_value;
     heat_last_valid = 1;
-    return PID_Compute(pid, measured_value);
+    return PID_Compute_dt(pid, measured_value, dt_s);
 }
 
 

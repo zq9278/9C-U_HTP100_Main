@@ -204,7 +204,7 @@ bool BQ27441_WriteStateBlock_All(void) {
     uint8_t verify_checksum = 0;
     i2c_read(BQ27441_EXTENDED_CHECKSUM, &verify_checksum, 1);
     if (verify_checksum != checksum) {
-        LOG("鍐欏叆 checksum = 0x%02X锛岃鍥?checksum = 0x%02X\n", checksum, verify_checksum);
+        LOGE("[FuelGauge] Checksum mismatch: write=0x%02X, read=0x%02X\n", checksum, verify_checksum);
         return false;
     }
 
@@ -265,16 +265,16 @@ void BQ27441_DEMO(void) {
      */
     uint16_t flags = read_word(BQ27441_COMMAND_FLAGS);
     if ((flags & 0x20) == 0) {
-        LOG("? 闈為娆′笂鐢碉紝璺宠繃閰嶇疆锛團lags=0x%04X锛塡n", flags);
+        LOGW("[FuelGauge] Skip config, flags=0x%04X", flags);
         return;
     }
     if (!BQ27441_Unseal()) {
-        LOG(" 瑙ｅ皝澶辫触\n");
+        LOGE("[FuelGauge] Event\n");
         return;
     }
-    LOG(" 瑙ｅ皝鎴愬姛\n");
+    LOGI("[FuelGauge] Event\n");
     if (!BQ27441_EnterConfigMode()) {
-        LOG(" 杩涘叆閰嶇疆妯″紡澶辫触\n");
+        LOGE("[FuelGauge] Event\n");
         return;
     }
 
@@ -282,22 +282,22 @@ void BQ27441_DEMO(void) {
         flags = read_word(0x06);
     } while ((flags & 0x10) == 0);
 
-    LOG(" 宸茶繘鍏ラ厤缃ā寮廫n");
+    LOGI("[FuelGauge] Event");
 
     if (!BQ27441_WriteStateBlock_All()) {
-        LOG(" 鍐欏叆鍏ㄩ儴鍙傛暟澶辫触锛乗n");
+        LOGE("[FuelGauge] Event");
         return;
     }
 
     if (!BQ27441_WriteRaTable(RT_TABLE, RT_TABLE_LEN)) {
-        LOG("鍐欏叆RT琛ㄥけ璐ワ紒\n");
+        LOGE("[FuelGauge] Event\n");
     } else {
-        LOG("鍐欏叆RT琛ㄦ垚鍔燂紒\n");
+        LOGI("[FuelGauge] Event\n");
     }
-    LOG(" 鍐欏叆鎵€鏈夎璁″弬鏁板畬鎴怽n");
+    LOGI("[FuelGauge] Event");
 
     if (!BQ27441_ExitConfigMode()) {
-        LOG(" 閫€鍑洪厤缃ā寮忓け璐n");
+        LOGE("[FuelGauge] Event");
         return;
     }
 
@@ -305,7 +305,7 @@ void BQ27441_DEMO(void) {
     uint16_t flags1;
     do { flags1 = read_word(0x06); } while (flags1 & 0x10);
 
-    LOG(" BQ27441 鐢垫睜閰嶇疆瀹屾垚锛乗n");
+    LOGI("[FuelGauge] Event");
     osDelay(10);
 }
 
@@ -326,11 +326,11 @@ void BQ27441_VerifyConfig(void) {
     uint16_t taperRate = BQ27441_ReadExtended(BQ27441_ID_STATE, 28) |
                          (BQ27441_ReadExtended(BQ27441_ID_STATE, 27) << 8);
 
-    LOG(" 楠岃瘉閰嶇疆锛歕n");
-    LOG("  DesignCapacity   = %d mAh\n", designCap);
-    LOG("  DesignEnergy     = %d mWh\n", designEnergy);
-    LOG("  TerminateVoltage = %d mV\n", termVolt);
-    LOG("  TaperRate        = %d\n", taperRate);
+    LOGI("[FuelGauge] Event");
+    LOGI("[FuelGauge] Design capacity=%d mAh\n", designCap);
+    LOGI("[FuelGauge] Design energy=%d mWh\n", designEnergy);
+    LOGI("[FuelGauge] Terminate voltage=%d mV\n", termVolt);
+    LOGI("[FuelGauge] Taper rate=%d\n", taperRate);
 }
 
 /**
@@ -347,9 +347,9 @@ void BQ27441_PrintRaTable(void) {
         uint8_t lsb = BQ27441_ReadExtended(BQ27441_ID_RACOMP, i * 2);
         uint8_t msb = BQ27441_ReadExtended(BQ27441_ID_RACOMP, i * 2 + 1);
         uint16_t ra = (msb << 8) | lsb;
-        LOG("0x%02X,",ra);
+        LOGI("[FuelGauge] RA=0x%02X",ra);
     }
-    LOG("褰撳墠 Qmax=%d mAh\n", BQ27441_ReadQmax());
+    LOGI("[FuelGauge] Qmax=%d mAh\n", BQ27441_ReadQmax());
 #endif
 }
 /**
@@ -376,7 +376,7 @@ bool BQ27441_EnableIT(void) {
     xI2CCompleteSem = xSemaphoreCreateBinary();
 
     if (xI2CMutex == NULL || xI2CCompleteSem == NULL) {
-        LOG("I2C淇″彿閲忓垱寤哄け璐?\r\n");
+        LOGE("[FuelGauge] Event\r\n");
         Error_Handler();
     }
 }
@@ -510,7 +510,7 @@ void BatteryMonitor_Run(void)
         case BATTERY_NORMAL:
             if (BQ27441.Voltage <= LOW_BATTERY_SOC && BQ27441.Voltage != 0)
             {
-                LOG("[Battery] [NORMAL] 妫€娴嬪埌涓ラ噸浣庣數鍘?%d mV锛岃繘鍏ユ娴?..\n", BQ27441.Voltage);
+                LOGW("[FuelGauge] Low voltage detected: %d mV\n", BQ27441.Voltage);
                 batteryMonitor.state = BATTERY_CHECK;
                 batteryMonitor.lowVoltageCounter = 0;
                 batteryMonitor.lastCheckTick = nowTick;
@@ -518,7 +518,7 @@ void BatteryMonitor_Run(void)
             else if (BQ27441.Voltage <= WORKING_BATTERY_SOC && BQ27441.Voltage != 0)
             {
 
-                LOG("[Battery] [NORMAL] 鐢垫睜鐢甸噺鍋忎綆锛?d mV锛夛紝鎻愰啋鐢ㄦ埛銆俓n", BQ27441.Voltage);
+                LOGW("[FuelGauge] Event", BQ27441.Voltage);
 
 
                 batteryMonitor.state = BATTERY_WORKING_LOW;
@@ -537,13 +537,13 @@ void BatteryMonitor_Run(void)
 
                 if (BQ27441.Voltage <= LOW_BATTERY_SOC && BQ27441.Voltage != 0)
                 {
-                    LOG("[Battery] [WORKING_LOW] 鐢靛帇杩涗竴姝ヤ笅闄嶅埌涓ラ噸浣庣數锛?d mV锛夛紝杩涘叆妫€娴嬪叧鏈烘祦绋嬨€俓n", BQ27441.Voltage);
+                    LOGW("[FuelGauge] Event", BQ27441.Voltage);
                     batteryMonitor.state = BATTERY_CHECK;
                     batteryMonitor.lowVoltageCounter = 0;
                 }
                 else if (BQ27441.Voltage > WORKING_BATTERY_SOC)
                 {
-                    LOG("[Battery] [WORKING_LOW] 鐢靛帇鎭㈠姝ｅ父锛?d mV锛夛紝鍥炲埌姝ｅ父鐘舵€併€俓n", BQ27441.Voltage);
+                    LOGI("[FuelGauge] Event", BQ27441.Voltage);
                     batteryMonitor.state = BATTERY_NORMAL;
                 }
                 else
@@ -561,24 +561,24 @@ void BatteryMonitor_Run(void)
                 if (BQ27441.Voltage <= LOW_BATTERY_SOC && BQ27441.Voltage != 0)
                 {
                     batteryMonitor.lowVoltageCounter++;
-                    LOG("[Battery] [CHECK] 浣庣數鍘嬬‘璁?%d 娆★紙%d mV锛塡n", batteryMonitor.lowVoltageCounter, BQ27441.Voltage);
+                    LOGW("[FuelGauge] Low voltage confirm count=%d, voltage=%d mV", batteryMonitor.lowVoltageCounter, BQ27441.Voltage);
 
                     if (batteryMonitor.lowVoltageCounter >= 5)
                     {
-                        LOG("[Battery] [CHECK] 婊¤冻鍏虫柇鏉′欢锛岃繘鍏ョ‘璁ゅ叧鏂姸鎬併€俓n");
+                        LOGW("[FuelGauge] Event");
                         batteryMonitor.state = BATTERY_CONFIRM_SHUTDOWN;
                     }
                 }
                 else
                 {
-                    LOG("[Battery] [CHECK] 鐢靛帇鎭㈠锛?d mV锛夛紝鍥炲埌姝ｅ父鐘舵€併€俓n", BQ27441.Voltage);
+                    LOGI("[FuelGauge] Event", BQ27441.Voltage);
                     batteryMonitor.state = BATTERY_NORMAL;
                 }
             }
             break;
 
         case BATTERY_CONFIRM_SHUTDOWN:
-            LOG("[Battery] [CONFIRM_SHUTDOWN] 杩炵画浣庣數纭锛屾墽琛屽叧鏈洪€昏緫...\n");
+            LOGW("[FuelGauge] Event\n");
         if (charging_flag==0)
         {
             BQ25895_Write(0x09, 0x64);
@@ -589,12 +589,12 @@ void BatteryMonitor_Run(void)
             break;
 
         case BATTERY_SHUTDOWN:
-            LOG("[Battery] [SHUTDOWN] 褰撳墠澶勪簬鍏虫柇鐘舵€侊紝淇濇姢妯″紡涓€俓n");
+            LOGW("[FuelGauge] Event");
             batteryMonitor.state = BATTERY_NORMAL;
             break;
 
         default:
-            LOG("[Battery] [ERROR] 鏈煡鐢垫睜鐘舵€侊紒寮哄埗鍥炲綊姝ｅ父銆俓n");
+            LOGE("[FuelGauge] Event");
             batteryMonitor.state = BATTERY_NORMAL;
             break;
     }
@@ -612,21 +612,21 @@ void battery_status_update_bq27441(void) {
      */
   BQ27441_MultiRead_DMA(&BQ27441);
 #ifdef  LOG_SWITCH_OF_BQ27441
-    LOG("BQ27441 鐘舵€侊細\n");
-    LOG("  鐢垫睜鐢靛帇 = %d mV\n", BQ27441.Voltage);
-    LOG("  鐢垫睜娓╁害 = %.1f 鈩僜n", (BQ27441.Temperature * 0.1f) - 273.15f);
-    LOG("  鐘舵€佹爣蹇?= 0x%04X\n", BQ27441.Flags);
-    LOG("  鏍囩О鍙敤瀹归噺(鏃犺礋杞戒笅) = %d mAh\n", BQ27441.NomAvailableCap);
-    LOG("  婊″彲鐢ㄥ閲忥紙鍏呮弧鎬诲閲忥紝鏃犺礋杞斤級 = %d mAh\n", BQ27441.FullAvailableCap);
-    LOG("  瀹為檯鍓╀綑瀹归噺锛堝綋鍓嶈礋杞戒笅锛?= %d mAh\n", BQ27441.RemainingCap);
-    LOG("  瀹為檯婊″厖瀹归噺锛堝綋鍓嶈礋杞戒笅锛?= %d mAh\n", BQ27441.FullChargeCap);
-    LOG("  骞冲潎鐢垫祦 = %d mA\n", BQ27441.AvgCurrent);
-    LOG("  寰呮満鐢垫祦 = %d mA\n", BQ27441.StandbyCurrent);
-    LOG("  鏈€澶ц礋杞界數娴?= %d mA\n", BQ27441.MaxLoadCurrent);
-    LOG("  骞冲潎鍔熺巼 = %d mW\n", BQ27441.AvgPower);
-    LOG("  褰撳墠鐢甸噺 = %d %%\n", BQ27441.SOC);
-    LOG("  鑺墖鍐呴儴娓╁害 = %.1f 鈩僜n", (BQ27441.InternalTemp * 0.1f) - 273.15f);
-    LOG("  鐢垫睜鍋ュ悍搴?= %d %%锛堢姸鎬佺爜锛?x%02X锛塡n", BQ27441.percent, BQ27441.status);
+    LOGI("[FuelGauge] Event\n");
+    LOGI("[FuelGauge] Voltage=%d mV\n", BQ27441.Voltage);
+    LOGI("[FuelGauge] Battery temp=%.1f C", (BQ27441.Temperature * 0.1f) - 273.15f);
+    LOGI("[FuelGauge] Flags=0x%04X\n", BQ27441.Flags);
+    LOGI("[FuelGauge] Nom available cap=%d mAh\n", BQ27441.NomAvailableCap);
+    LOGI("[FuelGauge] Full available cap=%d mAh\n", BQ27441.FullAvailableCap);
+    LOGI("[FuelGauge] Remaining cap=%d mAh\n", BQ27441.RemainingCap);
+    LOGI("[FuelGauge] Full charge cap=%d mAh\n", BQ27441.FullChargeCap);
+    LOGI("[FuelGauge] Avg current=%d mA\n", BQ27441.AvgCurrent);
+    LOGI("[FuelGauge] Standby current=%d mA\n", BQ27441.StandbyCurrent);
+    LOGI("[FuelGauge] Max load current=%d mA\n", BQ27441.MaxLoadCurrent);
+    LOGI("[FuelGauge] Avg power=%d mW\n", BQ27441.AvgPower);
+    LOGI("[FuelGauge] SOC=%d %%\n", BQ27441.SOC);
+    LOGI("[FuelGauge] Internal temp=%.1f C", (BQ27441.InternalTemp * 0.1f) - 273.15f);
+    LOGI("[FuelGauge] Health=%d %%, status=0x%02X", BQ27441.percent, BQ27441.status);
 #endif
 
 
@@ -652,5 +652,4 @@ void battery_status_update_bq27441(void) {
     }
     BatteryMonitor_Run();
   }
-
 

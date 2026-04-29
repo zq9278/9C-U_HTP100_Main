@@ -23,6 +23,7 @@ extern ChargeState_t ChargeState;
 uint8_t soft_button;
 extern uint8_t charging, working, low_battery, fully_charged, emergency_stop;
 extern PID_TypeDef HeatPID;
+extern float p, i, d;
 float Heat_PWM, EyeTmp;
 uint8_t flag_200ms;
 uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms, is_charging_flag;
@@ -72,7 +73,7 @@ void Heat_Task(void *argument) {
     (void)argument;
 
     for (;;) {
-        LOG("heat_start");
+        TickType_t heat_last_wake_tick;
         TempDisplayTargetFilterReset();
 #if ENABLE_HEAT_ADAPTIVE_LOAD
         HeatAdaptiveReset();
@@ -83,6 +84,7 @@ void Heat_Task(void *argument) {
 #if ENABLE_HEAT_STARTUP_SOFT_LANDING
         HeatStartupSoftLandingReset();
 #endif
+        heat_last_wake_tick = xTaskGetTickCount();
         while (1) {
 
 
@@ -97,11 +99,10 @@ void Heat_Task(void *argument) {
                 }
                 currentState = STATE_OFF;
                 HeatPWM(0);
-                LOG("[Heat] 鏀跺埌鍋滄鍔犵儹閫氱煡锛屽噯澶囬噴鏀捐祫婧愬苟閫€鍑?..\n");
+                LOGW("[Task] Event\n");
 
                 if (xSemaphoreGetMutexHolder(i2c2_mutex) == xTaskGetCurrentTaskHandle()) {
                     xSemaphoreGive(i2c2_mutex);
-                    LOG("[Heat] 宸查噴鏀?i2c2_mutex\n");
                 }
 
 
@@ -109,7 +110,7 @@ void Heat_Task(void *argument) {
             }
             if (i2c2_error_flag == 0) {
 #ifdef DEBUG_LOG
-                LOG("Read_tmp112/n");
+                LOGI("[Task] Event\n");
 #endif
                 EyeTmp = TmpRaw2Ture();
                 EyeTmp=(EyeTmp>43)?43:EyeTmp;
@@ -117,8 +118,8 @@ void Heat_Task(void *argument) {
                 if (tempature_flag_400ms) {
                     tempature_flag_400ms = 0;
                     if (EyeTmp != 0.0f) {
-                        ScreenUpdateTemperature(TempDisplayTargetFilterUpdate(EyeTmp - temperature_compensation,
-                                                                               HeatPID.setpoint - temperature_compensation));
+                        ScreenUpdateTemperature(TempDisplayTargetFilterUpdate(EyeTmp - temperature_compensation, HeatPID.setpoint - temperature_compensation));
+                        //ScreenUpdateTemperature(EyeTmp);
                     }
                 }
 
@@ -127,11 +128,11 @@ void Heat_Task(void *argument) {
 
 
 #if ENABLE_HEAT_ADAPTIVE_LOAD
-                Heat_PWM = HeatAdaptivePIDCompute(&HeatPID, EyeTmp);
+                Heat_PWM = HeatAdaptivePIDComputeDt(&HeatPID, EyeTmp, (float)HEAT_PID_PERIOD_MS / 1000.0f);
 #elif ENABLE_HEAT_SEGMENTED_PID
-                Heat_PWM = HeatSegmentedPIDCompute(&HeatPID, EyeTmp);
+                Heat_PWM = HeatSegmentedPIDComputeDt(&HeatPID, EyeTmp, (float)HEAT_PID_PERIOD_MS / 1000.0f);
 #else
-                Heat_PWM = PID_Compute(&HeatPID, EyeTmp);
+                Heat_PWM = PID_Compute_dt(&HeatPID, EyeTmp, (float)HEAT_PID_PERIOD_MS / 1000.0f);
 #endif
 #if ENABLE_HEAT_STARTUP_SOFT_LANDING
                 Heat_PWM = HeatStartupSoftLandingApply(&HeatPID, EyeTmp, Heat_PWM);
@@ -144,10 +145,11 @@ void Heat_Task(void *argument) {
 #else
                     ScreenUpdateHeatLoadStatus(0.0f);
 #endif
+                    
                 }
             }
 
-            vTaskDelay(pdMS_TO_TICKS(150));
+            vTaskDelayUntil(&heat_last_wake_tick, pdMS_TO_TICKS(HEAT_PID_PERIOD_MS));
 
 
         }
@@ -167,7 +169,6 @@ void Press_Task(void *argument) {
     (void)argument;
 
     for (;;) {
-        LOG("Press started\n");
         ADS1220_StartConversion();
         osDelay(20);
         Discard_dirty_data();
@@ -179,7 +180,7 @@ void Press_Task(void *argument) {
 
             if (ulTaskNotifyTake(pdTRUE, 0) > 0) {
 
-                LOG("[Press_Task] 鏀跺埌鍋滄鎺у埗閫氱煡锛屽噯澶囬€€鍑?..\n");
+                LOGW("[Task] Press_Task Event\n");
                 currentState = STATE_OFF;
                 if(currentState!=STATE_PRE_HEAT&&currentState!=STATE_PRE_AUTO){
                     ScreenWorkModeQuit();
@@ -272,7 +273,6 @@ void Motor_go_home_task(void *argument) {
     (void)argument;
     vTaskDelay(100);
     for (;;) {
-        LOG("motor go home\n");
         ADS1220_StopConversion();
         MotorChecking();
         motor_homeHandle = NULL;
@@ -317,7 +317,7 @@ void I2C2_RecoveryTask(void *argument) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         i2c2_error_flag = 1;
         uint32_t isr = hi2c2.Instance->ISR;
-        LOG("[I2C2 闁挎瑨顕 ISR=0x%08lX\n", isr);
+        LOGE("[Task] I2C2 error ISR=0x%08lX\n", isr);
         if (xSemaphoreTake(i2c2_mutex, portMAX_DELAY) == pdTRUE) {
             __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_BERR);
             __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_ARLO);
@@ -331,7 +331,7 @@ void I2C2_RecoveryTask(void *argument) {
             xSemaphoreGive(i2c2_mutex);
         }
 
-        LOG("[闁挎瑨顕ら幁銏狀槻] I2C2 瀹稿弶浠径宥呰嫙闁插秵鏌婇崚婵嗩潗閸栨湺n");
+        LOGI("[Task] Event");
 
 
 
@@ -374,17 +374,6 @@ void PowerOnDelayTask(void *argument) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 }
 
 
@@ -398,11 +387,6 @@ void PowerReboot_Task(void *argument) {
      * 3) 输出结果/更新状态并返回。
      */
     (void)argument;
-
-
-
-
-
 
 
 
@@ -428,16 +412,6 @@ void TaskMonitor_Task(void *argument)
 
 
 
-
-
-
-
-
-
-
-
-
-
 #endif
         vTaskDelay(1000);
     }
@@ -454,10 +428,7 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 
     (void)xTask;
 
-    LOG("[ERROR] Stack overflow detected! Task=%s\n", pcTaskName);
-
-
-
+    LOGI("[Task] Stack overflow task=%s\n", pcTaskName);
 
 
     taskDISABLE_INTERRUPTS();
@@ -469,7 +440,7 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 
 void vAssertCalled(const char *file, int line)
 {
-    LOG("[ASSERT] Failed in file %s, line %d\n", file, line);
+    LOGE("[Task] Assert failed: file=%s, line=%d\n", file, line);
 
     taskDISABLE_INTERRUPTS();
     for(;;) {
@@ -550,5 +521,3 @@ void Main(void) {
 
 
 }
-
-

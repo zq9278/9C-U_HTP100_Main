@@ -33,7 +33,7 @@ void Button_detection(void) {
     switch (currentState) {
     case STATE_OFF:
         ScreenWorkModeQuit();
-        LOG("[STATE] -> OFF\r\n");
+        LOGI("[Button] Event\r\n");
         break;
 
     case STATE_PRE_HEAT:
@@ -42,7 +42,7 @@ void Button_detection(void) {
         heat_finish = 0;
         HeatPID.setpoint = 42.5 + temperature_compensation;
         ScreenTimerStart();
-        LOG("[STATE] PRE_HEAT -> HEAT, setpoint=%.2f\r\n", HeatPID.setpoint);
+        LOGI("[Button] PRE_HEAT -> HEAT, setpoint=%.2f\r\n", HeatPID.setpoint);
         break;
 
     case STATE_HEAT:
@@ -56,7 +56,7 @@ void Button_detection(void) {
         if (HeatHandle != NULL && eTaskGetState(HeatHandle) != eSuspended) {
             xTaskNotifyGive(HeatHandle);
         }
-        LOG("[STATE] HEAT -> OFF (emergency_stop=%d)\r\n", emergency_stop);
+        LOGW("[Button] HEAT -> OFF, emergency_stop=%d\r\n", emergency_stop);
         break;
 
     case STATE_PRE_PRESS:
@@ -72,7 +72,7 @@ void Button_detection(void) {
             vTaskResume(PressHandle);
         }
         ScreenTimerStart();
-        LOG("[STATE] PRE_PRESS -> PRESS\r\n");
+        LOGI("[Button] Event\r\n");
         break;
 
     case STATE_PRESS:
@@ -88,15 +88,15 @@ void Button_detection(void) {
 
         if (motor_homeHandle == NULL) {
             if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle) == pdPASS) {
-                LOG("[TASK] Motor_go_home created\r\n");
+                LOGI("[Button] Event\r\n");
             } else {
-                LOG("[ERROR] Failed to create Motor_go_home task.\r\n");
+                LOGE("[Button] Event\r\n");
             }
         } else {
-            LOG("[INFO] Motor_go_home task already exists\r\n");
+            LOGW("[Button] Event\r\n");
         }
 
-        LOG("[STATE] PRESS -> OFF\r\n");
+        LOGI("[Button] Event\r\n");
         break;
 
     case STATE_PRE_AUTO:
@@ -114,7 +114,7 @@ void Button_detection(void) {
             vTaskResume(PressHandle);
         }
         ScreenTimerStart();
-        LOG("[STATE] PRE_AUTO -> AUTO, setpoint=%.2f\r\n", HeatPID.setpoint);
+        LOGI("[Button] PRE_AUTO -> AUTO, setpoint=%.2f\r\n", HeatPID.setpoint);
         break;
 
     case STATE_AUTO:
@@ -133,20 +133,19 @@ void Button_detection(void) {
         }
         if (motor_homeHandle == NULL) {
             if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle) == pdPASS) {
-                LOG("[TASK] Motor_go_home created\r\n");
+                LOGI("[Button] Event\r\n");
             } else {
-                LOG("[ERROR] Failed to create Motor_go_home task.\r\n");
+                LOGE("[Button] Event\r\n");
             }
         } else {
-            LOG("[INFO] Motor_go_home task already exists\r\n");
+            LOGW("[Button] Event\r\n");
         }
-        LOG("[STATE] AUTO -> OFF\r\n");
+        LOGI("[Button] Event\r\n");
         break;
 
     default:
-        LOG("[STATE] Unknown state=%d\r\n", currentState);
+        LOGW("[Button] Unknown state=%d\r\n", currentState);
         break;
     }
 }
-
 

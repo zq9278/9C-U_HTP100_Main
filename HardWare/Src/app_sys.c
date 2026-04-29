@@ -47,10 +47,10 @@ void close_mianAPP(void)
         if (motor_homeHandle == NULL) {
             if (xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle)== pdPASS) {
             } else {
-                LOG("Failed to create motor_homeHandle task.\r\n");
+                LOGE("[System] Event\r\n");
             }
         } else {
-            LOG("motor_homeHandle task already exists.\r\n");
+            LOGW("[System] Event\r\n");
         }
 
         taskEXIT_CRITICAL();

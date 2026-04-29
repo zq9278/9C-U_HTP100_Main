@@ -1,0 +1,52 @@
+{
+  "name": "stm32-rtt-scope-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone STM32 SEGGER RTT realtime scope desktop app.",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev:renderer": "vite --host 127.0.0.1",
+    "dev:electron": "wait-on tcp:5173 && npm run build:electron && set VITE_DEV_SERVER_URL=http://127.0.0.1:5173&& electron .",
+    "build": "npm run typecheck && npm run build:electron && vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "preview": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --win portable"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "echarts": "^5.6.0",
+    "lucide-react": "^0.555.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.6",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.4",
+    "wait-on": "^9.0.3"
+  },
+  "build": {
+    "appId": "local.stm32-rtt-scope-app",
+    "productName": "STM32 RTT Scope",
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ]
+    }
+  }
+}

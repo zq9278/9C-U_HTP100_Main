@@ -23,6 +23,10 @@ void PID_Init(PID_TypeDef *pid, float Kp, float Ki, float Kd,
     pid->previous_measured_value = 0.0f;
     pid->integral = 0.0f;
     pid->derivative_filtered = 0.0f;
+    pid->error = 0.0f;
+    pid->derivative = 0.0f;
+    pid->output = 0.0f;
+    pid->output_limited = 0.0f;
     pid->integral_max = integral_max;
     pid->integral_min = integral_min;
     pid->output_max = output_max;
@@ -33,14 +37,19 @@ void PID_Init(PID_TypeDef *pid, float Kp, float Ki, float Kd,
 
 /**
  * @brief PID_Compute 鍑芥暟瀹炵幇銆? * @param pid 鍙傛暟銆? * @param measured_value 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
-float PID_Compute(PID_TypeDef *pid, float measured_value) {
+float PID_Compute_dt(PID_TypeDef *pid, float measured_value, float dt_s) {
     /* 步骤说明：
      * 1) 处理输入参数与前置条件。
      * 2) 执行本函数核心业务逻辑。
      * 3) 输出结果/更新状态并返回。
      */
 
+    if (dt_s <= 0.0f) {
+        dt_s = 0.001f;
+    }
+
     float error = pid->setpoint - measured_value;
+    pid->error = error;
 
 
     float error_threshold = 4.0f;
@@ -48,10 +57,10 @@ float PID_Compute(PID_TypeDef *pid, float measured_value) {
 
     if (fabsf(error) < error_threshold) {
         if (error > 0) {
-            pid->integral += error;
+            pid->integral += error * dt_s;
         } else {
 
-            pid->integral += error * decay_factor;
+            pid->integral += error * decay_factor * dt_s;
         }
     }
 
@@ -59,7 +68,8 @@ float PID_Compute(PID_TypeDef *pid, float measured_value) {
     pid->integral = Limit(pid->integral, pid->integral_min, pid->integral_max);
 
 
-    float derivative = measured_value - pid->previous_measured_value;
+    float derivative = (measured_value - pid->previous_measured_value) / dt_s;
+    pid->derivative = derivative;
     pid->derivative_filtered = DERIVATIVE_FILTER_ALPHA * pid->derivative_filtered +
                                (1.0f - DERIVATIVE_FILTER_ALPHA) * derivative;
     pid->previous_measured_value = measured_value;
@@ -71,8 +81,14 @@ float PID_Compute(PID_TypeDef *pid, float measured_value) {
 
     float output = p + i + d;
     float output_limited = Limit(output, pid->output_min, pid->output_max);
+    pid->output = output;
+    pid->output_limited = output_limited;
 
     return output_limited;
+}
+
+float PID_Compute(PID_TypeDef *pid, float measured_value) {
+    return PID_Compute_dt(pid, measured_value, 1.0f);
 }
 
 
@@ -90,10 +106,12 @@ float PID_Compute_motor_dt(PID_TypeDef *pid, float measured_value, float dt_s) {
     }
 
     float error = pid->setpoint - measured_value;
+    pid->error = error;
     pid->integral += error * dt_s;
     pid->integral = Limit(pid->integral, pid->integral_min, pid->integral_max);
 
     double derivative = (error - pid->previous_error) / dt_s;
+    pid->derivative = (float)derivative;
     pid->previous_error = error;
 
     p = pid->Kp * error;
@@ -102,6 +120,8 @@ float PID_Compute_motor_dt(PID_TypeDef *pid, float measured_value, float dt_s) {
 
     float output = pid->Kp * error + pid->Ki * pid->integral + pid->Kd * derivative;
     float output1 = Limit(output, pid->output_min, pid->output_max);
+    pid->output = output;
+    pid->output_limited = output1;
 
     return output1;
 }
@@ -117,5 +137,3 @@ float PID_Compute_motor(PID_TypeDef *pid, float measured_value) {
      */
     return PID_Compute_motor_dt(pid, measured_value, 1.0f);
 }
-
-

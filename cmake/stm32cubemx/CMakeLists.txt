@@ -17,6 +17,8 @@ set(MX_Include_Dirs
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/FreeRTOS/Source/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM0
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/SEGGER_RTT/Config
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/SEGGER_RTT/RTT
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/CMSIS/Device/ST/STM32G0xx/Include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/CMSIS/Include
 )
@@ -81,6 +83,11 @@ set(FreeRTOS_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM0/port.c
 )
 
+set(SEGGER_RTT_Src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/SEGGER_RTT/RTT/SEGGER_RTT.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/Third_Party/SEGGER_RTT/RTT/SEGGER_RTT_printf.c
+)
+
 # Link directories setup
 set(MX_LINK_DIRS
 
@@ -89,7 +96,8 @@ set(MX_LINK_DIRS
 set(MX_LINK_LIBS 
     STM32_Drivers
     ${TOOLCHAIN_LINK_LIBRARIES}
-    FreeRTOS	
+    FreeRTOS
+    SEGGER_RTT
 )
 # Interface library for includes and symbols
 add_library(stm32cubemx INTERFACE)
@@ -106,6 +114,11 @@ target_link_libraries(STM32_Drivers PUBLIC stm32cubemx)
 add_library(FreeRTOS OBJECT)
 target_sources(FreeRTOS PRIVATE ${FreeRTOS_Src})
 target_link_libraries(FreeRTOS PUBLIC stm32cubemx)
+
+# Create SEGGER RTT static library
+add_library(SEGGER_RTT OBJECT)
+target_sources(SEGGER_RTT PRIVATE ${SEGGER_RTT_Src})
+target_link_libraries(SEGGER_RTT PUBLIC stm32cubemx)
 
 # Add STM32CubeMX generated application sources to the project
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${MX_Application_Src})

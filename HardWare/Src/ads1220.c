@@ -103,7 +103,7 @@ void ADS1220_WriteRegister(uint8_t reg, uint8_t value) {
     uint8_t cmd[2] = {0x40 | (reg << 2), value};
     ADS1220_CS_LOW();
     if (SPI2_Transmit_DMA(cmd, 2, 100) != HAL_OK) {
-        LOG("鍐欏瘎瀛樺櫒澶辫触 - REG: 0x%02X\n", reg);
+        LOGE("[Pressure] Write register failed, reg=0x%02X\n", reg);
     }
     ADS1220_CS_HIGH();
 }
@@ -195,14 +195,14 @@ int32_t ADS1220_ReadData(void) {
 
     if (SPI2_Transmit_DMA(&read_cmd, 1, 100) != HAL_OK) {
         ADS1220_CS_HIGH();
-        LOG("璇诲彇鍛戒护鍙戦€佸け璐n");
+        LOGE("[Pressure] Event");
         return -1;
     }
 
 
     if (SPI2_Receive_DMA(rx_buffer, 3, 100) != HAL_OK) {
         ADS1220_CS_HIGH();
-        LOG("鏁版嵁鎺ユ敹澶辫触\n");
+        LOGE("[Pressure] Event\n");
         return -1;
     }
 
@@ -292,12 +292,11 @@ void Start_SPI_Task(void const *argument) {
     for (;;) {
         float pressure = ADS1220_ReadPressure();
         if (pressure >= 0) {
-            LOG("鍘嬪姏: %.2f g\n", pressure);
+            LOGI("[Pressure] Value=%.2f g\n", pressure);
         } else {
-            LOG("璇诲彇鍘嬪姏澶辫触\n");
+            LOGE("[Pressure] Event\n");
         }
         osDelay(500);
     }
 }
-
 

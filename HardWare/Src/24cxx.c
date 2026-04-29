@@ -248,7 +248,7 @@ void AT24C02_WriteAllBytes(uint8_t value) {
             xSemaphoreGive(i2c2_mutex);
             osDelay(5);
         } else {
-            LOG("氓聠聶氓聟楼茅聰聛猫露聟忙聴? at addr 0x%02X\n", addr);
+            LOGE("[EEPROM] Write lock timeout, addr=0x%02X\n", addr);
         }
     }
 
@@ -256,24 +256,24 @@ void AT24C02_WriteAllBytes(uint8_t value) {
      if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(300)) == pdTRUE) {
          if (HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA0, 0x00, I2C_MEMADD_SIZE_8BIT, read_buffer, 256) == HAL_OK) {
              if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(300)) == pdTRUE) {
-                 LOG("EEPROM DMA猫炉禄氓聫聳忙聢聬氓聤聼\n");
+                 LOGI("[EEPROM] Event\n");
              } else {
-                 LOG("EEPROM DMA猫炉禄氓聫聳猫露聟忙聴露\n");
+                 LOGE("[EEPROM] Event\n");
              }
          } else {
-             LOG("EEPROM DMA猫炉禄氓聫聳氓聬?氓聤篓氓陇卤猫麓?\n");
+             LOGE("[EEPROM] Event\n");
          }
 
          xSemaphoreGive(i2c2_mutex);
      } else {
-         LOG("猫炉禄氓聫聳茅聰聛猫露聟忙聴露茂录聦忙聴聽忙鲁聲猫炉禄氓聫聳EEPROM\n");
+         LOGE("[EEPROM] Event\n");
      }
 
 
 
-    LOG("EEPROM 猫炉禄氓聫聳忙聲掳忙聧庐:\n");
+    LOGI("[EEPROM] Event\n");
     for (uint16_t i = 1; i < 255; i++) {
-        LOG("Addr: 0x%02X, Data: 0x%02X\n", i, read_buffer[i]);
+        LOGI("[EEPROM] Addr=0x%02X, data=0x%02X\n", i, read_buffer[i]);
     }
 }
 
@@ -480,26 +480,26 @@ uint8_t EYE_AT24CXX_ReadByte(uint16_t addr, HAL_StatusTypeDef* status_out)
     for (int i = 0; i < retry; ++i) {
         if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) != pdTRUE) {
             status = HAL_ERROR;
-            LOG("[EYE_AT24CXX_ReadByte] 莽卢?%d忙卢隆茅聡聧猫炉?: 猫聨路氓聫聳i2c2_mutex氓陇卤猫麓楼\n", i+1);
+            LOGE("[EEPROM] Read byte retry %d: mutex timeout\n", i+1);
         } else {
             xSemaphoreTake(I2C2_DMA_Sem, 0);
             status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, addr, I2C_MEMADD_SIZE_8BIT, &data, 1);
             if (status != HAL_OK) {
-                LOG("[EYE_AT24CXX_ReadByte] 莽卢?%d忙卢隆茅聡聧猫炉?: HAL_I2C_Mem_Read_DMA氓陇卤猫麓楼, status=%d\n", i+1, status);
+                LOGE("[EEPROM] Read byte retry %d: DMA start failed, status=%d\n", i+1, status);
             }
             if (status == HAL_OK && xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(200)) == pdTRUE) {
                 xSemaphoreGive(i2c2_mutex);
                 *status_out = HAL_OK;
                 return data;
             } else {
-                LOG("[EYE_AT24CXX_ReadByte] 莽卢?%d忙卢隆茅聡聧猫炉?: DMA盲驴隆氓聫路茅聡聫猫露聟忙聴露忙聢聳I2C茅聰聶猫?炉\n", i+1);
+                LOGE("[EEPROM] Read byte retry %d: DMA timeout or I2C error\n", i+1);
             }
             xSemaphoreGive(i2c2_mutex);
         }
 
         osDelay(5);
     }
-    LOG("[EYE_AT24CXX_ReadByte] 忙聣聙忙聹聣茅聡聧猫炉聲氓陇卤猫麓?, addr=0x%X\n", addr);
+    LOGE("[EEPROM] All read byte retries failed, addr=0x%X\n", addr);
     *status_out = HAL_ERROR;
     return 0x00;
 }
@@ -639,5 +639,4 @@ void AD24C01_Factory_formatted(void){
   AT24CXX_WriteUInt16(0x04,0);
   };
 }
-
 

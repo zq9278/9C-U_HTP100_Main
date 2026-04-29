@@ -66,15 +66,15 @@ void HardFault_Handler_C(unsigned int * hardfault_args)
   // uint32_t stacked_pc  = ((uint32_t)hardfault_args[6]);
   // uint32_t stacked_psr = ((uint32_t)hardfault_args[7]);
   //
-  // LOG_ISR("\n[HardFault]\n");
-  // LOG_ISR("R0  = 0x%08lX\n", stacked_r0);
-  // LOG_ISR("R1  = 0x%08lX\n", stacked_r1);
-  // LOG_ISR("R2  = 0x%08lX\n", stacked_r2);
-  // LOG_ISR("R3  = 0x%08lX\n", stacked_r3);
-  // LOG_ISR("R12 = 0x%08lX\n", stacked_r12);
-  // LOG_ISR("LR  = 0x%08lX\n", stacked_lr);
-  // LOG_ISR("PC  = 0x%08lX\n", stacked_pc);
-  // LOG_ISR("PSR = 0x%08lX\n", stacked_psr);
+  // LOG_ISR("[IRQ] Event\n");
+  // LOG_ISR("[IRQ] R0=0x%08lX\n", stacked_r0);
+  // LOG_ISR("[IRQ] R1=0x%08lX\n", stacked_r1);
+  // LOG_ISR("[IRQ] R2=0x%08lX\n", stacked_r2);
+  // LOG_ISR("[IRQ] R3=0x%08lX\n", stacked_r3);
+  // LOG_ISR("[IRQ] R12=0x%08lX\n", stacked_r12);
+  // LOG_ISR("[IRQ] LR=0x%08lX\n", stacked_lr);
+  // LOG_ISR("[IRQ] PC=0x%08lX\n", stacked_pc);
+  // LOG_ISR("[IRQ] PSR=0x%08lX\n", stacked_psr);
   //
   // while (1); // 卡住，防止继续跑坏
 
@@ -87,9 +87,9 @@ void HardFault_Handler_C(unsigned int * hardfault_args)
     task_name = pcTaskGetName(current);
   }
 
-  LOG_ISR("\n[HardFault]\n");
-  LOG_ISR("PC = 0x%08lX LR=0x%08lX\n", stacked_pc, stacked_lr);
-  LOG_ISR("Task=%s\n", task_name);
+  LOG_ISR("[IRQ] Event\n");
+  LOG_ISR("[IRQ] PC=0x%08lX, LR=0x%08lX\n", stacked_pc, stacked_lr);
+  LOG_ISR("[IRQ] Task=%s\n", task_name);
 
 
   taskDISABLE_INTERRUPTS();
@@ -212,7 +212,10 @@ void DMA1_Channel1_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
 
   /* USER CODE END DMA1_Channel1_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_spi2_rx);
+  if (hdma_spi2_rx.Instance != NULL)
+  {
+    HAL_DMA_IRQHandler(&hdma_spi2_rx);
+  }
   /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
 
   /* USER CODE END DMA1_Channel1_IRQn 1 */
@@ -226,8 +229,14 @@ void DMA1_Channel2_3_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel2_3_IRQn 0 */
 
   /* USER CODE END DMA1_Channel2_3_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_spi2_tx);
-  HAL_DMA_IRQHandler(&hdma_i2c2_rx);
+  if (hdma_spi2_tx.Instance != NULL)
+  {
+    HAL_DMA_IRQHandler(&hdma_spi2_tx);
+  }
+  if (hdma_i2c2_rx.Instance != NULL)
+  {
+    HAL_DMA_IRQHandler(&hdma_i2c2_rx);
+  }
   /* USER CODE BEGIN DMA1_Channel2_3_IRQn 1 */
 
   /* USER CODE END DMA1_Channel2_3_IRQn 1 */
@@ -241,10 +250,22 @@ void DMA1_Ch4_7_DMAMUX1_OVR_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Ch4_7_DMAMUX1_OVR_IRQn 0 */
 
   /* USER CODE END DMA1_Ch4_7_DMAMUX1_OVR_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_i2c2_tx);
-  HAL_DMA_IRQHandler(&hdma_usart2_rx);
-  HAL_DMA_IRQHandler(&hdma_usart2_tx);
-  HAL_DMA_IRQHandler(&hdma_tim16_ch1);
+  if (hdma_i2c2_tx.Instance != NULL)
+  {
+    HAL_DMA_IRQHandler(&hdma_i2c2_tx);
+  }
+  if (hdma_usart2_rx.Instance != NULL)
+  {
+    HAL_DMA_IRQHandler(&hdma_usart2_rx);
+  }
+  if (hdma_usart2_tx.Instance != NULL)
+  {
+    HAL_DMA_IRQHandler(&hdma_usart2_tx);
+  }
+  if (hdma_tim16_ch1.Instance != NULL)
+  {
+    HAL_DMA_IRQHandler(&hdma_tim16_ch1);
+  }
   /* USER CODE BEGIN DMA1_Ch4_7_DMAMUX1_OVR_IRQn 1 */
 
   /* USER CODE END DMA1_Ch4_7_DMAMUX1_OVR_IRQn 1 */
@@ -424,7 +445,7 @@ void USART2_IRQHandler(void)
              vTaskNotifyGiveFromISR(bq25895_recovery_homeHandle, &xHigherPriorityTaskWoken);
              portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
          } else {
-             //LOG(" bq25895_recovery恢复任务-句柄未初始化！`\n");
+             //LOGW("[IRQ] Event\n");
 
          }
      }
@@ -529,12 +550,12 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xSemaphoreGiveFromISR(I2C2_DMA_Sem, &xHigherPriorityTaskWoken); // 释放阻塞任务
 
-        //LOG("I2C2 错误回调触发: 0x%08lX", HAL_I2C_GetError(&hi2c2));
+        //LOGE("[IRQ] I2C2 error=0x%08lX", HAL_I2C_GetError(&hi2c2));
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         if (i2c2_recovery_task_handle != NULL) {
             vTaskNotifyGiveFromISR(i2c2_recovery_task_handle, &xHigherPriorityTaskWoken);
         } else {
-            //LOG("DEVICE_STATE_EXPIRED: IIC恢复任务-句柄未初始化！`\n");
+            //LOGW("[IRQ] Event\n");
 
         }
     }

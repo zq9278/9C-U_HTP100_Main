@@ -10,6 +10,7 @@
 
 
 #define temperature_compensation 0
+#define HEAT_PID_PERIOD_MS 150u
 #define HEAT_ADAPT_STATUS_STARTUP_READY   (1u << 0)
 #define HEAT_ADAPT_STATUS_STABLE_WINDOW   (1u << 1)
 #define HEAT_ADAPT_STATUS_ARMED           (1u << 2)
@@ -23,12 +24,13 @@ void HeatPWM(uint8_t state);
 void HeatPWMSet(uint8_t PWMVal);
 void HeatSegmentedPIDReset(void);
 float HeatSegmentedPIDCompute(PID_TypeDef *pid, float measured_value);
+float HeatSegmentedPIDComputeDt(PID_TypeDef *pid, float measured_value, float dt_s);
 void HeatStartupSoftLandingReset(void);
 float HeatStartupSoftLandingApply(PID_TypeDef *pid, float measured_value, float output);
 float HeatAdaptivePIDCompute(PID_TypeDef *pid, float measured_value);
+float HeatAdaptivePIDComputeDt(PID_TypeDef *pid, float measured_value, float dt_s);
 void HeatAdaptiveReset(void);
 uint16_t HeatAdaptiveGetStatus(void);
 
 #endif
-
 
