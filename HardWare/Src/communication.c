@@ -98,7 +98,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         currentState = STATE_PRE_HEAT;
         emergency_stop = 0;
         HeatPWM(1);
-        HeatPID.setpoint = 40 + temperature_compensation;
+        HeatPID.setpoint = 40.0f + TEMPERATURE_CONTROL_COMPENSATION;
         if (HeatHandle != NULL) {
             vTaskResume(HeatHandle);
             LOGI("[Screen] Event\n");
@@ -168,7 +168,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         emergency_stop = 0;
         HeatPWM(1);
         HeatPID.integral = 0;
-        HeatPID.setpoint = 40 + temperature_compensation;
+        HeatPID.setpoint = 40.0f + TEMPERATURE_CONTROL_COMPENSATION;
         MotorPID.setpoint = data;
         if (HeatHandle != NULL) {
             vTaskResume(HeatHandle);
@@ -225,7 +225,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         break;
 
     case 0x1053:
-        HeatPID.setpoint = data + temperature_compensation;
+        HeatPID.setpoint = data + TEMPERATURE_CONTROL_COMPENSATION;
         LOGI("[Screen] Heat setpoint=%.2f\n", HeatPID.setpoint);
         break;
 
@@ -897,5 +897,4 @@ for(uint16_t i = 0; i < frameData->length; i++) {
     }
 
 }
-
 

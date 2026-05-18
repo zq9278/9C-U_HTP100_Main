@@ -40,7 +40,7 @@ void Button_detection(void) {
         currentState = STATE_HEAT;
         Device_RequestMarkNormalEyeShield();
         heat_finish = 0;
-        HeatPID.setpoint = 42.5 + temperature_compensation;
+        HeatPID.setpoint = 42.5f + TEMPERATURE_CONTROL_COMPENSATION;
         ScreenTimerStart();
         LOGI("[Button] PRE_HEAT -> HEAT, setpoint=%.2f\r\n", HeatPID.setpoint);
         break;
@@ -108,7 +108,7 @@ void Button_detection(void) {
         }
         currentState = STATE_AUTO;
         auto_finish = 0;
-        HeatPID.setpoint = 42.5 + temperature_compensation;
+        HeatPID.setpoint = 42.5f + TEMPERATURE_CONTROL_COMPENSATION;
         TMC_ENN(0);
         if (PressHandle != NULL) {
             vTaskResume(PressHandle);
@@ -148,4 +148,3 @@ void Button_detection(void) {
         break;
     }
 }
-

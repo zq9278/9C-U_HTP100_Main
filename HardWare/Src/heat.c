@@ -137,6 +137,15 @@ void HeatPWMSet(uint8_t PWMVal)
     TIM14->CCR1 = PWMVal;
 }
 
+float HeatLimitMeasuredTemperature(float temperature)
+{
+    if (temperature > 43.0f) {
+        return 43.0f;
+    }
+
+    return temperature;
+}
+
 /**
  * @brief HeatPIDClearHistory 鍑芥暟瀹炵幇銆? * @param pid 鍙傛暟銆? * @param measured_value 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 static void HeatPIDClearHistory(PID_TypeDef *pid, float measured_value) {
