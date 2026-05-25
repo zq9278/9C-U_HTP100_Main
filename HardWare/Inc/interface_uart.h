@@ -1,6 +1,6 @@
 /*
  * 文件: interface_uart.h
- * 说明: CRC、RTT 日志输出、USART2 DMA 屏幕协议发送接口。
+ * 说明: CRC、USART1 日志输出、USART2 DMA 屏幕协议发送接口。
  */
 #ifndef __INTERFACE_UART_H__
 #define __INTERFACE_UART_H__

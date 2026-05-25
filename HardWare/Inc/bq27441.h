@@ -45,15 +45,16 @@ void BATCheckDIS(void);
 HAL_StatusTypeDef BQ27441_MultiRead_DMA(BQ27441_typedef *BQ);
 HAL_StatusTypeDef BQ27441_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t size);
 bool BQ27441_Unseal(void);
+bool BQ27441_Seal(void);
 bool BQ27441_EnterConfigMode(void);
 bool BQ27441_ExitConfigMode(void);
 uint8_t BQ27441_ReadExtended(uint8_t classID, uint8_t offset);
+bool BQ27441_InitConfig(void);
 void BQ27441_DEMO(void);
 void BQ27441_VerifyConfig(void);
 void BQ27441_PrintRaTable(void);
 bool BQ27441_EnableIT(void);
 #endif
-
 
 
 

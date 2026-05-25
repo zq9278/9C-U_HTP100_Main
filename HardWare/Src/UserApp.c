@@ -256,7 +256,15 @@ void APP_task(void *argument) {
        bq25895_reinitialize_if_vbus_inserted();
         UpdateChargeState_bq25895();
         battery_status_update_bq27441();
-        BQ27441_PrintRaTable();
+#ifdef BQ27441_RA_TABLE_LOG
+        static uint32_t lastRaLogTick = 0;
+        uint32_t nowTick = HAL_GetTick();
+
+        if ((nowTick - lastRaLogTick) >= 5000U) {
+            lastRaLogTick = nowTick;
+            BQ27441_PrintRaTable();
+        }
+#endif
         UpdateState(emergency_stop, charging, low_battery, fully_charged, working);
         UpdateLightState(ChargeState);
         STATE_POWER_5V_Update();
@@ -495,7 +503,7 @@ void Main(void) {
     configASSERT(UART_DMA_IDLE_RECEPT_QUEUEHandle != NULL);
 
     AT24CXX_Init();
-    BQ27441_DEMO();
+    BQ27441_InitConfig();
     BQ27441_VerifyConfig();
 
     PWM_WS2812B_Init();

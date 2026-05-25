@@ -21,7 +21,6 @@
 PID_TypeDef MotorPID;
 
 typedef struct {
-
     float kp;
     float ki;
     float kd;
@@ -33,7 +32,6 @@ static PressurePidProfile_t g_pid_250 = {100.0f, 10.0f, 0.0f};
 static PressurePidProfile_t g_pid_350 = {200.0f, 10.0f, 0.0f};
 static PressurePidProfile_t g_pid_450 = {200.0f, 10.0f, 0.0f};
 static PressurePidProfile_t g_pid_550 = {200.0f, 10.0f, 0.0f};
-
 
 
 static PressurePidProfile_t *GetPressurePidProfile(float pressure_level_mmhg) {
@@ -51,8 +49,6 @@ static PressurePidProfile_t *GetPressurePidProfile(float pressure_level_mmhg) {
     }
     return &g_pid_550;
 }
-
-
 
 
 /**
@@ -90,9 +86,12 @@ uint8_t PressurePIDSetByLevel(float pressure_level_mmhg, float kp, float ki, flo
     pid_profile->kd = kd;
 
     if (((pressure_level_mmhg <= 200.0f) && (MotorPID.setpoint <= 200.0f)) ||
-        ((pressure_level_mmhg > 200.0f) && (pressure_level_mmhg <= 300.0f) && (MotorPID.setpoint > 200.0f) && (MotorPID.setpoint <= 300.0f)) ||
-        ((pressure_level_mmhg > 300.0f) && (pressure_level_mmhg <= 400.0f) && (MotorPID.setpoint > 300.0f) && (MotorPID.setpoint <= 400.0f)) ||
-        ((pressure_level_mmhg > 400.0f) && (pressure_level_mmhg <= 500.0f) && (MotorPID.setpoint > 400.0f) && (MotorPID.setpoint <= 500.0f)) ||
+        ((pressure_level_mmhg > 200.0f) && (pressure_level_mmhg <= 300.0f) && (MotorPID.setpoint > 200.0f) && (
+             MotorPID.setpoint <= 300.0f)) ||
+        ((pressure_level_mmhg > 300.0f) && (pressure_level_mmhg <= 400.0f) && (MotorPID.setpoint > 300.0f) && (
+             MotorPID.setpoint <= 400.0f)) ||
+        ((pressure_level_mmhg > 400.0f) && (pressure_level_mmhg <= 500.0f) && (MotorPID.setpoint > 400.0f) && (
+             MotorPID.setpoint <= 500.0f)) ||
         ((pressure_level_mmhg > 500.0f) && (MotorPID.setpoint > 500.0f))) {
         ApplyPressurePidBySetpoint(MotorPID.setpoint);
     }
@@ -126,7 +125,6 @@ static void ApplyPressurePidBySetpoint(float pressure_setpoint_mmhg) {
 #endif
 
 
-
 /**
  * @brief GetPressureConvertCoeff 鍑芥暟瀹炵幇銆? * @param pressure_setpoint_mmhg 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 static float GetPressureConvertCoeff(float pressure_setpoint_mmhg) {
@@ -151,7 +149,6 @@ static float GetPressureConvertCoeff(float pressure_setpoint_mmhg) {
     }
     return PRESSURE_COEFF_550_MMHG;
 }
-
 
 
 /**
@@ -182,7 +179,6 @@ static uint8_t pressure_display_target_valid = 0;
 static float pressure_display_last_target = 0.0f;
 
 
-
 /**
  * @brief PressureAbs 鍑芥暟瀹炵幇銆? * @param value 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 static float PressureAbs(float value) {
@@ -193,7 +189,6 @@ static float PressureAbs(float value) {
      */
     return (value >= 0.0f) ? value : -value;
 }
-
 
 
 /**
@@ -209,7 +204,6 @@ void PressureDisplayTargetFilterReset(void) {
     pressure_display_target_valid = 0;
     pressure_display_last_target = 0.0f;
 }
-
 
 
 /**
@@ -268,7 +262,6 @@ uint32_t MotorSpeed = 0x4000;
 extern SPI_HandleTypeDef hspi1;
 
 
-
 /**
  * @brief TMC5130_Init 鍑芥暟瀹炵幇銆? */
 void TMC5130_Init(void) {
@@ -285,18 +278,17 @@ void TMC5130_Init(void) {
     TMC5130_Write(0x90, 0x00001006);
 
     TMC5130_Write(
-            0x91,
-            0x0000000a);
+        0x91,
+        0x0000000a);
     TMC5130_Write(
-            0x80,
-            0x00000004);
+        0x80,
+        0x00000004);
     TMC5130_Write(0x93, 0x000001f4);
 
     TMC5130_Write(0xf0, 0x000701c8);
 
 
-
-    TMC5130_Write(0xa5,0x00015000);
+    TMC5130_Write(0xa5, 0x00015000);
 
 
     TMC5130_Write(0xA4, 0x00000001);
@@ -316,7 +308,6 @@ void TMC5130_Init(void) {
 volatile uint8_t SPI_RxComplete = 0;
 uint8_t TxBuffer[5];
 uint8_t RxBuffer[4];
-
 
 
 /**
@@ -342,7 +333,6 @@ void TMC5130_Read(uint8_t ReadAddr, uint8_t *pBuffer) {
 }
 
 
-
 /**
  * @brief TMC5130_Write 鍑芥暟瀹炵幇銆? * @param WriteAddr 鍙傛暟銆? * @param WriteData 鍙傛暟銆? */
 void TMC5130_Write(uint8_t WriteAddr, uint32_t WriteData) {
@@ -363,7 +353,6 @@ void TMC5130_Write(uint8_t WriteAddr, uint32_t WriteData) {
 }
 
 
-
 /**
  * @brief MotorSetHome 鍑芥暟瀹炵幇銆? */
 void MotorSetHome(void) {
@@ -375,7 +364,6 @@ void MotorSetHome(void) {
     TMC5130_Write(0xA1, 0);
     TMC5130_Write(0xAD, 0);
 }
-
 
 
 /**
@@ -398,7 +386,6 @@ void MotorCtrl(int32_t Step) {
 }
 
 
-
 /**
  * @brief VelocityModeMove 鍑芥暟瀹炵幇銆? * @param direction 鍙傛暟銆? */
 void VelocityModeMove(uint8_t direction) {
@@ -419,7 +406,6 @@ void VelocityModeMove(uint8_t direction) {
 }
 
 
-
 /**
  * @brief StepMinMax 鍑芥暟瀹炵幇銆? * @param Step 鍙傛暟銆? * @param MinValue 鍙傛暟銆? * @param MaxValue 鍙傛暟銆? */
 void StepMinMax(int32_t *Step, int32_t MinValue, int32_t MaxValue) {
@@ -435,7 +421,6 @@ void StepMinMax(int32_t *Step, int32_t MinValue, int32_t MaxValue) {
         *Step = MaxValue;
     }
 }
-
 
 
 /**
@@ -479,13 +464,11 @@ uint8_t MotorCompare(int32_t SetData, int32_t CompareData) {
      */
     int32_t SubData;
     SubData = CompareData - SetData;
-    if (SubData > 0)
-    {
+    if (SubData > 0) {
         TMC5130_Write(0xa7, 0x6000);
         TMC5130_Write(0xa0, 2);
         return 2;
-    } else if (SubData < 0)
-    {
+    } else if (SubData < 0) {
         TMC5130_Write(0xa7, 0x4000);
         TMC5130_Write(0xa0, 1);
         return 1;
@@ -555,12 +538,21 @@ typedef struct {
 } PressureStageProfile_t;
 
 
-static const PressureStageProfile_t g_profile_150 = {20000.0f,    4000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   600u,           100.0f,      1000u};
-static const PressureStageProfile_t g_profile_250 = {35000.0f,    4000.0f,    10000.0f, 100.0f,     110.5f,    1500u,   800u,           200.0f,      1000u};
-static const PressureStageProfile_t g_profile_350 = {50000.0f,    4000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   800u,           300.0f,      1000u};
-static const PressureStageProfile_t g_profile_450 = {50000.0f,    4000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   800u,           400.0f,      1000u};
-static const PressureStageProfile_t g_profile_550 = {50000.0f,    4000.0f,    10000.0f, 100.0f,     110.0f,    1500u,   1000u,          500.0f,      1000u};
-
+static const PressureStageProfile_t g_profile_150 = {
+    20000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1500u, 600u, 100.0f, 1000u
+};
+static const PressureStageProfile_t g_profile_250 = {
+    35000.0f, 4000.0f, 10000.0f, 100.0f, 110.5f, 1500u, 800u, 200.0f, 1000u
+};
+static const PressureStageProfile_t g_profile_350 = {
+    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1500u, 800u, 300.0f, 1000u
+};
+static const PressureStageProfile_t g_profile_450 = {
+    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1500u, 800u, 400.0f, 1000u
+};
+static const PressureStageProfile_t g_profile_550 = {
+    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1500u, 1000u, 500.0f, 1000u
+};
 
 
 static const PressureStageProfile_t *GetPressureStageProfile(float pressure_setpoint_mmhg) {
@@ -590,7 +582,6 @@ extern uint8_t flag_200ms;
 extern uint8_t press_flag_400ms;
 
 
-
 /**
  * @brief PressureControlReset 鍑芥暟瀹炵幇銆? */
 void PressureControlReset(void) {
@@ -604,14 +595,13 @@ void PressureControlReset(void) {
     g_low_begin_ms = 0;
     g_low_active = 0;
     g_a_used_once = 0;
-    PressureModeStart = (uint8_t)PRESS_STAGE_A_RECOVERY;
+    PressureModeStart = (uint8_t) PRESS_STAGE_A_RECOVERY;
 
     MotorPID.integral = 0.0f;
     MotorPID.previous_error = 0.0f;
     MotorPID.previous_measured_value = 0.0f;
     MotorPID.derivative_filtered = 0.0f;
 }
-
 
 
 /**
@@ -635,7 +625,6 @@ void PressureControl(float pid_dt_s) {
         press_flag_400ms = 0;
         ScreenUpdateForce(pressure_display);
         //ScreenUpdateForce(hhmg);
-
     }
 
 
@@ -666,7 +655,7 @@ void PressureControl(float pid_dt_s) {
 
     switch (g_pressure_stage) {
         case PRESS_STAGE_A_RECOVERY:
-            SetMotorSpeed((int)profile->speed_a);
+            SetMotorSpeed((int) profile->speed_a);
             if (hhmg >= profile->threshold_a_to_b_mmhg) {
                 g_pressure_stage = PRESS_STAGE_B_APPROACH;
                 g_stage_enter_ms = now_ms;
@@ -675,7 +664,7 @@ void PressureControl(float pid_dt_s) {
             break;
 
         case PRESS_STAGE_B_APPROACH:
-            SetMotorSpeed((int)profile->speed_b);
+            SetMotorSpeed((int) profile->speed_b);
             if (hhmg >= profile->threshold_b_to_c_mmhg) {
                 g_pressure_stage = PRESS_STAGE_C_CLOSED_LOOP;
                 g_stage_enter_ms = now_ms;
@@ -688,7 +677,7 @@ void PressureControl(float pid_dt_s) {
 
         case PRESS_STAGE_C_CLOSED_LOOP:
             MotorPWM = PID_Compute_motor_dt(&MotorPID, hhmg, pid_dt_s);
-            SetMotorSpeed((int)MotorPWM);
+            SetMotorSpeed((int) MotorPWM);
             if ((now_ms - g_stage_enter_ms) >= profile->hold_ms_c) {
                 g_pressure_stage = PRESS_STAGE_D_RETRACT;
                 g_stage_enter_ms = now_ms;
@@ -696,7 +685,7 @@ void PressureControl(float pid_dt_s) {
             break;
 
         case PRESS_STAGE_D_RETRACT:
-            SetMotorSpeed((int)(-profile->speed_d));
+            SetMotorSpeed((int) (-profile->speed_d));
             if ((now_ms - g_stage_enter_ms) >= profile->retract_ms_d) {
                 g_pressure_stage = PRESS_STAGE_B_APPROACH;
                 g_stage_enter_ms = now_ms;
@@ -706,11 +695,9 @@ void PressureControl(float pid_dt_s) {
         default:
             g_pressure_stage = PRESS_STAGE_A_RECOVERY;
             g_stage_enter_ms = now_ms;
-            SetMotorSpeed((int)profile->speed_a);
+            SetMotorSpeed((int) profile->speed_a);
             break;
     }
 
-    PressureModeStart = (uint8_t)g_pressure_stage;
+    PressureModeStart = (uint8_t) g_pressure_stage;
 }
-
-

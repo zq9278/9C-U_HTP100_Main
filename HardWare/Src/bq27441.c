@@ -11,11 +11,19 @@
 uint8_t BQ27441_TempData[2];
 BQ27441_typedef BQ27441;
 extern I2C_HandleTypeDef hi2c1;
-#define DESIGN_CAPACITY     2450
+#define DESIGN_CAPACITY     3300
+#define DESIGN_ENERGY       12210
+#define TERMINATE_VOLTAGE   3000
+#define TAPER_RATE          515
 
-#define DESIGN_ENERGY      9065
-#define TERMINATE_VOLTAGE  2800
-#define TAPER_RATE         330
+#define BQ27441_FLAG_ITPOR       0x0020
+#define BQ27441_FLAG_CFGUPMODE   0x0010
+#define BQ27441_CMD_CONTROL      0x00
+#define BQ27441_SUBCMD_CONTROL_STATUS 0x0000
+#define BQ27441_SUBCMD_SET_CFGUPDATE  0x0013
+#define BQ27441_SUBCMD_SOFT_RESET     0x0042
+#define BQ27441_SUBCMD_SEAL      0x0020
+#define BQ27441_CONTROL_STATUS_SS     0x2000
 
 #define RT_TABLE_LEN 30
 
@@ -42,7 +50,21 @@ static HAL_StatusTypeDef i2c_write(uint8_t reg, uint8_t *data, uint8_t len) {
      * 2) 执行本函数核心业务逻辑。
      * 3) 输出结果/更新状态并返回。
      */
-    return HAL_I2C_Mem_Write(_bq_i2c, BQ27441_I2C_ADDRESS, reg, I2C_MEMADD_SIZE_8BIT, data, len, 100);
+    HAL_StatusTypeDef status;
+
+    if (xI2CMutex != NULL) {
+        if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) != pdTRUE) {
+            return HAL_BUSY;
+        }
+    }
+
+    status = HAL_I2C_Mem_Write(_bq_i2c, BQ27441_I2C_ADDRESS, reg, I2C_MEMADD_SIZE_8BIT, data, len, 100);
+
+    if (xI2CMutex != NULL) {
+        xSemaphoreGive(xI2CMutex);
+    }
+
+    return status;
 }
 
 /**
@@ -53,7 +75,21 @@ static HAL_StatusTypeDef i2c_read(uint8_t reg, uint8_t *data, uint8_t len) {
      * 2) 执行本函数核心业务逻辑。
      * 3) 输出结果/更新状态并返回。
      */
-    return HAL_I2C_Mem_Read(_bq_i2c, BQ27441_I2C_ADDRESS, reg, I2C_MEMADD_SIZE_8BIT, data, len, 100);
+    HAL_StatusTypeDef status;
+
+    if (xI2CMutex != NULL) {
+        if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) != pdTRUE) {
+            return HAL_BUSY;
+        }
+    }
+
+    status = HAL_I2C_Mem_Read(_bq_i2c, BQ27441_I2C_ADDRESS, reg, I2C_MEMADD_SIZE_8BIT, data, len, 100);
+
+    if (xI2CMutex != NULL) {
+        xSemaphoreGive(xI2CMutex);
+    }
+
+    return status;
 }
 
 /**
@@ -69,6 +105,103 @@ static uint16_t read_word(uint8_t reg) {
     return (buf[1] << 8) | buf[0];
 }
 
+static bool BQ27441_WriteControl(uint16_t subcmd)
+{
+    uint8_t cmd[2] = {
+            (uint8_t)(subcmd & 0xFF),
+            (uint8_t)((subcmd >> 8) & 0xFF)
+    };
+
+    return i2c_write(BQ27441_CMD_CONTROL, cmd, 2) == HAL_OK;
+}
+
+static uint16_t BQ27441_ReadControlStatus(void)
+{
+    if (!BQ27441_WriteControl(BQ27441_SUBCMD_CONTROL_STATUS)) {
+        return 0xFFFF;
+    }
+
+    osDelay(2);
+    return read_word(BQ27441_CMD_CONTROL);
+}
+
+static bool BQ27441_WaitFlagsSet(uint16_t mask, uint32_t timeoutMs)
+{
+    uint32_t start = HAL_GetTick();
+
+    do {
+        if ((read_word(BQ27441_COMMAND_FLAGS) & mask) == mask) {
+            return true;
+        }
+        osDelay(10);
+    } while ((HAL_GetTick() - start) < timeoutMs);
+
+    return false;
+}
+
+static bool BQ27441_WaitFlagsClear(uint16_t mask, uint32_t timeoutMs)
+{
+    uint32_t start = HAL_GetTick();
+
+    do {
+        if ((read_word(BQ27441_COMMAND_FLAGS) & mask) == 0) {
+            return true;
+        }
+        osDelay(10);
+    } while ((HAL_GetTick() - start) < timeoutMs);
+
+    return false;
+}
+
+static bool BQ27441_ReadExtendedData(uint8_t classID, uint8_t offset, uint8_t *value)
+{
+    uint8_t block = offset / 32U;
+    uint8_t blockOffset = offset % 32U;
+    uint8_t enable = 0x00;
+
+    if (value == NULL) {
+        return false;
+    }
+
+    if (i2c_write(BQ27441_EXTENDED_CONTROL, &enable, 1) != HAL_OK) {
+        return false;
+    }
+    if (i2c_write(BQ27441_EXTENDED_DATACLASS, &classID, 1) != HAL_OK) {
+        return false;
+    }
+    if (i2c_write(BQ27441_EXTENDED_DATABLOCK, &block, 1) != HAL_OK) {
+        return false;
+    }
+
+    osDelay(10);
+
+    return i2c_read(BQ27441_EXTENDED_BLOCKDATA + blockOffset, value, 1) == HAL_OK;
+}
+
+static uint16_t BQ27441_ReadExtendedWord(uint8_t classID, uint8_t msbOffset, uint8_t lsbOffset)
+{
+    uint8_t msb = 0xFF;
+    uint8_t lsb = 0xFF;
+
+    (void)BQ27441_ReadExtendedData(classID, msbOffset, &msb);
+    (void)BQ27441_ReadExtendedData(classID, lsbOffset, &lsb);
+
+    return (uint16_t)((msb << 8) | lsb);
+}
+
+static bool BQ27441_ConfigMatchesDesign(void)
+{
+    uint16_t designCap = BQ27441_ReadExtendedWord(BQ27441_ID_STATE, 10, 11);
+    uint16_t designEnergy = BQ27441_ReadExtendedWord(BQ27441_ID_STATE, 12, 13);
+    uint16_t termVolt = BQ27441_ReadExtendedWord(BQ27441_ID_STATE, 16, 17);
+    uint16_t taperRate = BQ27441_ReadExtendedWord(BQ27441_ID_STATE, 27, 28);
+
+    return designCap == DESIGN_CAPACITY &&
+           designEnergy == DESIGN_ENERGY &&
+           termVolt == TERMINATE_VOLTAGE &&
+           taperRate == TAPER_RATE;
+}
+
 
 /**
  * @brief BQ27441_Unseal 鍑芥暟瀹炵幇銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
@@ -79,10 +212,19 @@ bool BQ27441_Unseal(void) {
      * 3) 输出结果/更新状态并返回。
      */
     uint8_t key[2] = {0x00, 0x80};
-    i2c_write(0x00, key, 2);
-    i2c_write(0x00, key, 2);
+    i2c_write(BQ27441_CMD_CONTROL, key, 2);
+    osDelay(2);
+    i2c_write(BQ27441_CMD_CONTROL, key, 2);
+    osDelay(50);
+
+    return (BQ27441_ReadControlStatus() & BQ27441_CONTROL_STATUS_SS) == 0U;
+}
+
+bool BQ27441_Seal(void)
+{
+    bool ok = BQ27441_WriteControl(BQ27441_SUBCMD_SEAL);
     osDelay(10);
-    return true;
+    return ok;
 }
 
 /**
@@ -93,8 +235,15 @@ bool BQ27441_EnterConfigMode(void) {
      * 2) 执行本函数核心业务逻辑。
      * 3) 输出结果/更新状态并返回。
      */
-    uint8_t cmd[2] = {0x13, 0x00};
-    return i2c_write(0x00, cmd, 2) == HAL_OK;
+    if ((read_word(BQ27441_COMMAND_FLAGS) & BQ27441_FLAG_CFGUPMODE) != 0U) {
+        return true;
+    }
+
+    if (!BQ27441_WriteControl(BQ27441_SUBCMD_SET_CFGUPDATE)) {
+        return false;
+    }
+
+    return BQ27441_WaitFlagsSet(BQ27441_FLAG_CFGUPMODE, 2000);
 }
 
 /**
@@ -105,8 +254,11 @@ bool BQ27441_ExitConfigMode(void) {
      * 2) 执行本函数核心业务逻辑。
      * 3) 输出结果/更新状态并返回。
      */
-    uint8_t cmd[2] = {0x42, 0x00};
-    return i2c_write(0x00, cmd, 2) == HAL_OK;
+    if (!BQ27441_WriteControl(BQ27441_SUBCMD_SOFT_RESET)) {
+        return false;
+    }
+
+    return BQ27441_WaitFlagsClear(BQ27441_FLAG_CFGUPMODE, 2000);
 }
 
 bool BQ27441_WriteRaTable(const uint8_t* rt_table, uint8_t len)
@@ -220,17 +372,17 @@ uint8_t BQ27441_ReadExtended(uint8_t classID, uint8_t offset) {
      * 2) 执行本函数核心业务逻辑。
      * 3) 输出结果/更新状态并返回。
      */
-    uint8_t value = 0;
+    uint8_t value = 0xFF;
 
-    i2c_write(BQ27441_EXTENDED_CONTROL, (uint8_t[]){0x00}, 1);
-    i2c_write(BQ27441_EXTENDED_DATACLASS, &classID, 1);
-    i2c_write(BQ27441_EXTENDED_DATABLOCK, (uint8_t[]){0x00}, 1);
-
-    osDelay(10);
-
-    i2c_read(BQ27441_EXTENDED_BLOCKDATA + offset, &value, 1);
+    (void)BQ27441_ReadExtendedData(classID, offset, &value);
     return value;
 }
+
+static uint16_t BQ27441_ReadQmaxRaw(void)
+{
+    return BQ27441_ReadExtendedWord(BQ27441_ID_STATE, 0, 1);
+}
+
 /**
  * @brief BQ27441_ReadQmax 鍑芥暟瀹炵幇銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 uint16_t BQ27441_ReadQmax(void) {
@@ -239,10 +391,9 @@ uint16_t BQ27441_ReadQmax(void) {
      * 2) 执行本函数核心业务逻辑。
      * 3) 输出结果/更新状态并返回。
      */
-    uint8_t lsb = BQ27441_ReadExtended(BQ27441_ID_STATE, 0);
-    uint8_t msb = BQ27441_ReadExtended(BQ27441_ID_STATE, 1);
+    uint32_t qmaxRaw = BQ27441_ReadQmaxRaw();
 
-    return (lsb << 8) | msb;
+    return (uint16_t)((qmaxRaw * DESIGN_CAPACITY) / 16384U);
 }
 /**
  * @brief BQ27441_HardwareReset 鍑芥暟瀹炵幇銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
@@ -252,61 +403,66 @@ bool BQ27441_HardwareReset(void) {
      * 2) 执行本函数核心业务逻辑。
      * 3) 输出结果/更新状态并返回。
      */
-    uint8_t cmd[2] = { 0x41, 0x00 };
-    return i2c_write(0x00, cmd, 2) == HAL_OK;
+    return BQ27441_WriteControl(0x0041);
 }
 /**
  * @brief BQ27441_DEMO 鍑芥暟瀹炵幇銆? */
-void BQ27441_DEMO(void) {
-    /* 步骤说明：
-     * 1) 处理输入参数与前置条件。
-     * 2) 执行本函数核心业务逻辑。
-     * 3) 输出结果/更新状态并返回。
-     */
+bool BQ27441_InitConfig(void) {
     uint16_t flags = read_word(BQ27441_COMMAND_FLAGS);
-    if ((flags & 0x20) == 0) {
-        LOGW("[FuelGauge] Skip config, flags=0x%04X", flags);
-        return;
-    }
+
     if (!BQ27441_Unseal()) {
-        LOGE("[FuelGauge] Event\n");
-        return;
+        LOGE("[FuelGauge] Unseal failed\n");
+        return false;
     }
-    LOGI("[FuelGauge] Event\n");
+
+    if ((flags & BQ27441_FLAG_ITPOR) == 0 && BQ27441_ConfigMatchesDesign()) {
+        LOGI("[FuelGauge] Config already matches design\n");
+        BQ27441_Seal();
+        return true;
+    }
+
+    LOGI("[FuelGauge] Program config: DC=%d mAh, DE=%d mWh, TV=%d mV, TR=%d\n",
+         DESIGN_CAPACITY, DESIGN_ENERGY, TERMINATE_VOLTAGE, TAPER_RATE);
+
     if (!BQ27441_EnterConfigMode()) {
-        LOGE("[FuelGauge] Event\n");
-        return;
+        LOGE("[FuelGauge] Enter config mode failed\n");
+        BQ27441_Seal();
+        return false;
     }
-
-    do {
-        flags = read_word(0x06);
-    } while ((flags & 0x10) == 0);
-
-    LOGI("[FuelGauge] Event");
 
     if (!BQ27441_WriteStateBlock_All()) {
-        LOGE("[FuelGauge] Event");
-        return;
+        LOGE("[FuelGauge] Write state block failed\n");
+        BQ27441_ExitConfigMode();
+        BQ27441_Seal();
+        return false;
     }
 
     if (!BQ27441_WriteRaTable(RT_TABLE, RT_TABLE_LEN)) {
-        LOGE("[FuelGauge] Event\n");
-    } else {
-        LOGI("[FuelGauge] Event\n");
+        LOGE("[FuelGauge] Write RA table failed\n");
+        BQ27441_ExitConfigMode();
+        BQ27441_Seal();
+        return false;
     }
-    LOGI("[FuelGauge] Event");
 
     if (!BQ27441_ExitConfigMode()) {
-        LOGE("[FuelGauge] Event");
-        return;
+        LOGE("[FuelGauge] Exit config mode failed\n");
+        BQ27441_Seal();
+        return false;
     }
 
+    if (!BQ27441_ConfigMatchesDesign()) {
+        LOGE("[FuelGauge] Config verify failed\n");
+        BQ27441_Seal();
+        return false;
+    }
 
-    uint16_t flags1;
-    do { flags1 = read_word(0x06); } while (flags1 & 0x10);
-
-    LOGI("[FuelGauge] Event");
+    BQ27441_Seal();
     osDelay(10);
+    return true;
+}
+
+void BQ27441_DEMO(void) {
+    (void)BQ27441_InitConfig();
 }
 
 /**
@@ -317,20 +473,21 @@ void BQ27441_VerifyConfig(void) {
      * 2) 执行本函数核心业务逻辑。
      * 3) 输出结果/更新状态并返回。
      */
-    uint16_t designCap = BQ27441_ReadExtended(BQ27441_ID_STATE, 11) |
-                         (BQ27441_ReadExtended(BQ27441_ID_STATE, 10) << 8);
-    uint16_t designEnergy = BQ27441_ReadExtended(BQ27441_ID_STATE, 13) |
-                            (BQ27441_ReadExtended(BQ27441_ID_STATE, 12) << 8);
-    uint16_t termVolt = BQ27441_ReadExtended(BQ27441_ID_STATE, 17) |
-                        (BQ27441_ReadExtended(BQ27441_ID_STATE, 16) << 8);
-    uint16_t taperRate = BQ27441_ReadExtended(BQ27441_ID_STATE, 28) |
-                         (BQ27441_ReadExtended(BQ27441_ID_STATE, 27) << 8);
+    BQ27441_Unseal();
 
-    LOGI("[FuelGauge] Event");
+    uint16_t designCap = BQ27441_ReadExtendedWord(BQ27441_ID_STATE, 10, 11);
+    uint16_t designEnergy = BQ27441_ReadExtendedWord(BQ27441_ID_STATE, 12, 13);
+    uint16_t termVolt = BQ27441_ReadExtendedWord(BQ27441_ID_STATE, 16, 17);
+    uint16_t taperRate = BQ27441_ReadExtendedWord(BQ27441_ID_STATE, 27, 28);
+
+    LOGI("[FuelGauge] Config verify %s\n",
+         BQ27441_ConfigMatchesDesign() ? "OK" : "FAILED");
     LOGI("[FuelGauge] Design capacity=%d mAh\n", designCap);
     LOGI("[FuelGauge] Design energy=%d mWh\n", designEnergy);
     LOGI("[FuelGauge] Terminate voltage=%d mV\n", termVolt);
     LOGI("[FuelGauge] Taper rate=%d\n", taperRate);
+
+    BQ27441_Seal();
 }
 
 /**
@@ -341,15 +498,50 @@ void BQ27441_PrintRaTable(void) {
      * 2) 执行本函数核心业务逻辑。
      * 3) 输出结果/更新状态并返回。
      */
-#ifdef  LOG_SWITCH_OF_BQ27441
+#ifdef BQ27441_RA_TABLE_LOG
+    if (!BQ27441_Unseal()) {
+        LOGE("[FuelGauge] RA read unseal failed\n");
+        return;
+    }
+
+    bool enteredConfig = false;
+    for (uint8_t retry = 0; retry < 3U; retry++) {
+        if (BQ27441_EnterConfigMode()) {
+            enteredConfig = true;
+            break;
+        }
+        osDelay(200);
+    }
+
+    if (!enteredConfig) {
+        LOGE("[FuelGauge] RA read enter config mode failed, flags=0x%04X, control=0x%04X\n",
+             read_word(BQ27441_COMMAND_FLAGS),
+             BQ27441_ReadControlStatus());
+        BQ27441_Seal();
+        return;
+    }
 
     for (uint8_t i = 0; i < 15; i++) {
-        uint8_t lsb = BQ27441_ReadExtended(BQ27441_ID_RACOMP, i * 2);
-        uint8_t msb = BQ27441_ReadExtended(BQ27441_ID_RACOMP, i * 2 + 1);
-        uint16_t ra = (msb << 8) | lsb;
-        LOGI("[FuelGauge] RA=0x%02X",ra);
+        uint8_t msb = 0xFF;
+        uint8_t lsb = 0xFF;
+
+        if (!BQ27441_ReadExtendedData(BQ27441_ID_RACOMP, i * 2, &msb) ||
+            !BQ27441_ReadExtendedData(BQ27441_ID_RACOMP, i * 2 + 1, &lsb)) {
+            LOGE("[FuelGauge] RA[%u] read failed\n", i);
+            continue;
+        }
+
+        uint16_t ra = ((uint16_t)msb << 8) | lsb;
+        LOGI("[FuelGauge] RA[%u]=0x%04X\n", i, ra);
     }
-    LOGI("[FuelGauge] Qmax=%d mAh\n", BQ27441_ReadQmax());
+
+    uint16_t qmaxRaw = BQ27441_ReadQmaxRaw();
+    LOGI("[FuelGauge] Qmax raw=0x%04X, qmax=%d mAh\n", qmaxRaw, BQ27441_ReadQmax());
+
+    if (!BQ27441_ExitConfigMode()) {
+        LOGE("[FuelGauge] RA read exit config mode failed\n");
+    }
+    BQ27441_Seal();
 #endif
 }
 /**
@@ -611,10 +803,10 @@ void battery_status_update_bq27441(void) {
      * 3) 输出结果/更新状态并返回。
      */
   BQ27441_MultiRead_DMA(&BQ27441);
-#ifdef  LOG_SWITCH_OF_BQ27441
+#if defined(LOG_SWITCH_OF_BQ27441)
     LOGI("[FuelGauge] Event\n");
     LOGI("[FuelGauge] Voltage=%d mV\n", BQ27441.Voltage);
-    LOGI("[FuelGauge] Battery temp=%.1f C", (BQ27441.Temperature * 0.1f) - 273.15f);
+    LOGI("[FuelGauge] Battery temp=%.1f C\n", (BQ27441.Temperature * 0.1f) - 273.15f);
     LOGI("[FuelGauge] Flags=0x%04X\n", BQ27441.Flags);
     LOGI("[FuelGauge] Nom available cap=%d mAh\n", BQ27441.NomAvailableCap);
     LOGI("[FuelGauge] Full available cap=%d mAh\n", BQ27441.FullAvailableCap);
@@ -625,8 +817,8 @@ void battery_status_update_bq27441(void) {
     LOGI("[FuelGauge] Max load current=%d mA\n", BQ27441.MaxLoadCurrent);
     LOGI("[FuelGauge] Avg power=%d mW\n", BQ27441.AvgPower);
     LOGI("[FuelGauge] SOC=%d %%\n", BQ27441.SOC);
-    LOGI("[FuelGauge] Internal temp=%.1f C", (BQ27441.InternalTemp * 0.1f) - 273.15f);
-    LOGI("[FuelGauge] Health=%d %%, status=0x%02X", BQ27441.percent, BQ27441.status);
+    LOGI("[FuelGauge] Internal temp=%.1f C\n", (BQ27441.InternalTemp * 0.1f) - 273.15f);
+    LOGI("[FuelGauge] Health=%d %%, status=0x%02X\n", BQ27441.percent, BQ27441.status);
 #endif
 
 
@@ -652,4 +844,3 @@ void battery_status_update_bq27441(void) {
     }
     BatteryMonitor_Run();
   }
-

@@ -1,16 +1,16 @@
 /*
  * 文件: interface_uart.c
- * 说明: CRC、RTT 日志输出、USART2 DMA 屏幕协议发送。
+ * 说明: CRC、USART1 日志输出、USART2 DMA 屏幕协议发送。
  */
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include "SEGGER_RTT.h"
 #include "interface_uart.h"
+#include "usart.h"
 #include "UserApp.h"
 
-#define LOG_BUFFER_INDEX 0
 #define LOG_FORMAT_BUFFER_SIZE 192
+#define LOG_UART_TIMEOUT_MS 50
 
 uint16_t Calculate_CRC(uint8_t *data, uint16_t length)
 {
@@ -30,30 +30,41 @@ uint16_t Calculate_CRC(uint8_t *data, uint16_t length)
     return crc;
 }
 
+static void UART_LogWrite(const char *data, size_t length)
+{
+    if ((data == NULL) || (length == 0U)) {
+        return;
+    }
+
+    HAL_UART_Transmit(&huart1, (uint8_t *)data, (uint16_t)length, LOG_UART_TIMEOUT_MS);
+}
+
 #ifdef __GNUC__
 int __io_putchar(int ch)
 {
-    SEGGER_RTT_PutChar(LOG_BUFFER_INDEX, (char)ch);
+    uint8_t data = (uint8_t)ch;
+
+    HAL_UART_Transmit(&huart1, &data, 1U, LOG_UART_TIMEOUT_MS);
     return ch;
 }
 #else
 int fputc(int ch, FILE *f)
 {
     (void)f;
-    SEGGER_RTT_PutChar(LOG_BUFFER_INDEX, (char)ch);
+    uint8_t data = (uint8_t)ch;
+
+    HAL_UART_Transmit(&huart1, &data, 1U, LOG_UART_TIMEOUT_MS);
     return ch;
 }
 #endif
 
-static void RTT_LogV(const char *color, const char *level, const char *format, va_list args)
+static void UART_LogV(const char *level, const char *format, va_list args)
 {
     char buffer[LOG_FORMAT_BUFFER_SIZE];
 
     vsnprintf(buffer, sizeof(buffer), format, args);
-    SEGGER_RTT_WriteString(LOG_BUFFER_INDEX, color);
-    SEGGER_RTT_WriteString(LOG_BUFFER_INDEX, level);
-    SEGGER_RTT_WriteString(LOG_BUFFER_INDEX, buffer);
-    SEGGER_RTT_WriteString(LOG_BUFFER_INDEX, RTT_CTRL_RESET);
+    UART_LogWrite(level, strlen(level));
+    UART_LogWrite(buffer, strlen(buffer));
 }
 
 void LOG(const char *format, ...)
@@ -66,14 +77,14 @@ void LOG(const char *format, ...)
 
     if (logSemaphore == NULL) {
         va_start(args, format);
-        RTT_LogV("", "", format, args);
+        UART_LogV("", format, args);
         va_end(args);
         return;
     }
 
     if (xSemaphoreTake(logSemaphore, portMAX_DELAY) == pdTRUE) {
         va_start(args, format);
-        RTT_LogV("", "", format, args);
+        UART_LogV("", format, args);
         va_end(args);
         xSemaphoreGive(logSemaphore);
     }
@@ -89,14 +100,14 @@ void LOGI(const char *format, ...)
 
     if (logSemaphore == NULL) {
         va_start(args, format);
-        RTT_LogV(RTT_CTRL_TEXT_BRIGHT_GREEN, "[INFO] ", format, args);
+        UART_LogV("[INFO] ", format, args);
         va_end(args);
         return;
     }
 
     if (xSemaphoreTake(logSemaphore, portMAX_DELAY) == pdTRUE) {
         va_start(args, format);
-        RTT_LogV(RTT_CTRL_TEXT_BRIGHT_GREEN, "[INFO] ", format, args);
+        UART_LogV("[INFO] ", format, args);
         va_end(args);
         xSemaphoreGive(logSemaphore);
     }
@@ -112,14 +123,14 @@ void LOGW(const char *format, ...)
 
     if (logSemaphore == NULL) {
         va_start(args, format);
-        RTT_LogV(RTT_CTRL_TEXT_BRIGHT_YELLOW, "[WARN] ", format, args);
+        UART_LogV("[WARN] ", format, args);
         va_end(args);
         return;
     }
 
     if (xSemaphoreTake(logSemaphore, portMAX_DELAY) == pdTRUE) {
         va_start(args, format);
-        RTT_LogV(RTT_CTRL_TEXT_BRIGHT_YELLOW, "[WARN] ", format, args);
+        UART_LogV("[WARN] ", format, args);
         va_end(args);
         xSemaphoreGive(logSemaphore);
     }
@@ -135,14 +146,14 @@ void LOGE(const char *format, ...)
 
     if (logSemaphore == NULL) {
         va_start(args, format);
-        RTT_LogV(RTT_CTRL_TEXT_BRIGHT_RED, "[ERROR] ", format, args);
+        UART_LogV("[ERROR] ", format, args);
         va_end(args);
         return;
     }
 
     if (xSemaphoreTake(logSemaphore, portMAX_DELAY) == pdTRUE) {
         va_start(args, format);
-        RTT_LogV(RTT_CTRL_TEXT_BRIGHT_RED, "[ERROR] ", format, args);
+        UART_LogV("[ERROR] ", format, args);
         va_end(args);
         xSemaphoreGive(logSemaphore);
     }
@@ -157,13 +168,15 @@ void LOG_ISR(const char *format, ...)
     }
 
     va_start(args, format);
-    RTT_LogV(RTT_CTRL_TEXT_BRIGHT_CYAN, "[ISR] ", format, args);
+    UART_LogV("[ISR] ", format, args);
     va_end(args);
 }
 
 void LOG_CLEAR(void)
 {
-    SEGGER_RTT_WriteString(LOG_BUFFER_INDEX, RTT_CTRL_CLEAR);
+    static const char clearSequence[] = "\r\n";
+
+    UART_LogWrite(clearSequence, sizeof(clearSequence) - 1U);
 }
 
 void RTT_VAR(const char *format, ...)
@@ -179,7 +192,7 @@ void RTT_VAR(const char *format, ...)
         va_start(args, format);
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        SEGGER_RTT_WriteString(LOG_BUFFER_INDEX, buffer);
+        UART_LogWrite(buffer, strlen(buffer));
         return;
     }
 
@@ -187,7 +200,7 @@ void RTT_VAR(const char *format, ...)
         va_start(args, format);
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        SEGGER_RTT_WriteString(LOG_BUFFER_INDEX, buffer);
+        UART_LogWrite(buffer, strlen(buffer));
         xSemaphoreGive(logSemaphore);
     }
 }
@@ -197,8 +210,6 @@ extern UART_HandleTypeDef huart2;
 
 void USART2_DMA_Init(void)
 {
-    SEGGER_RTT_Init();
-
     usart2_dmatxSemaphore = xSemaphoreCreateBinary();
     if (usart2_dmatxSemaphore != NULL) {
         xSemaphoreGive(usart2_dmatxSemaphore);
