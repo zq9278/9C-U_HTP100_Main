@@ -829,7 +829,7 @@ void battery_status_update_bq27441(void) {
 
 
 
-  low_battery = (BQ27441.SOC < 10) ;
+  low_battery = (BQ27441.SOC <= 1) ;
     fully_charged=(BQ27441.SOC > 98);
     float battery = (float)BQ27441.SOC;
 

@@ -72,8 +72,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined symbols
-        LOG_SWITCH_OF_BQ27441
-        BQ27441_RA_TABLE_LOG
+        # LOG_SWITCH_OF_BQ27441
+        # BQ27441_RA_TABLE_LOG
 )
 
 # Add linked libraries

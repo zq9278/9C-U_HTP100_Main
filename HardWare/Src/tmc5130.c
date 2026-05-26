@@ -635,9 +635,10 @@ void PressureControl(float pid_dt_s) {
                 g_low_active = 1;
                 g_low_begin_ms = now_ms;
             } else if ((now_ms - g_low_begin_ms) >= profile->low_enter_ms) {
-                g_pressure_stage = g_a_used_once ? PRESS_STAGE_B_APPROACH : PRESS_STAGE_A_RECOVERY;
+                g_pressure_stage = PRESS_STAGE_A_RECOVERY;
                 g_stage_enter_ms = now_ms;
                 g_low_active = 0;
+                g_a_used_once = 0;
                 MotorPID.integral = 0.0f;
             }
         } else {
