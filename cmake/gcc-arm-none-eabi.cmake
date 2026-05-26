@@ -42,6 +42,13 @@ if(NOT ARM_NONE_EABI_GCC OR NOT ARM_NONE_EABI_GXX OR NOT ARM_NONE_EABI_OBJCOPY O
     )
 endif()
 
+if(NOT ARM_NONE_EABI_GCC OR NOT ARM_NONE_EABI_GXX OR NOT ARM_NONE_EABI_OBJCOPY OR NOT ARM_NONE_EABI_SIZE)
+    message(FATAL_ERROR
+        "arm-none-eabi toolchain not found. Set PATH or STM32CUBE_BUNDLE_PATH/CUBE_BUNDLE_PATH "
+        "to your STM32Cube bundles directory."
+    )
+endif()
+
 set(CMAKE_C_COMPILER                ${ARM_NONE_EABI_GCC})
 set(CMAKE_ASM_COMPILER              ${CMAKE_C_COMPILER})
 set(CMAKE_CXX_COMPILER              ${ARM_NONE_EABI_GXX})
