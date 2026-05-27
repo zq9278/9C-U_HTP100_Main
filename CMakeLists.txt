@@ -27,6 +27,19 @@ set(JLINK_DEVICE "STM32G070CB" CACHE STRING "SEGGER J-Link target device")
 set(JLINK_INTERFACE "SWD" CACHE STRING "SEGGER J-Link target interface")
 set(JLINK_SPEED_KHZ "4000" CACHE STRING "SEGGER J-Link speed in kHz")
 set(JLINK_GDB_PORT "2331" CACHE STRING "SEGGER J-Link GDB server port")
+set(PRODUCT_MODEL "9C-U-HTP100" CACHE STRING "Target product model")#产品名称
+set_property(CACHE PRODUCT_MODEL PROPERTY STRINGS "9C-U-HTP100S" "9C-U-HTP100")
+set(DEFAULT_LANGUAGE_MODE "0" CACHE STRING "Default language mode: 0=Chinese, 1=English")
+string(TIMESTAMP SOFTWARE_VERSION_DATE "%Y%m%d")
+set(SOFTWARE_VERSION "${SOFTWARE_VERSION_DATE}" CACHE STRING "Software version number in YYYYMMDD format")
+
+if(PRODUCT_MODEL STREQUAL "9C-U-HTP100S")
+        set(PRODUCT_MODEL_DEFINE PRODUCT_MODEL_9C_U_HTP100S)
+elseif(PRODUCT_MODEL STREQUAL "9C-U-HTP100")
+        set(PRODUCT_MODEL_DEFINE PRODUCT_MODEL_9C_U_HTP100)
+else()
+        message(FATAL_ERROR "Unsupported PRODUCT_MODEL: ${PRODUCT_MODEL}")
+endif()
 
 # Include toolchain file
 include("cmake/gcc-arm-none-eabi.cmake")
@@ -72,6 +85,10 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
         # Add user defined symbols
+        ${PRODUCT_MODEL_DEFINE}
+        PRODUCT_MODEL_NAME="${PRODUCT_MODEL}"
+        SOFTWARE_VERSION=${SOFTWARE_VERSION}
+        DEFAULT_LANGUAGE_MODE=${DEFAULT_LANGUAGE_MODE}
         # LOG_SWITCH_OF_BQ27441
         # BQ27441_RA_TABLE_LOG
 )

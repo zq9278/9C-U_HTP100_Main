@@ -6,6 +6,7 @@
 #ifndef _24CXX_H
 #define _24CXX_H
 #include "stm32g0xx_hal.h"
+#include <stdbool.h>
 
 
 #define AT24C01		127
@@ -24,6 +25,10 @@
 
 
 #define EEPROM_BQ27441Config_Add 0xFA
+#define EEPROM_LANGUAGE_ADDR 0x06
+
+#define LANGUAGE_CHINESE 0
+#define LANGUAGE_ENGLISH 1
 
 uint8_t AT24CXX_ReadOneByte(uint16_t ReadAddr);
 void AT24CXX_WriteOneByte(uint16_t WriteAddr,uint8_t DataToWrite);
@@ -37,6 +42,9 @@ uint8_t AT24CXX_Check(void);
 void AT24CXX_Init(void);
 void Heating_film_Check(void);
 void prepare_data_set(void);
+uint16_t SystemLanguage_Load(void);
+bool SystemLanguage_Set(uint16_t language);
+uint16_t SystemLanguage_Get(void);
 
 uint32_t AT24CXX_ReadOrWriteZero(uint16_t startAddr);
 void AT24CXX_WriteUInt16(uint16_t WriteAddr, uint16_t value);
@@ -51,5 +59,4 @@ HAL_StatusTypeDef EYE_AT24CXX_ReadUInt16Ex(uint16_t addr, uint16_t *value_out);
 
 void AD24C01_Factory_formatted(void);
 #endif
-
 

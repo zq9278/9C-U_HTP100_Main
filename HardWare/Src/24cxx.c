@@ -13,6 +13,12 @@ volatile uint8_t i2c_dma_read_complete = 0;
 volatile uint8_t i2c_dma_write_complete = 0;
 SoftwareI2C iic_24x = {EE_SDA_GPIO_Port, EE_SDA_Pin, EE_SCL_GPIO_Port, EE_SCL_Pin};
 
+#ifndef DEFAULT_LANGUAGE_MODE
+#define DEFAULT_LANGUAGE_MODE LANGUAGE_CHINESE
+#endif
+
+static uint16_t g_system_language = DEFAULT_LANGUAGE_MODE;
+
 
 /**
  * @brief AT24CXX_Init 鍑芥暟瀹炵幇銆? */
@@ -334,6 +340,35 @@ void AT24CXX_WriteUInt16(uint16_t WriteAddr, uint16_t value) {
   AT24CXX_Write(WriteAddr, buffer, 2);
 }
 
+uint16_t SystemLanguage_Load(void)
+{
+  uint16_t language = (uint16_t)AT24CXX_ReadOrWriteZero(EEPROM_LANGUAGE_ADDR);
+
+  if (language > LANGUAGE_ENGLISH) {
+    language = DEFAULT_LANGUAGE_MODE;
+    AT24CXX_WriteUInt16(EEPROM_LANGUAGE_ADDR, language);
+  }
+
+  g_system_language = language;
+  return g_system_language;
+}
+
+bool SystemLanguage_Set(uint16_t language)
+{
+  if (language > LANGUAGE_ENGLISH) {
+    return false;
+  }
+
+  g_system_language = language;
+  AT24CXX_WriteUInt16(EEPROM_LANGUAGE_ADDR, language);
+  return true;
+}
+
+uint16_t SystemLanguage_Get(void)
+{
+  return g_system_language;
+}
+
 /**
  * @brief Heating_film_Check 鍑芥暟瀹炵幇銆? */
 void Heating_film_Check(void) {
@@ -575,7 +610,10 @@ void prepare_data_set(void){
   my_prepare_data.value = auto_count;
   Eye_twitching_invalid_master(&my_prepare_data);
   set_prepare = AT24CXX_ReadOrWriteZero(0xFC);
+
+#if defined(PRODUCT_MODEL_9C_U_HTP100S)
   set_prepare = 0;
+#endif
   my_prepare_data.cmd_type_low = 0xA3;
   my_prepare_data.value = set_prepare;
   Eye_twitching_invalid_master(&my_prepare_data);
@@ -639,4 +677,3 @@ void AD24C01_Factory_formatted(void){
   AT24CXX_WriteUInt16(0x04,0);
   };
 }
-

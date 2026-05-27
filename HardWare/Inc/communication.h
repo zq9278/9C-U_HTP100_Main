@@ -14,6 +14,10 @@
 #define FRAME_HEADER_BYTE2   0xA5
 #define FRAME_TAIL_BYTE1     0xFF
 #define FRAME_TAIL_BYTE2     0xFF
+
+#define COMM_CMD_SET_LANGUAGE       0x1060
+#define COMM_RESP_LANGUAGE          0x00AB
+#define COMM_RESP_SOFTWARE_VERSION  0x2060
 extern uint8_t factory_mode;
 typedef struct __attribute__((packed))
 {
@@ -70,9 +74,23 @@ typedef struct __attribute__((packed)){
   uint8_t end_low;
 } prepare_data, *prepare_data_p;
 
+typedef struct __attribute__((packed)){
+  uint8_t cmd_head_high;
+  uint8_t cmd_head_low;
+  uint8_t frame_length;
+  uint8_t cmd_type_high;
+  uint8_t cmd_type_low;
+  uint32_t value;
+  uint16_t crc;
+  uint8_t end_high;
+  uint8_t end_low;
+} uint32_data, *uint32_data_p;
+
 void command_parsing(uart_data *received_data);
 void UART1_CMDHandler(recept_data_p msg);
 void ScreenUpdateSOC(float value);
+void ScreenSendLanguageSetting(void);
+void ScreenSendSoftwareVersion(void);
 void ScreenWorkModeQuit(void);
 void ScreenTimerStart(void);
 void ScreenTimerStop(void) ;
@@ -90,5 +108,4 @@ void Serial_data_stream_parsing(uart_data *frameData);
 
 
 #endif
-
 

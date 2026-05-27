@@ -31,6 +31,10 @@ extern uint8_t soft_button;
 uint16_t save_prepare, set_prepare;
 uint8_t factory_mode = 0;
 
+#ifndef SOFTWARE_VERSION
+#define SOFTWARE_VERSION 0U
+#endif
+
 
 
 
@@ -309,6 +313,16 @@ void UART1_CMDHandler_prepare(prepare_data_p msg) {
 
 
     switch (cmd_type) {
+    case COMM_CMD_SET_LANGUAGE:
+        if (SystemLanguage_Set(data)) {
+            ScreenSendLanguageSetting();
+            LOGI("[Screen] Language set=%u\n", data);
+        } else {
+            ScreenSendLanguageSetting();
+            LOGW("[Screen] Invalid language=%u\n", data);
+        }
+        break;
+
     case 0x1042:
         save_prepare = data;
         LOGI("[Screen] Save prepare=%u\n", save_prepare);
@@ -669,6 +683,36 @@ void ScreenUpdateSOC(float value) {
 
 }
 
+void ScreenSendLanguageSetting(void)
+{
+    static prepare_data pData;
+
+    pData.cmd_head_high = 0x6A;
+    pData.cmd_head_low = 0xA6;
+    pData.cmd_type_high = (uint8_t)(COMM_RESP_LANGUAGE >> 8);
+    pData.cmd_type_low = (uint8_t)(COMM_RESP_LANGUAGE & 0xFF);
+    pData.value = SystemLanguage_Get();
+    pData.end_high = 0xff;
+    pData.end_low = 0xff;
+    Eye_twitching_invalid_master(&pData);
+}
+
+void ScreenSendSoftwareVersion(void)
+{
+    static uint32_data pData;
+
+    pData.cmd_head_high = 0x5A;
+    pData.cmd_head_low = 0xA5;
+    pData.frame_length = 0x0d;
+    pData.cmd_type_high = (uint8_t)(COMM_RESP_SOFTWARE_VERSION >> 8);
+    pData.cmd_type_low = (uint8_t)(COMM_RESP_SOFTWARE_VERSION & 0xFF);
+    pData.value = (uint32_t)SOFTWARE_VERSION;
+    pData.crc = Calculate_CRC((uint8_t *)&pData, sizeof(pData) - 4);
+    pData.end_high = 0xff;
+    pData.end_low = 0xff;
+    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+}
+
 
 void ScreenWorkModeQuit(void) {
     /* Step 1: validate input and preconditions. */
@@ -897,4 +941,3 @@ for(uint16_t i = 0; i < frameData->length; i++) {
     }
 
 }
-
