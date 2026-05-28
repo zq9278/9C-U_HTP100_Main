@@ -22,7 +22,7 @@ set(CMAKE_C_FLAGS_DEBUG "-O0 -g -u _printf_float")# Enable float printf support 
 set(CMAKE_C_FLAGS_RELEASE "-O2")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS_DEBUG}")
 # Set the project name
-set(CMAKE_PROJECT_NAME SLK-01_V1_0)
+set(CMAKE_PROJECT_NAME 9C-HTP100-main)
 set(JLINK_DEVICE "STM32G070CB" CACHE STRING "SEGGER J-Link target device")
 set(JLINK_INTERFACE "SWD" CACHE STRING "SEGGER J-Link target interface")
 set(JLINK_SPEED_KHZ "4000" CACHE STRING "SEGGER J-Link speed in kHz")

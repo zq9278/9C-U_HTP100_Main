@@ -6,7 +6,7 @@
             <JLink>
                 <Options Connection="1" IsRTTSession="0" IsRTTWithTimeStamp="0" SamplingPeriod="100" SerialNo="0" JTAG_IRPre="0" JTAG_DRPre="0" IP="" TargetDevice="Cortex-M0+" TargetInterface="SWD" InterfaceSpeed="4000" />
             </JLink>
-            <ElfFile Name="D:\Project\SLK01\Software\SLK-01-freertos-clion\cmake-build-debug-mingw\SLK-01_V1_0.elf" />
+            <ElfFile Name="D:\Project\SLK01\Software\SLK-01-freertos-clion\cmake-build-debug-mingw\9C-HTP100-main.elf" />
             <Scope>
                 <Options TimeResolutionUs="1000000" />
             </Scope>

@@ -35,7 +35,7 @@ void OnProjectLoad (void) {
   //
   Edit.SysVar (VAR_HSS_SPEED, FREQ_2_KHZ);
   Project.SetOSPlugin ("FreeRTOSPlugin_CM0");
-  File.Open ("D:/Project/SLK01/Software/SLK-01-freertos-clion/cmake-build-debug-mingw/SLK-01_V1_0.elf");
+  File.Open ("D:/Project/SLK01/Software/SLK-01-freertos-clion/cmake-build-debug-mingw/9C-HTP100-main.elf");
 }
 
 /*********************************************************************
