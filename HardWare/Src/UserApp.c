@@ -113,8 +113,11 @@ void Heat_Task(void *argument) {
                 LOGI("[Task] Event\n");
 #endif
                 EyeTmp = TmpRaw2Ture();
-                EyeTmp = TempDisplayTargetFilterUpdate(EyeTmp ,HeatPID.setpoint);
-               float Eye_Tmp = HeatLimitMeasuredTemperature(EyeTmp-TEMPERATURE_CONTROL_COMPENSATION);
+                EyeTmp = TempDisplayTargetFilterUpdate(
+                    EyeTmp,
+                    HeatPID.setpoint - TEMPERATURE_CONTROL_COMPENSATION
+                );
+               float Eye_Tmp = HeatLimitMeasuredTemperature(EyeTmp - TEMPERATURE_DISPLAY_COMPENSATION);
                 uint8_t send_heat_power = tempature_flag_400ms;
                 if (tempature_flag_400ms) {
                     tempature_flag_400ms = 0;

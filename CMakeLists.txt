@@ -17,10 +17,12 @@ set(CMAKE_C_EXTENSIONS ON)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
 endif()
-# Add optimization settings for different build types
-set(CMAKE_C_FLAGS_DEBUG "-O0 -g -u _printf_float")# Enable float printf support in debug builds
-set(CMAKE_C_FLAGS_RELEASE "-O2")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS_DEBUG}")
+
+# Add optimization settings for different build types.
+set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
+set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG")
+set(CMAKE_C_FLAGS_MINSIZEREL "-Os -DNDEBUG")
 # Set the project name
 set(CMAKE_PROJECT_NAME 9C-HTP100-main)
 set(JLINK_DEVICE "STM32G070CB" CACHE STRING "SEGGER J-Link target device")
@@ -98,6 +100,12 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         stm32cubemx
 
         # Add user defined libraries
+)
+
+# Keep float printf enabled for every build type.
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+        -u
+        _printf_float
 )
 # Print final image size
 add_custom_command(

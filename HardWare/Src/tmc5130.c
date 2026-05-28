@@ -29,7 +29,7 @@ typedef struct {
 
 #if ENABLE_PRESSURE_LEVEL_PID_TUNING
 static PressurePidProfile_t g_pid_150 = {200.0f, 0.0f, 0.0f};
-static PressurePidProfile_t g_pid_250 = {100.0f, 10.0f, 0.0f};
+static PressurePidProfile_t g_pid_250 = {200.0f, 10.0f, 0.0f};
 static PressurePidProfile_t g_pid_350 = {200.0f, 10.0f, 0.0f};
 static PressurePidProfile_t g_pid_450 = {200.0f, 10.0f, 0.0f};
 static PressurePidProfile_t g_pid_550 = {200.0f, 10.0f, 0.0f};
@@ -565,7 +565,7 @@ static const PressureStageProfile_t g_profile_150 = {
     20000.0f, 4000.0f, 15000.0f, 100.0f, 110.0f, 1000u, 600u, 100.0f, 1000u
 };
 static const PressureStageProfile_t g_profile_250 = {
-    35000.0f, 4000.0f, 15000.0f, 100.0f, 110.5f, 1000u, 800u, 200.0f, 1000u
+    35000.0f, 4000.0f, 15000.0f, 100.0f, 110.5f, 1000u, 600u, 200.0f, 1000u
 };
 static const PressureStageProfile_t g_profile_350 = {
     50000.0f, 4000.0f, 20000.0f, 100.0f, 110.0f, 1000u, 800u, 300.0f, 1000u
