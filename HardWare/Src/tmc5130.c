@@ -8,6 +8,7 @@
 #include "ads1220.h"
 #include "UserApp.h"
 #include "time_callback.h"
+#include "interface_uart.h"
 
 #define FORCE_FILTER_ALPHA 0.9f
 #define PRESSURE_DISPLAY_TARGET_FILTER_SIZE 8u
@@ -261,6 +262,8 @@ uint32_t MotorSpeed = 0x4000;
 
 extern SPI_HandleTypeDef hspi1;
 
+#define TMC5130_SPI_TIMEOUT_MS 50U
+
 
 /**
  * @brief TMC5130_Init 鍑芥暟瀹炵幇銆? */
@@ -304,8 +307,6 @@ void TMC5130_Init(void) {
              0);
 }
 
-
-volatile uint8_t SPI_RxComplete = 0;
 uint8_t TxBuffer[5];
 uint8_t RxBuffer[4];
 
@@ -318,17 +319,26 @@ void TMC5130_Read(uint8_t ReadAddr, uint8_t *pBuffer) {
      * 2) 执行本函数核心业务逻辑。
      * 3) 输出结果/更新状态并返回。
      */
-    SPI_RxComplete = 0;
     TxBuffer[0] = ReadAddr;
     TMC_CSN(0);
-    HAL_SPI_Transmit_IT(&hspi1, TxBuffer, 5);
+    if (HAL_SPI_Transmit(&hspi1, TxBuffer, 5, TMC5130_SPI_TIMEOUT_MS) != HAL_OK) {
+        TMC_CSN(1);
+        LOGE("[TMC5130] Read command failed, addr=0x%02X\n", ReadAddr);
+        return;
+    }
     TMC_CSN(1);
 
     TMC_CSN(0);
-    HAL_SPI_Transmit_IT(&hspi1, TxBuffer, 1);
-    SPI_RxComplete = 0;
-    HAL_SPI_Receive_IT(&hspi1, pBuffer, 4);
-    while (!SPI_RxComplete);
+    if (HAL_SPI_Transmit(&hspi1, TxBuffer, 1, TMC5130_SPI_TIMEOUT_MS) != HAL_OK) {
+        TMC_CSN(1);
+        LOGE("[TMC5130] Read dummy tx failed, addr=0x%02X\n", ReadAddr);
+        return;
+    }
+    if (HAL_SPI_Receive(&hspi1, pBuffer, 4, TMC5130_SPI_TIMEOUT_MS) != HAL_OK) {
+        TMC_CSN(1);
+        LOGE("[TMC5130] Read data failed, addr=0x%02X\n", ReadAddr);
+        return;
+    }
     TMC_CSN(1);
 }
 
@@ -348,7 +358,12 @@ void TMC5130_Write(uint8_t WriteAddr, uint32_t WriteData) {
     Data[3] = (uint8_t) ((WriteData) >> 8);
     Data[4] = (uint8_t) WriteData;
     TMC_CSN(0);
-    HAL_SPI_Transmit_IT(&hspi1, Data, 5);
+    if (HAL_SPI_Transmit(&hspi1, Data, 5, TMC5130_SPI_TIMEOUT_MS) != HAL_OK) {
+        TMC_CSN(1);
+        LOGE("[TMC5130] Write failed, addr=0x%02X, data=0x%08lX\n",
+             WriteAddr, (unsigned long)WriteData);
+        return;
+    }
     TMC_CSN(1);
 }
 
@@ -381,7 +396,11 @@ void MotorCtrl(int32_t Step) {
     Data[3] = (uint8_t) ((Step) >> 8);
     Data[4] = (uint8_t) Step;
     TMC_CSN(0);
-    HAL_SPI_Transmit_IT(&hspi1, Data, 5);
+    if (HAL_SPI_Transmit(&hspi1, Data, 5, TMC5130_SPI_TIMEOUT_MS) != HAL_OK) {
+        TMC_CSN(1);
+        LOGE("[TMC5130] MotorCtrl failed, step=%ld\n", (long)Step);
+        return;
+    }
     TMC_CSN(1);
 }
 
@@ -401,7 +420,11 @@ void VelocityModeMove(uint8_t direction) {
     Data[3] = 0x00;
     Data[4] = direction;
     TMC_CSN(0);
-    HAL_SPI_Transmit_IT(&hspi1, Data, 5);
+    if (HAL_SPI_Transmit(&hspi1, Data, 5, TMC5130_SPI_TIMEOUT_MS) != HAL_OK) {
+        TMC_CSN(1);
+        LOGE("[TMC5130] VelocityModeMove failed, direction=%u\n", direction);
+        return;
+    }
     TMC_CSN(1);
 }
 
@@ -539,19 +562,19 @@ typedef struct {
 
 
 static const PressureStageProfile_t g_profile_150 = {
-    20000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1000u, 600u, 100.0f, 1000u
+    20000.0f, 4000.0f, 15000.0f, 100.0f, 110.0f, 1000u, 600u, 100.0f, 1000u
 };
 static const PressureStageProfile_t g_profile_250 = {
-    35000.0f, 4000.0f, 10000.0f, 100.0f, 110.5f, 1000u, 800u, 200.0f, 1000u
+    35000.0f, 4000.0f, 15000.0f, 100.0f, 110.5f, 1000u, 800u, 200.0f, 1000u
 };
 static const PressureStageProfile_t g_profile_350 = {
-    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1000u, 800u, 300.0f, 1000u
+    50000.0f, 4000.0f, 20000.0f, 100.0f, 110.0f, 1000u, 800u, 300.0f, 1000u
 };
 static const PressureStageProfile_t g_profile_450 = {
-    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1000u, 800u, 400.0f, 1000u
+    50000.0f, 4000.0f, 20000.0f, 100.0f, 110.0f, 1000u, 800u, 400.0f, 1000u
 };
 static const PressureStageProfile_t g_profile_550 = {
-    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1000u, 1000u, 500.0f, 1000u
+    50000.0f, 4000.0f, 20000.0f, 100.0f, 110.0f, 1000u, 1000u, 500.0f, 1000u
 };
 
 

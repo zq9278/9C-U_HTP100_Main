@@ -573,11 +573,7 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi) {
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
 }
-extern volatile uint8_t SPI_RxComplete;
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
-    if (hspi->Instance == SPI1) {
-        SPI_RxComplete = 1; // ���ý�����ɱ�־
-    }
     if (hspi->Instance == SPI2) {
         hspi2.State = HAL_SPI_STATE_READY;
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
