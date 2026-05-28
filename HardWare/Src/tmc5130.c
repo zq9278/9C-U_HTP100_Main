@@ -539,19 +539,19 @@ typedef struct {
 
 
 static const PressureStageProfile_t g_profile_150 = {
-    20000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1500u, 600u, 100.0f, 1000u
+    20000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1000u, 600u, 100.0f, 1000u
 };
 static const PressureStageProfile_t g_profile_250 = {
-    35000.0f, 4000.0f, 10000.0f, 100.0f, 110.5f, 1500u, 800u, 200.0f, 1000u
+    35000.0f, 4000.0f, 10000.0f, 100.0f, 110.5f, 1000u, 800u, 200.0f, 1000u
 };
 static const PressureStageProfile_t g_profile_350 = {
-    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1500u, 800u, 300.0f, 1000u
+    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1000u, 800u, 300.0f, 1000u
 };
 static const PressureStageProfile_t g_profile_450 = {
-    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1500u, 800u, 400.0f, 1000u
+    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1000u, 800u, 400.0f, 1000u
 };
 static const PressureStageProfile_t g_profile_550 = {
-    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1500u, 1000u, 500.0f, 1000u
+    50000.0f, 4000.0f, 10000.0f, 100.0f, 110.0f, 1000u, 1000u, 500.0f, 1000u
 };
 
 

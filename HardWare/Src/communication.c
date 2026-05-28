@@ -219,6 +219,9 @@ void UART1_CMDHandler(recept_data_p msg) {
     case 0x1050:
         serialTimeoutFlag = 0;
         prepare_data_set();
+        ScreenSendSoftwareVersion();
+        SystemLanguage_Load();
+        ScreenSendLanguageSetting();
         currentState = STATE_OFF;
         vTaskResume(deviceCheckHandle);
         LOGI("[Screen] Event\n");

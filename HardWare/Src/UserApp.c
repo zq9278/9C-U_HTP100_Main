@@ -503,9 +503,7 @@ void Main(void) {
     configASSERT(UART_DMA_IDLE_RECEPT_QUEUEHandle != NULL);
 
     AT24CXX_Init();
-    SystemLanguage_Load();
-    ScreenSendSoftwareVersion();
-    ScreenSendLanguageSetting();
+
     BQ27441_InitConfig();
     BQ27441_VerifyConfig();
 

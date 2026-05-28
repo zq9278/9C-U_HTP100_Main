@@ -588,6 +588,7 @@ void prepare_data_set(void){
      * 3) 输出结果/更新状态并返回。
      */
   uint16_t hot_count,crimp_count,auto_count,prepare_press,prepare_temperature,prepare_time,bee,set_prepare;
+  uint16_t product_model_value;
 
 
   my_prepare_data.cmd_head_high = 0x6A;
@@ -617,6 +618,18 @@ void prepare_data_set(void){
   my_prepare_data.cmd_type_low = 0xA3;
   my_prepare_data.value = set_prepare;
   Eye_twitching_invalid_master(&my_prepare_data);
+
+#if defined(PRODUCT_MODEL_9C_U_HTP100S)
+  product_model_value = 0;
+#elif defined(PRODUCT_MODEL_9C_U_HTP100)
+  product_model_value = 1;
+#else
+  product_model_value = 0xFFFF;
+#endif
+  my_prepare_data.cmd_type_low = 0xAC;
+  my_prepare_data.value = product_model_value;
+  Eye_twitching_invalid_master(&my_prepare_data);
+
   switch (set_prepare) {
   case 1:
     prepare_press = AT24CXX_ReadOrWriteZero(0x08);
