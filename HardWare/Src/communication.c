@@ -36,6 +36,18 @@ uint8_t factory_mode = 0;
 #endif
 
 
+void FactoryModePrepareAutoStart(void) {
+    currentState = STATE_PRE_AUTO;
+    emergency_stop = 0;
+    HeatPWM(1);
+    HeatPID.integral = 0;
+    HeatPID.setpoint = 40.0f + TEMPERATURE_CONTROL_COMPENSATION;
+
+    if (HeatHandle != NULL) {
+        vTaskResume(HeatHandle);
+    }
+}
+
 
 
 
@@ -111,6 +123,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         break;
 
     case 0x1030:
+        FactoryModeCycleStop();
         if (currentState == STATE_HEAT || currentState == STATE_PRE_HEAT) {
             HeatPWM(0);
             LOGI("[Screen] Event\n");
@@ -139,6 +152,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         break;
 
     case 0x1034:
+        FactoryModeCycleStop();
         if (currentState == STATE_PRESS) {
             if (press_finish == 0) {
                 emergency_stop = 1;
@@ -183,6 +197,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         break;
 
     case 0x1038:
+        FactoryModeCycleStop();
         if (currentState == STATE_PRE_AUTO) {
             HeatPWM(0);
             if (HeatHandle != NULL) {
@@ -242,10 +257,13 @@ void UART1_CMDHandler(recept_data_p msg) {
         break;
 
     case 0x1055:
+        FactoryModeCycleStop();
         factory_mode = 1;
         currentState = STATE_PRE_AUTO;
         emergency_stop = 0;
         HeatPWM(1);
+        HeatPID.integral = 0;
+        HeatPID.setpoint = 40.0f + TEMPERATURE_CONTROL_COMPENSATION;
         if (HeatHandle != NULL) {
             vTaskResume(HeatHandle);
             LOGI("[Screen] Event\n");
@@ -788,8 +806,6 @@ void ScreenTimerStop(void) {
     /* Step 2: run core logic of this function. */
     /* Step 3: update state/output and return. */
 
-
-    factory_mode =0;
     static recept_data pData;
     pData.cmd_head_high = 0x5A;
     pData.cmd_head_low = 0xA5;
@@ -802,7 +818,9 @@ void ScreenTimerStop(void) {
 
 
 
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    if(factory_mode !=1){
+        USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    }
 }
 
 void NEW_EYE(void) {

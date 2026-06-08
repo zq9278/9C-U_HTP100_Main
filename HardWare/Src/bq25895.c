@@ -202,7 +202,6 @@ void BQ25895_AutoRecover(void) {
 uint8_t CHRG_STAT;
 ChargeState_t ChargeState = STATE_POWER_ON;
 uint8_t charging, working, fully_charged, low_battery, emergency_stop;
-static int charge_action_done = 0;
 
 void UpdateChargeState_bq25895(void) {
     /* Step 1: validate input and preconditions. */
@@ -223,15 +222,6 @@ void UpdateChargeState_bq25895(void) {
     switch (CHRG_STAT) {
         case 1:
         case 2:
-            if (!charge_action_done) {
-                HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
-                close_mianAPP();
-                vTaskSuspend(deviceCheckHandle);
-                charge_action_done = 1;
-            }
-
-
-
             if (fully_charged == 0) {
                 charging = 1;
                 fully_charged = 0;
@@ -243,19 +233,14 @@ void UpdateChargeState_bq25895(void) {
             }
             break;
         case 3:
-            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
-            vTaskSuspend(deviceCheckHandle);
             fully_charged = 1;
             charging = 0;
             working = 0;
-            charge_action_done = 0;
             break;
         case 0:
-            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
             working = 1;
             charging = 0;
             fully_charged = 0;
-            charge_action_done = 0;
             break;
     }
     uint8_t PG_STAT = (BQ25895Reg[0x0B] >> 2) & 0x01;
@@ -299,10 +284,7 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
 
         LOGW("[Charger] Event\n");
         charging_flag=0;
-        NVIC_SystemReset();
     }
 
     last_vbus_status = vbus_status;
 }
-
-

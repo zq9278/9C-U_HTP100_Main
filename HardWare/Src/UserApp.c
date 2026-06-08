@@ -492,6 +492,8 @@ void Main(void) {
     butttonHandle = xTimerCreate("buttton", pdMS_TO_TICKS(100), pdTRUE, NULL, buttton_Callback);
     tempareture_pidHandle = xTimerCreate("tempareture_pid", pdMS_TO_TICKS(400), pdTRUE, NULL, tempareture_pid_timer);
     press_updateHandle = xTimerCreate("press_update", pdMS_TO_TICKS(PRESS_PID_TIMER_PERIOD_MS), pdTRUE, NULL, press_update_timer);
+    factory_cycleHandle = xTimerCreate("factory_cycle", pdMS_TO_TICKS(FACTORY_MODE_RUN_WINDOW_MS), pdFALSE, NULL,
+                                       FactoryModeCycleCallback);
     eye_is_existHandle = xTimerCreate("eye_is_exist_delay", pdMS_TO_TICKS(1000), pdTRUE, NULL, eye_is_exist_callback);
     xTimerStart(tempareture_pidHandle, 0);
     xTimerStart(press_updateHandle, 0);

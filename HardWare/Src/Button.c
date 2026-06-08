@@ -10,6 +10,7 @@
 #include "heat.h"
 #include "tmp112.h"
 #include "UserApp.h"
+#include "time_callback.h"
 #include "tmc5130.h"
 
 
@@ -114,10 +115,16 @@ void Button_detection(void) {
             vTaskResume(PressHandle);
         }
         ScreenTimerStart();
+        if (factory_mode == 1) {
+            FactoryModeCycleStartRunWindow();
+        }
         LOGI("[Button] PRE_AUTO -> AUTO, setpoint=%.2f\r\n", HeatPID.setpoint);
         break;
 
     case STATE_AUTO:
+        if (factory_mode == 1 && !FactoryModeCycleIsAutoStopPending()) {
+            FactoryModeCycleStop();
+        }
         EYE_working_Flag = 0;
         currentState = STATE_OFF;
         emergency_stop = 1;
@@ -139,6 +146,11 @@ void Button_detection(void) {
             }
         } else {
             LOGW("[Button] Event\r\n");
+        }
+        if (factory_mode == 1 && FactoryModeCycleIsAutoStopPending()) {
+            FactoryModeCycleClearAutoStopPending();
+            emergency_stop = 0;
+            FactoryModeCycleStartPauseWindow();
         }
         LOGI("[Button] Event\r\n");
         break;

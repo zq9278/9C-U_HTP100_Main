@@ -104,8 +104,8 @@ void ScreenUpdateTemperature(float value);
 void ScreenUpdateHeatPower(float value);
 void ScreenUpdateHeatLoadStatus(float value);
 void Serial_data_stream_parsing(uart_data *frameData);
+void FactoryModePrepareAutoStart(void);
 
 
 
 #endif
-

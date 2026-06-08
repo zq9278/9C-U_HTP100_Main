@@ -3,16 +3,27 @@
  * 璇存槑: HardWare 妯″潡婧愮爜鏂囦欢锛岀紪鐮佺粺涓€涓?UTF-8銆? * 娉ㄩ噴瑙勮寖: 涓枃娉ㄩ噴缁熶竴浣跨敤 UTF-8銆? */
 #include "time_callback.h"
 #include <stdbool.h>
+#include "communication.h"
 #include "tmp112.h"
 #include "ws2812b.h"
 
 TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle,
         motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,
         press_updateHandle, serialTimeoutTimerHandle, IIC_EYETimeoutTimerHandle,
+        factory_cycleHandle,
         eye_is_existHandle, breathTimer;
 
 
 volatile uint8_t press_pid_tick_flag = 0;
+
+typedef enum {
+    FACTORY_CYCLE_IDLE = 0,
+    FACTORY_CYCLE_RUN_WINDOW,
+    FACTORY_CYCLE_PAUSE_WINDOW,
+} FactoryCyclePhase_t;
+
+static FactoryCyclePhase_t factory_cycle_phase = FACTORY_CYCLE_IDLE;
+static uint8_t factory_cycle_auto_stop_pending = 0;
 
 
 /**
@@ -200,4 +211,60 @@ void BreathingLightCallback(TimerHandle_t xTimer) {
     PWM_WS2812B_Show(LED_NUM);
 }
 
+
+void FactoryModeCycleCallback(TimerHandle_t xTimer) {
+    (void)xTimer;
+
+    if (factory_mode != 1) {
+        factory_cycle_phase = FACTORY_CYCLE_IDLE;
+        factory_cycle_auto_stop_pending = 0;
+        return;
+    }
+
+    if (factory_cycle_phase == FACTORY_CYCLE_RUN_WINDOW) {
+        factory_cycle_auto_stop_pending = 1;
+        soft_button = 1;
+        xSemaphoreGive(BUTTON_SEMAPHOREHandle);
+    } else if (factory_cycle_phase == FACTORY_CYCLE_PAUSE_WINDOW) {
+        FactoryModePrepareAutoStart();
+        soft_button = 1;
+        xSemaphoreGive(BUTTON_SEMAPHOREHandle);
+    }
+}
+
+
+void FactoryModeCycleStartRunWindow(void) {
+    factory_cycle_phase = FACTORY_CYCLE_RUN_WINDOW;
+    factory_cycle_auto_stop_pending = 0;
+    xTimerChangePeriod(factory_cycleHandle, pdMS_TO_TICKS(FACTORY_MODE_RUN_WINDOW_MS), 0);
+    xTimerStart(factory_cycleHandle, 0);
+}
+
+
+void FactoryModeCycleStartPauseWindow(void) {
+    factory_cycle_phase = FACTORY_CYCLE_PAUSE_WINDOW;
+    factory_cycle_auto_stop_pending = 0;
+    xTimerChangePeriod(factory_cycleHandle, pdMS_TO_TICKS(FACTORY_MODE_PAUSE_WINDOW_MS), 0);
+    xTimerStart(factory_cycleHandle, 0);
+}
+
+
+void FactoryModeCycleStop(void) {
+    factory_mode = 0;
+    factory_cycle_phase = FACTORY_CYCLE_IDLE;
+    factory_cycle_auto_stop_pending = 0;
+    if (factory_cycleHandle != NULL) {
+        xTimerStop(factory_cycleHandle, 0);
+    }
+}
+
+
+uint8_t FactoryModeCycleIsAutoStopPending(void) {
+    return factory_cycle_auto_stop_pending;
+}
+
+
+void FactoryModeCycleClearAutoStopPending(void) {
+    factory_cycle_auto_stop_pending = 0;
+}
 

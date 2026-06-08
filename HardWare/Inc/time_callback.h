@@ -14,9 +14,13 @@
 
 #define PRESS_DISPLAY_UPDATE_PERIOD_MS 400u
 
+#define FACTORY_MODE_RUN_WINDOW_MS     180000u
+#define FACTORY_MODE_PAUSE_WINDOW_MS   5000u
+
 extern TimerHandle_t ws2812_white_delayHandle, ws2812_yellow_delayHandle, breath_delayHandle,
         motor_grab3sHandle, motor_back_1sHandle, butttonHandle, tempareture_pidHandle,
         press_updateHandle, serialTimeoutTimerHandle, IIC_EYETimeoutTimerHandle,
+        factory_cycleHandle,
         eye_is_existHandle, breathTimer;
 
 extern volatile uint8_t press_pid_tick_flag;
@@ -34,7 +38,12 @@ void SerialTimeout_Callback(TimerHandle_t xTimer);
 void IIC_EYETimeout_Callback(TimerHandle_t xTimer);
 void eye_is_exist_callback(TimerHandle_t xTimer);
 void BreathingLightCallback(TimerHandle_t xTimer);
+void FactoryModeCycleCallback(TimerHandle_t xTimer);
+void FactoryModeCycleStartRunWindow(void);
+void FactoryModeCycleStartPauseWindow(void);
+void FactoryModeCycleStop(void);
+uint8_t FactoryModeCycleIsAutoStopPending(void);
+void FactoryModeCycleClearAutoStopPending(void);
 
 #endif
-
 

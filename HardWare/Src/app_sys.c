@@ -8,6 +8,7 @@
 #include "communication.h"
 #include "UserApp.h"
 #include "interface_uart.h"
+#include "time_callback.h"
 uint8_t STATE_POWER_5V;
 uint8_t reset=0;
 /**
@@ -29,6 +30,7 @@ void STATE_POWER_5V_Update(void) {
 }
 void close_mianAPP(void)
 {
+    FactoryModeCycleStop();
     if (currentState!=STATE_OFF) {
         if(currentState!=STATE_PRE_HEAT&&currentState!=STATE_PRE_AUTO){
             ScreenWorkModeQuit();
@@ -56,5 +58,4 @@ void close_mianAPP(void)
         taskEXIT_CRITICAL();
     }
 }
-
 
