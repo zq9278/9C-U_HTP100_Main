@@ -233,6 +233,7 @@ void UART1_CMDHandler(recept_data_p msg) {
 
     case 0x1050:
         serialTimeoutFlag = 0;
+        ScreenSendBootAck();
         prepare_data_set();
         ScreenSendSoftwareVersion();
         SystemLanguage_Load();
@@ -702,6 +703,20 @@ void ScreenUpdateSOC(float value) {
     pData.end_low = 0xff;
     USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
 
+}
+
+void ScreenSendBootAck(void)
+{
+    static prepare_data pData;
+
+    pData.cmd_head_high = 0x6A;
+    pData.cmd_head_low = 0xA6;
+    pData.cmd_type_high = (uint8_t)(COMM_RESP_SCREEN_BOOT_ACK >> 8);
+    pData.cmd_type_low = (uint8_t)(COMM_RESP_SCREEN_BOOT_ACK & 0xFF);
+    pData.value = 1;
+    pData.end_high = 0xff;
+    pData.end_low = 0xff;
+    Eye_twitching_invalid_master(&pData);
 }
 
 void ScreenSendLanguageSetting(void)

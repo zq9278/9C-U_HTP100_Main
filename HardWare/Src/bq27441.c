@@ -585,23 +585,12 @@ HAL_StatusTypeDef BQ27441_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t si
     HAL_StatusTypeDef status = HAL_ERROR;
 
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-
-        xSemaphoreTake(xI2CCompleteSem, 0);
-
-        status = HAL_I2C_Mem_Read_IT(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, size);
-
-        if (status == HAL_OK) {
-
-            if (xSemaphoreTake(xI2CCompleteSem, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-                status = HAL_OK;
-            } else {
-
-                HAL_I2C_DeInit(&hi2c1);
-                HAL_I2C_Init(&hi2c1);
-                status = HAL_TIMEOUT;
-            }
+        status = HAL_I2C_Mem_Read(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT,
+                                  pBuffer, size, I2C_TIMEOUT_MS);
+        if (status != HAL_OK) {
+            HAL_I2C_DeInit(&hi2c1);
+            HAL_I2C_Init(&hi2c1);
         }
-
         xSemaphoreGive(xI2CMutex);
     } else {
         status = HAL_BUSY;
@@ -619,24 +608,12 @@ HAL_StatusTypeDef BQ27441_Write_IT(uint8_t regAddr, uint8_t *pData, uint16_t siz
     HAL_StatusTypeDef status = HAL_ERROR;
 
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-
-        xSemaphoreTake(xI2CCompleteSem, 0);
-
-
-        status = HAL_I2C_Mem_Write(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT, pData, size,0xffff);
-        if (status == HAL_OK) {
-
-            if (xSemaphoreTake(xI2CCompleteSem, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-                status = HAL_OK;
-            } else {
-
-                HAL_I2C_DeInit(&hi2c1);
-                HAL_I2C_Init(&hi2c1);
-                status = HAL_TIMEOUT;
-            }
+        status = HAL_I2C_Mem_Write(&hi2c1, BQ27441Address, regAddr, I2C_MEMADD_SIZE_8BIT,
+                                   pData, size, I2C_TIMEOUT_MS);
+        if (status != HAL_OK) {
+            HAL_I2C_DeInit(&hi2c1);
+            HAL_I2C_Init(&hi2c1);
         }
-
-
         xSemaphoreGive(xI2CMutex);
     } else {
         status = HAL_BUSY;

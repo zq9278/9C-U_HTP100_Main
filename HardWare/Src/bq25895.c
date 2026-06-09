@@ -28,7 +28,7 @@ void BQ25895_Init(void) {
     BQ25895_Write(0x08, 0xF3);
     BQ25895_Write(0x00, 0x3F);
 
-    osDelay(100);
+    osDelay(200);
     CHG_CE(0);
 }
 
@@ -69,24 +69,12 @@ HAL_StatusTypeDef BQ25895_Write_IT(uint8_t regAddr, uint8_t WriteData) {
     uint8_t temp = WriteData;
 
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-
-        xSemaphoreTake(xI2CCompleteSem, 0);
-
-
-        status = HAL_I2C_Mem_Write_IT(&hi2c1, BQ25895Address, regAddr, I2C_MEMADD_SIZE_8BIT, &temp, 1);
-        if (status == HAL_OK) {
-
-            if (xSemaphoreTake(xI2CCompleteSem, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-                status = HAL_OK;
-            } else {
-
-                HAL_I2C_DeInit(&hi2c1);
-                HAL_I2C_Init(&hi2c1);
-                status = HAL_TIMEOUT;
-            }
+        status = HAL_I2C_Mem_Write(&hi2c1, BQ25895Address, regAddr, I2C_MEMADD_SIZE_8BIT,
+                                   &temp, 1, I2C_TIMEOUT_MS);
+        if (status != HAL_OK) {
+            HAL_I2C_DeInit(&hi2c1);
+            HAL_I2C_Init(&hi2c1);
         }
-
-
         xSemaphoreGive(xI2CMutex);
     } else {
         status = HAL_BUSY;
@@ -103,24 +91,12 @@ HAL_StatusTypeDef BQ25895_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t si
     HAL_StatusTypeDef status = HAL_ERROR;
 
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-
-        xSemaphoreTake(xI2CCompleteSem, 0);
-
-
-        status = HAL_I2C_Mem_Read_IT(&hi2c1, BQ25895Address, regAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, size);
-        if (status == HAL_OK) {
-
-            if (xSemaphoreTake(xI2CCompleteSem, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-                status = HAL_OK;
-            } else {
-
-                HAL_I2C_DeInit(&hi2c1);
-                HAL_I2C_Init(&hi2c1);
-                status = HAL_TIMEOUT;
-            }
+        status = HAL_I2C_Mem_Read(&hi2c1, BQ25895Address, regAddr, I2C_MEMADD_SIZE_8BIT,
+                                  pBuffer, size, I2C_TIMEOUT_MS);
+        if (status != HAL_OK) {
+            HAL_I2C_DeInit(&hi2c1);
+            HAL_I2C_Init(&hi2c1);
         }
-
-
         xSemaphoreGive(xI2CMutex);
     } else {
         status = HAL_BUSY;
@@ -202,6 +178,7 @@ void BQ25895_AutoRecover(void) {
 uint8_t CHRG_STAT;
 ChargeState_t ChargeState = STATE_POWER_ON;
 uint8_t charging, working, fully_charged, low_battery, emergency_stop;
+static int charge_action_done = 0;
 
 void UpdateChargeState_bq25895(void) {
     /* Step 1: validate input and preconditions. */
@@ -222,6 +199,15 @@ void UpdateChargeState_bq25895(void) {
     switch (CHRG_STAT) {
         case 1:
         case 2:
+            if (!charge_action_done) {
+                HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
+                close_mianAPP();
+                vTaskSuspend(deviceCheckHandle);
+                charge_action_done = 1;
+            }
+
+
+
             if (fully_charged == 0) {
                 charging = 1;
                 fully_charged = 0;
@@ -233,14 +219,19 @@ void UpdateChargeState_bq25895(void) {
             }
             break;
         case 3:
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
+            vTaskSuspend(deviceCheckHandle);
             fully_charged = 1;
             charging = 0;
             working = 0;
+            charge_action_done = 0;
             break;
         case 0:
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
             working = 1;
             charging = 0;
             fully_charged = 0;
+            charge_action_done = 0;
             break;
     }
     uint8_t PG_STAT = (BQ25895Reg[0x0B] >> 2) & 0x01;
@@ -284,7 +275,9 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
 
         LOGW("[Charger] Event\n");
         charging_flag=0;
+        NVIC_SystemReset();
     }
 
     last_vbus_status = vbus_status;
 }
+

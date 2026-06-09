@@ -17,6 +17,7 @@
 
 #define COMM_CMD_SET_LANGUAGE       0x1060
 #define COMM_RESP_LANGUAGE          0x00AB
+#define COMM_RESP_SCREEN_BOOT_ACK   0x00AD
 #define COMM_RESP_SOFTWARE_VERSION  0x2060
 extern uint8_t factory_mode;
 typedef struct __attribute__((packed))
@@ -89,6 +90,7 @@ typedef struct __attribute__((packed)){
 void command_parsing(uart_data *received_data);
 void UART1_CMDHandler(recept_data_p msg);
 void ScreenUpdateSOC(float value);
+void ScreenSendBootAck(void);
 void ScreenSendLanguageSetting(void);
 void ScreenSendSoftwareVersion(void);
 void ScreenWorkModeQuit(void);
