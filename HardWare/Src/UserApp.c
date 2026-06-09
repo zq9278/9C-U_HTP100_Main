@@ -251,8 +251,8 @@ void APP_task(void *argument) {
      * 3) 输出结果/更新状态并返回。
      */
     (void)argument;
-    osDelay(500);
-    BQ25895_Init();
+    //osDelay(500);
+
     for (;;) {
 
         osDelay(100);
@@ -476,6 +476,7 @@ void Main(void) {
     USART2_DMA_Init();
     SPI2_DMA_Semaphores_Init();
     I2C_Semaphore_Init();
+    BQ25895_Init();
     ws2812_white_delayHandle = xTimerCreate("ws2812_white_delay", pdMS_TO_TICKS(400), pdFALSE, NULL,
                                             ws2812_white_delay_callback);
     ws2812_yellow_delayHandle = xTimerCreate("ws2812_yellow_delay", pdMS_TO_TICKS(400), pdFALSE, NULL,

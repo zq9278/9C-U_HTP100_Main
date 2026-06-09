@@ -28,7 +28,7 @@ void BQ25895_Init(void) {
     BQ25895_Write(0x08, 0xF3);
     BQ25895_Write(0x00, 0x3F);
 
-    osDelay(100);
+    osDelay(200);
     CHG_CE(0);
 }
 
@@ -69,24 +69,12 @@ HAL_StatusTypeDef BQ25895_Write_IT(uint8_t regAddr, uint8_t WriteData) {
     uint8_t temp = WriteData;
 
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-
-        xSemaphoreTake(xI2CCompleteSem, 0);
-
-
-        status = HAL_I2C_Mem_Write_IT(&hi2c1, BQ25895Address, regAddr, I2C_MEMADD_SIZE_8BIT, &temp, 1);
-        if (status == HAL_OK) {
-
-            if (xSemaphoreTake(xI2CCompleteSem, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-                status = HAL_OK;
-            } else {
-
-                HAL_I2C_DeInit(&hi2c1);
-                HAL_I2C_Init(&hi2c1);
-                status = HAL_TIMEOUT;
-            }
+        status = HAL_I2C_Mem_Write(&hi2c1, BQ25895Address, regAddr, I2C_MEMADD_SIZE_8BIT,
+                                   &temp, 1, I2C_TIMEOUT_MS);
+        if (status != HAL_OK) {
+            HAL_I2C_DeInit(&hi2c1);
+            HAL_I2C_Init(&hi2c1);
         }
-
-
         xSemaphoreGive(xI2CMutex);
     } else {
         status = HAL_BUSY;
@@ -103,24 +91,12 @@ HAL_StatusTypeDef BQ25895_Read_IT(uint8_t regAddr, uint8_t *pBuffer, uint16_t si
     HAL_StatusTypeDef status = HAL_ERROR;
 
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-
-        xSemaphoreTake(xI2CCompleteSem, 0);
-
-
-        status = HAL_I2C_Mem_Read_IT(&hi2c1, BQ25895Address, regAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, size);
-        if (status == HAL_OK) {
-
-            if (xSemaphoreTake(xI2CCompleteSem, pdMS_TO_TICKS(I2C_TIMEOUT_MS)) == pdTRUE) {
-                status = HAL_OK;
-            } else {
-
-                HAL_I2C_DeInit(&hi2c1);
-                HAL_I2C_Init(&hi2c1);
-                status = HAL_TIMEOUT;
-            }
+        status = HAL_I2C_Mem_Read(&hi2c1, BQ25895Address, regAddr, I2C_MEMADD_SIZE_8BIT,
+                                  pBuffer, size, I2C_TIMEOUT_MS);
+        if (status != HAL_OK) {
+            HAL_I2C_DeInit(&hi2c1);
+            HAL_I2C_Init(&hi2c1);
         }
-
-
         xSemaphoreGive(xI2CMutex);
     } else {
         status = HAL_BUSY;
@@ -304,5 +280,4 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
 
     last_vbus_status = vbus_status;
 }
-
 
