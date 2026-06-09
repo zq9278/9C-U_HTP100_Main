@@ -20,18 +20,6 @@ SoftwareI2C iic_24x = {EE_SDA_GPIO_Port, EE_SDA_Pin, EE_SCL_GPIO_Port, EE_SCL_Pi
 static uint16_t g_system_language = DEFAULT_LANGUAGE_MODE;
 
 
-/**
- * @brief AT24CXX_Init 鍑芥暟瀹炵幇銆? */
-void AT24CXX_Init(void) {
-    /* 步骤说明：
-     * 1) 处理输入参数与前置条件。
-     * 2) 执行本函数核心业务逻辑。
-     * 3) 输出结果/更新状态并返回。
-     */
-
-
-
-}
 
 
 

@@ -251,7 +251,7 @@ void APP_task(void *argument) {
      * 3) 输出结果/更新状态并返回。
      */
     (void)argument;
-    osDelay(1000);
+    osDelay(500);
     BQ25895_Init();
     for (;;) {
 
@@ -303,7 +303,7 @@ void Device_Check_Task(void *argument) {
     (void)argument;
     AD24C01_Factory_formatted();
     EYE_checkout(1.0);
-    vTaskDelay(1200);
+    //vTaskDelay(5000);
     xTimerStart(eye_is_existHandle, 0);
     Device_Init();
     for (;;) {
@@ -504,8 +504,6 @@ void Main(void) {
 
     UART_DMA_IDLE_RECEPT_QUEUEHandle = xQueueCreate(UART_BUFFER_QUANTITY, sizeof(uart_data *));
     configASSERT(UART_DMA_IDLE_RECEPT_QUEUEHandle != NULL);
-
-    AT24CXX_Init();
 
     BQ27441_InitConfig();
     BQ27441_VerifyConfig();
