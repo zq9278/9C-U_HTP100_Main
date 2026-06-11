@@ -307,9 +307,10 @@ void Device_Check_Task(void *argument) {
     xTimerStart(eye_is_existHandle, 0);
     Device_Init();
     for (;;) {
-        DeviceStateMachine_Update();
-        Device_HandlePendingMarkRequest();
-        EYE_checkout(EYE_status);
+        // DeviceStateMachine_Update();
+        // Device_HandlePendingMarkRequest();
+        // EYE_checkout(EYE_status);
+        EYE_status=1;
         osDelay(100);
     }
 }
