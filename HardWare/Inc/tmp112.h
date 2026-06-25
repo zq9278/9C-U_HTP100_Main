@@ -8,7 +8,7 @@
 #include "stm32g0xx_hal.h"
 
 
-#define TMP112_ADDR 0x91
+#define TMP112_ADDR (0x48U << 1)
 
 
 
@@ -31,7 +31,7 @@ float Kalman_Update(KalmanFilter *kf, float measurement);
 void TempDisplayTargetFilterReset(void);
 float TempDisplayTargetFilterUpdate(float measured_value, float target_value);
 void TMP112_Init(void);
-void TMP112_WriteWord(uint8_t WriteAddr,uint8_t*  WriteData);
+HAL_StatusTypeDef TMP112_WriteWord(uint8_t WriteAddr,uint8_t*  WriteData);
 HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr,uint8_t* pBuffer);
 
 
@@ -41,6 +41,5 @@ uint8_t TMP112_IsDevicePresent(void);
 extern uint8_t IIC_EYETimeoutFlag;
 extern uint8_t EYE_exist_Flag, EYE_working_Flag, EYE_exist_new_Flag,EYE_status;
 #endif
-
 
 

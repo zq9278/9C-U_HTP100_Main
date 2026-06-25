@@ -5,6 +5,7 @@
 #include "UserApp.h"
 #include "tmp112.h"
 #include "interface_uart.h"
+#include "fault_code.h"
 
 uint8_t EyeTmpRaw[2];
 uint8_t IIC_EYETimeoutFlag;
@@ -14,15 +15,7 @@ float device_connected=0.0;
 extern I2C_HandleTypeDef hi2c2;
 extern DMA_HandleTypeDef hdma_i2c2_rx;
 
-void TMP112_Init(void)
-{
-
-    uint8_t config[2] = {
-            0x60 | 0x03 << 5,
-            0xA0
-    };
-    TMP112_WriteWord( 0x01, config);
-}
+KalmanFilter kf;
 
 
 
@@ -32,47 +25,6 @@ void TMP112_Init(void)
 
 
 
-/**
- * @brief TMP112_Read 鍑芥暟瀹炵幇銆? * @param ReadAddr 鍙傛暟銆? * @param pBuffer 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
-HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
-    /* 步骤说明：
-     * 1) 处理输入参数与前置条件。
-     * 2) 执行本函数核心业务逻辑。
-     * 3) 输出结果/更新状态并返回。
-     */
-    HAL_StatusTypeDef status;
-
-    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(60)) != pdTRUE) {
-        LOGE("[Temp] Event\n");
-        return HAL_ERROR;
-    }
-
-
-    status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0x91, ReadAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, 2);
-    if (status != HAL_OK) {
-        LOGE("[Temp] DMA start failed, status=%d\r\n", status);
-        xSemaphoreGive(i2c2_mutex);
-        return status;
-    }
-
-
-    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(80)) != pdTRUE) {
-        LOGE("[Temp] Event\r\n");
-        xSemaphoreGive(i2c2_mutex);
-        return HAL_TIMEOUT;
-    }
-
-
-    xSemaphoreGive(i2c2_mutex);
-    return HAL_OK;
-}
-
-
-
- void TMP112_WriteWord(uint8_t WriteAddr,uint8_t* WriteData)
- {
- 	HAL_I2C_Mem_Write_DMA(&hi2c2, 0x92, WriteAddr,I2C_MEMADD_SIZE_8BIT, WriteData, 2);
- }
 /**
  * @brief Kalman_Init 鍑芥暟瀹炵幇銆? * @param kf 鍙傛暟銆? * @param Q 鍙傛暟銆? * @param R 鍙傛暟銆? */
 void Kalman_Init(KalmanFilter *kf, float Q, float R) {
@@ -86,7 +38,10 @@ void Kalman_Init(KalmanFilter *kf, float Q, float R) {
     kf->P = 1;
     kf->x = 0;
 }
-/**
+
+
+
+ /**
  * @brief Kalman_Update 鍑芥暟瀹炵幇銆? * @param kf 鍙傛暟銆? * @param measurement 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 float Kalman_Update(KalmanFilter *kf, float measurement) {
     /* 步骤说明：
@@ -108,7 +63,94 @@ float Kalman_Update(KalmanFilter *kf, float measurement) {
 
     return kf->x;
 }
-KalmanFilter kf;
+void TMP112_Init(void)
+{
+
+    uint8_t config[2] = {
+        0x60 | 0x03 << 5,
+        0xA0
+    };
+    (void)TMP112_WriteWord(0x01, config);
+}
+
+HAL_StatusTypeDef TMP112_WriteWord(uint8_t WriteAddr,uint8_t* WriteData)
+{
+    HAL_StatusTypeDef status;
+
+    if (WriteData == NULL) {
+        return HAL_ERROR;
+    }
+
+    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(80)) != pdTRUE) {
+        LOGE("[Temp] Write mutex timeout\r\n");
+        I2C2_RequestRecovery();
+        FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+        return HAL_TIMEOUT;
+    }
+
+    xSemaphoreTake(I2C2_DMA_Sem, 0);
+    status = HAL_I2C_Mem_Write_DMA(&hi2c2, TMP112_ADDR, WriteAddr, I2C_MEMADD_SIZE_8BIT, WriteData, 2);
+    if (status == HAL_OK && xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(80)) != pdTRUE) {
+        status = HAL_TIMEOUT;
+    }
+
+    xSemaphoreGive(i2c2_mutex);
+    if (status != HAL_OK) {
+        LOGE("[Temp] Write failed, status=%d\r\n", status);
+        I2C2_RequestRecovery();
+        FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+    } else {
+        FaultCode_ClearCode(FAULT_CODE_TMP112_COMM_ERROR);
+    }
+
+    return status;
+}
+/**
+ * @brief TMP112_Read 鍑芥暟瀹炵幇銆? * @param ReadAddr 鍙傛暟銆? * @param pBuffer 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
+HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
+    /* 步骤说明：
+     * 1) 处理输入参数与前置条件。
+     * 2) 执行本函数核心业务逻辑。
+     * 3) 输出结果/更新状态并返回。
+     */
+    HAL_StatusTypeDef status;
+
+    if (pBuffer == NULL) {
+        return HAL_ERROR;
+    }
+
+    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(60)) != pdTRUE) {
+        LOGE("[Temp] Event\n");
+        I2C2_RequestRecovery();
+        FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+        return HAL_ERROR;
+    }
+
+
+    xSemaphoreTake(I2C2_DMA_Sem, 0);
+    status = HAL_I2C_Mem_Read_DMA(&hi2c2, TMP112_ADDR, ReadAddr, I2C_MEMADD_SIZE_8BIT, pBuffer, 2);
+    if (status != HAL_OK) {
+        LOGE("[Temp] DMA start failed, status=%d\r\n", status);
+        xSemaphoreGive(i2c2_mutex);
+        I2C2_RequestRecovery();
+        FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+        return status;
+    }
+
+
+    if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(80)) != pdTRUE) {
+        LOGE("[Temp] Event\r\n");
+        xSemaphoreGive(i2c2_mutex);
+        I2C2_RequestRecovery();
+        FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+        return HAL_TIMEOUT;
+    }
+
+
+    xSemaphoreGive(i2c2_mutex);
+    FaultCode_ClearCode(FAULT_CODE_TMP112_COMM_ERROR);
+    return HAL_OK;
+}
 #define TEMP_DISPLAY_TARGET_FILTER_SIZE 10u
 static float temp_display_target_buffer[TEMP_DISPLAY_TARGET_FILTER_SIZE];
 static uint8_t temp_display_target_count = 0;
@@ -213,4 +255,3 @@ float TmpRaw2Ture(void)
 
     return previousEMA;
 }
-

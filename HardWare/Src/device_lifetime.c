@@ -8,6 +8,8 @@
 #include "24cxx.h"
 #include "app_sys.h"
 #include "Button.h"
+#include "tmp112.h"
+#include "fault_code.h"
 
 DeviceContext_t device_ctx;
 extern I2C_HandleTypeDef hi2c2;
@@ -233,6 +235,9 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
         if (result == HAL_OK) {
             consecutive_success++;
             consecutive_fail = 0;
+            if (i2c_addr == TMP112_ADDR) {
+                FaultCode_ClearCode(FAULT_CODE_TMP112_COMM_ERROR);
+            }
         } else {
             consecutive_fail++;
             consecutive_success = 0;
@@ -243,6 +248,10 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
         }
 
         if (consecutive_fail >= retries) {
+            I2C2_RequestRecovery();
+            if (i2c_addr == TMP112_ADDR) {
+                FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+            }
             return HAL_ERROR;
         }
 
@@ -266,7 +275,7 @@ void DeviceStateMachine_Update(void) {
      * 3) 输出结果/更新状态并返回。
      */
 
-    bool online = (I2C_CheckDevice(0x91, 4) == HAL_OK);
+    bool online = (I2C_CheckDevice(TMP112_ADDR, 4) == HAL_OK);
     uint16_t mark = 0;
     uint16_t eye_times = 0;
 
@@ -364,4 +373,3 @@ void DeviceStateMachine_Update(void) {
         LOGI("[Device] State changed: %d -> %d\n", prev_state, eye_state);
     }
 }
-

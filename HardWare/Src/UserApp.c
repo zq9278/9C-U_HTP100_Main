@@ -15,6 +15,7 @@
 #include "time_callback.h"
 #include "ws2812b.h"
 #include "app_sys.h"
+#include "fault_code.h"
 extern uint8_t white_delay, yellow_delay, breathing_flag;
 uint8_t Flag_400ms = 1;
 float weight0 = 0;
@@ -271,6 +272,7 @@ void APP_task(void *argument) {
         UpdateState(emergency_stop, charging, low_battery, fully_charged, working);
         UpdateLightState(ChargeState);
         STATE_POWER_5V_Update();
+        FaultCode_Poll();
 
     }
 }
@@ -315,6 +317,14 @@ void Device_Check_Task(void *argument) {
 }
 extern I2C_HandleTypeDef hi2c2;
 extern DMA_HandleTypeDef hdma_i2c2_rx;
+extern DMA_HandleTypeDef hdma_i2c2_tx;
+
+void I2C2_RequestRecovery(void)
+{
+    if (i2c2_recovery_task_handle != NULL) {
+        xTaskNotifyGive(i2c2_recovery_task_handle);
+    }
+}
 
 /**
  * @brief I2C2_RecoveryTask 鍑芥暟瀹炵幇銆? * @param argument 鍙傛暟銆? */
@@ -340,6 +350,8 @@ void I2C2_RecoveryTask(void *argument) {
             HAL_I2C_Init(&hi2c2);
             HAL_DMA_DeInit(&hdma_i2c2_rx);
             HAL_DMA_Init(&hdma_i2c2_rx);
+            HAL_DMA_DeInit(&hdma_i2c2_tx);
+            HAL_DMA_Init(&hdma_i2c2_tx);
             xSemaphoreGive(i2c2_mutex);
         }
 

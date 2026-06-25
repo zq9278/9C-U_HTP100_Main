@@ -19,6 +19,7 @@
 #define COMM_RESP_LANGUAGE          0x00AB
 #define COMM_RESP_SCREEN_BOOT_ACK   0x00AD
 #define COMM_RESP_SOFTWARE_VERSION  0x2060
+#define COMM_RESP_FAULT_CODE        0x2070
 extern uint8_t factory_mode;
 typedef struct __attribute__((packed))
 {

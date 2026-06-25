@@ -12,12 +12,71 @@ extern uint8_t AD24C02_EYE[4];
 volatile uint8_t i2c_dma_read_complete = 0;
 volatile uint8_t i2c_dma_write_complete = 0;
 SoftwareI2C iic_24x = {EE_SDA_GPIO_Port, EE_SDA_Pin, EE_SCL_GPIO_Port, EE_SCL_Pin};
+#define EYE_EEPROM_I2C_ADDR 0xA0U
 
 #ifndef DEFAULT_LANGUAGE_MODE
 #define DEFAULT_LANGUAGE_MODE LANGUAGE_CHINESE
 #endif
 
 static uint16_t g_system_language = DEFAULT_LANGUAGE_MODE;
+
+static HAL_StatusTypeDef EYE_I2C2_MemWrite(uint16_t addr, uint8_t *data, uint16_t len, uint32_t timeout_ms)
+{
+  HAL_StatusTypeDef status;
+
+  if ((data == NULL) || (len == 0U)) {
+    return HAL_ERROR;
+  }
+
+  if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(timeout_ms)) != pdTRUE) {
+    LOGE("[EEPROM] I2C2 write mutex timeout, addr=0x%X\n", addr);
+    I2C2_RequestRecovery();
+    return HAL_TIMEOUT;
+  }
+
+  xSemaphoreTake(I2C2_DMA_Sem, 0);
+  status = HAL_I2C_Mem_Write_DMA(&hi2c2, EYE_EEPROM_I2C_ADDR, addr, I2C_MEMADD_SIZE_8BIT, data, len);
+  if (status == HAL_OK && xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(timeout_ms)) != pdTRUE) {
+    status = HAL_TIMEOUT;
+  }
+
+  xSemaphoreGive(i2c2_mutex);
+  if (status != HAL_OK) {
+    LOGE("[EEPROM] I2C2 write failed, addr=0x%X, status=%d\n", addr, status);
+    I2C2_RequestRecovery();
+  }
+
+  return status;
+}
+
+static HAL_StatusTypeDef EYE_I2C2_MemRead(uint16_t addr, uint8_t *data, uint16_t len, uint32_t timeout_ms)
+{
+  HAL_StatusTypeDef status;
+
+  if ((data == NULL) || (len == 0U)) {
+    return HAL_ERROR;
+  }
+
+  if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(timeout_ms)) != pdTRUE) {
+    LOGE("[EEPROM] I2C2 read mutex timeout, addr=0x%X\n", addr);
+    I2C2_RequestRecovery();
+    return HAL_TIMEOUT;
+  }
+
+  xSemaphoreTake(I2C2_DMA_Sem, 0);
+  status = HAL_I2C_Mem_Read_DMA(&hi2c2, EYE_EEPROM_I2C_ADDR, addr, I2C_MEMADD_SIZE_8BIT, data, len);
+  if (status == HAL_OK && xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(timeout_ms)) != pdTRUE) {
+    status = HAL_TIMEOUT;
+  }
+
+  xSemaphoreGive(i2c2_mutex);
+  if (status != HAL_OK) {
+    LOGE("[EEPROM] I2C2 read failed, addr=0x%X, status=%d\n", addr, status);
+    I2C2_RequestRecovery();
+  }
+
+  return status;
+}
 
 
 
@@ -237,28 +296,16 @@ void AT24C02_WriteAllBytes(uint8_t value) {
 
     for (uint16_t addr = 0; addr < 256; addr++) {
         uint8_t data = value;
-        if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(300)) == pdTRUE) {
-            HAL_I2C_Mem_Write(&hi2c2, 0xA0, addr, I2C_MEMADD_SIZE_8BIT, &data, 1, 100);
-            xSemaphoreGive(i2c2_mutex);
+        if (EYE_I2C2_MemWrite(addr, &data, 1, 300) == HAL_OK) {
             osDelay(5);
         } else {
-            LOGE("[EEPROM] Write lock timeout, addr=0x%02X\n", addr);
+            LOGE("[EEPROM] Write failed, addr=0x%02X\n", addr);
         }
     }
 
 
-     if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(300)) == pdTRUE) {
-         if (HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA0, 0x00, I2C_MEMADD_SIZE_8BIT, read_buffer, 256) == HAL_OK) {
-             if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(300)) == pdTRUE) {
-                 LOGI("[EEPROM] Event\n");
-             } else {
-                 LOGE("[EEPROM] Event\n");
-             }
-         } else {
-             LOGE("[EEPROM] Event\n");
-         }
-
-         xSemaphoreGive(i2c2_mutex);
+     if (EYE_I2C2_MemRead(0x00, read_buffer, 256, 300) == HAL_OK) {
+         LOGI("[EEPROM] Event\n");
      } else {
          LOGE("[EEPROM] Event\n");
      }
@@ -371,26 +418,23 @@ void Heating_film_Check(void) {
 
 
   uint8_t a = 0xAA;
-  HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, 0x20, I2C_MEMADD_SIZE_8BIT,
-                       (uint8_t *)&AD24C02_EYE[0], 1);
+  EYE_I2C2_MemRead(0x20, (uint8_t *)&AD24C02_EYE[0], 1, 200);
   if (AD24C02_EYE[0] == 0xFF) {
-    HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, 0x20, I2C_MEMADD_SIZE_8BIT, &a, 1);
+    EYE_I2C2_MemWrite(0x20, &a, 1, 200);
   } else if (AD24C02_EYE[0] == 0xAA) {
 
   }
 
-  HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, 0x21, I2C_MEMADD_SIZE_8BIT,
-                       (uint8_t *)&AD24C02_EYE[1], 1);
+  EYE_I2C2_MemRead(0x21, (uint8_t *)&AD24C02_EYE[1], 1, 200);
   if (AD24C02_EYE[1] == 0xFF) {
-    HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, 0x21, I2C_MEMADD_SIZE_8BIT, &a, 1);
+    EYE_I2C2_MemWrite(0x21, &a, 1, 200);
   } else if (AD24C02_EYE[1] == 0xAA) {
 
   }
 
-  HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, 0x22, I2C_MEMADD_SIZE_8BIT,
-                       (uint8_t *)&AD24C02_EYE[2], 1);
+  EYE_I2C2_MemRead(0x22, (uint8_t *)&AD24C02_EYE[2], 1, 200);
   if (AD24C02_EYE[2] == 0xFF) {
-    HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, 0x22, I2C_MEMADD_SIZE_8BIT, &a, 1);
+    EYE_I2C2_MemWrite(0x22, &a, 1, 200);
   } else if (AD24C02_EYE[2] == 0xAA) {
 
   }
@@ -458,16 +502,11 @@ HAL_StatusTypeDef EYE_AT24CXX_WriteByte(uint16_t addr, uint8_t data)
 {
     HAL_StatusTypeDef status;
 
-    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) != pdTRUE) return HAL_ERROR;
-    xSemaphoreTake(I2C2_DMA_Sem, 0);
-
-    status = HAL_I2C_Mem_Write_DMA(&hi2c2, 0xA0, addr, I2C_MEMADD_SIZE_8BIT, &data, 1);
-    if (status != HAL_OK || xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(200)) != pdTRUE) {
-        xSemaphoreGive(i2c2_mutex);
+    status = EYE_I2C2_MemWrite(addr, &data, 1, 200);
+    if (status != HAL_OK) {
         return HAL_ERROR;
     }
 
-    xSemaphoreGive(i2c2_mutex);
     osDelay(5);
     return HAL_OK;
 }
@@ -500,26 +539,18 @@ uint8_t EYE_AT24CXX_ReadByte(uint16_t addr, HAL_StatusTypeDef* status_out)
     uint8_t data = 0;
     int retry = 3;
 
+    if (status_out == NULL) {
+        return 0x00;
+    }
+
     for (int i = 0; i < retry; ++i) {
-        if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) != pdTRUE) {
-            status = HAL_ERROR;
-            LOGE("[EEPROM] Read byte retry %d: mutex timeout\n", i+1);
-        } else {
-            xSemaphoreTake(I2C2_DMA_Sem, 0);
-            status = HAL_I2C_Mem_Read_DMA(&hi2c2, 0xA1, addr, I2C_MEMADD_SIZE_8BIT, &data, 1);
-            if (status != HAL_OK) {
-                LOGE("[EEPROM] Read byte retry %d: DMA start failed, status=%d\n", i+1, status);
-            }
-            if (status == HAL_OK && xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(200)) == pdTRUE) {
-                xSemaphoreGive(i2c2_mutex);
-                *status_out = HAL_OK;
-                return data;
-            } else {
-                LOGE("[EEPROM] Read byte retry %d: DMA timeout or I2C error\n", i+1);
-            }
-            xSemaphoreGive(i2c2_mutex);
+        status = EYE_I2C2_MemRead(addr, &data, 1, 200);
+        if (status == HAL_OK) {
+            *status_out = HAL_OK;
+            return data;
         }
 
+        LOGE("[EEPROM] Read byte retry %d: status=%d\n", i+1, status);
         osDelay(5);
     }
     LOGE("[EEPROM] All read byte retries failed, addr=0x%X\n", addr);

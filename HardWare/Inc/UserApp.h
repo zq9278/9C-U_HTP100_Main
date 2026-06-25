@@ -43,9 +43,9 @@ void APP_task(void *argument);
 void Uart_send_task(void *argument);
 void AD24C01_WR(void *argument);
 void Motor_go_home_task(void *argument);
+void I2C2_RequestRecovery(void);
 
 
 void Main(void );
 #endif
-
 
