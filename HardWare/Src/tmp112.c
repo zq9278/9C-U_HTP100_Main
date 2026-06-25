@@ -17,8 +17,15 @@ extern DMA_HandleTypeDef hdma_i2c2_rx;
 
 KalmanFilter kf;
 
-
-
+static void TMP112_RequestRecoveryAndReportIfOnline(void)
+{
+    I2C2_RequestRecovery();
+    if (EYE_status == 1) {
+        FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+    } else {
+        FaultCode_ClearCode(FAULT_CODE_TMP112_COMM_ERROR);
+    }
+}
 
 
 
@@ -84,7 +91,7 @@ HAL_StatusTypeDef TMP112_WriteWord(uint8_t WriteAddr,uint8_t* WriteData)
     if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(80)) != pdTRUE) {
         LOGE("[Temp] Write mutex timeout\r\n");
         I2C2_RequestRecovery();
-        FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+        FaultCode_ClearCode(FAULT_CODE_TMP112_COMM_ERROR);
         return HAL_TIMEOUT;
     }
 
@@ -98,7 +105,7 @@ HAL_StatusTypeDef TMP112_WriteWord(uint8_t WriteAddr,uint8_t* WriteData)
     if (status != HAL_OK) {
         LOGE("[Temp] Write failed, status=%d\r\n", status);
         I2C2_RequestRecovery();
-        FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+        FaultCode_ClearCode(FAULT_CODE_TMP112_COMM_ERROR);
     } else {
         FaultCode_ClearCode(FAULT_CODE_TMP112_COMM_ERROR);
     }
@@ -121,8 +128,7 @@ HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
 
     if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(60)) != pdTRUE) {
         LOGE("[Temp] Event\n");
-        I2C2_RequestRecovery();
-        FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+        TMP112_RequestRecoveryAndReportIfOnline();
         return HAL_ERROR;
     }
 
@@ -132,8 +138,7 @@ HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
     if (status != HAL_OK) {
         LOGE("[Temp] DMA start failed, status=%d\r\n", status);
         xSemaphoreGive(i2c2_mutex);
-        I2C2_RequestRecovery();
-        FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+        TMP112_RequestRecoveryAndReportIfOnline();
         return status;
     }
 
@@ -141,8 +146,7 @@ HAL_StatusTypeDef TMP112_Read(uint8_t ReadAddr, uint8_t* pBuffer) {
     if (xSemaphoreTake(I2C2_DMA_Sem, pdMS_TO_TICKS(80)) != pdTRUE) {
         LOGE("[Temp] Event\r\n");
         xSemaphoreGive(i2c2_mutex);
-        I2C2_RequestRecovery();
-        FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+        TMP112_RequestRecoveryAndReportIfOnline();
         return HAL_TIMEOUT;
     }
 

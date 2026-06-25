@@ -7,6 +7,8 @@
 
 #include <stdarg.h>
 #include "main.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 int __io_putchar(int ch) __attribute__((weak));
 int __io_getchar(void) __attribute__((weak));
@@ -22,6 +24,7 @@ void LOG_CLEAR(void);
 void RTT_VAR(const char *format, ...);
 
 #define USART2_TX_BUFFER_SIZE 256
+#define SCREEN_TX_QUEUE_LENGTH 8
 
 typedef struct {
     uint8_t txBuffer[2][USART2_TX_BUFFER_SIZE];
@@ -31,6 +34,8 @@ typedef struct {
 extern USART2_DMA_HandleTypeDef huart2_dma;
 
 void USART2_DMA_Init(void);
-void USART2_DMA_Send(uint8_t *data, uint16_t length);
+void ScreenTx_Init(void);
+HAL_StatusTypeDef ScreenTx_Post(const uint8_t *data, uint16_t length, TickType_t timeout);
+void ScreenTxTask(void *argument);
 
 #endif

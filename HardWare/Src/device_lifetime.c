@@ -13,6 +13,8 @@
 
 DeviceContext_t device_ctx;
 extern I2C_HandleTypeDef hi2c2;
+extern DMA_HandleTypeDef hdma_i2c2_rx;
+extern DMA_HandleTypeDef hdma_i2c2_tx;
 extern SemaphoreHandle_t i2c2_mutex;
 extern TimerHandle_t eye_is_existHandle;
 char *i2c2_mutex_owner = NULL;
@@ -26,6 +28,46 @@ extern uint8_t EYE_status;
 HAL_StatusTypeDef status;
 
 static volatile uint8_t g_pending_mark_normal_eye_shield = 0;
+static volatile uint8_t i2c2_recovery_in_progress = 0;
+
+void I2C2_RequestRecovery(void)
+{
+    uint32_t isr;
+
+    taskENTER_CRITICAL();
+    if (i2c2_recovery_in_progress != 0U) {
+        taskEXIT_CRITICAL();
+        return;
+    }
+    i2c2_recovery_in_progress = 1U;
+    i2c2_error_flag = 1;
+    taskEXIT_CRITICAL();
+
+    isr = hi2c2.Instance->ISR;
+    LOGE("[Device] I2C2 error ISR=0x%08lX\n", isr);
+
+    if (xSemaphoreTake(i2c2_mutex, pdMS_TO_TICKS(200)) == pdTRUE) {
+        __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_BERR);
+        __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_ARLO);
+        __HAL_I2C_DISABLE(&hi2c2);
+        __HAL_RCC_I2C2_FORCE_RESET();
+        __HAL_RCC_I2C2_RELEASE_RESET();
+        HAL_I2C_DeInit(&hi2c2);
+        HAL_I2C_Init(&hi2c2);
+        HAL_DMA_DeInit(&hdma_i2c2_rx);
+        HAL_DMA_Init(&hdma_i2c2_rx);
+        HAL_DMA_DeInit(&hdma_i2c2_tx);
+        HAL_DMA_Init(&hdma_i2c2_tx);
+        xSemaphoreGive(i2c2_mutex);
+        FaultCode_ClearCode(FAULT_CODE_TMP112_COMM_ERROR);
+    } else {
+        LOGE("[Device] I2C2 recovery mutex timeout\n");
+    }
+
+    i2c2_error_flag = 0;
+    i2c2_recovery_in_progress = 0U;
+    LOGI("[Device] I2C2 recovery done\n");
+}
 
 /**
  * @brief Device_Init 鍑芥暟瀹炵幇銆? */
@@ -235,9 +277,6 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
         if (result == HAL_OK) {
             consecutive_success++;
             consecutive_fail = 0;
-            if (i2c_addr == TMP112_ADDR) {
-                FaultCode_ClearCode(FAULT_CODE_TMP112_COMM_ERROR);
-            }
         } else {
             consecutive_fail++;
             consecutive_success = 0;
@@ -250,7 +289,7 @@ HAL_StatusTypeDef I2C_CheckDevice(uint8_t i2c_addr, uint8_t retries) {
         if (consecutive_fail >= retries) {
             I2C2_RequestRecovery();
             if (i2c_addr == TMP112_ADDR) {
-                FaultCode_Report(FAULT_CODE_TMP112_COMM_ERROR);
+                FaultCode_ClearCode(FAULT_CODE_TMP112_COMM_ERROR);
             }
             return HAL_ERROR;
         }

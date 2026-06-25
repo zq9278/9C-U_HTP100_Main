@@ -208,20 +208,71 @@ void RTT_VAR(const char *format, ...)
 USART2_DMA_HandleTypeDef huart2_dma;
 extern UART_HandleTypeDef huart2;
 
+typedef struct {
+    uint16_t length;
+    uint8_t data[USART2_TX_BUFFER_SIZE];
+} ScreenTxFrame_t;
+
+static QueueHandle_t screenTxQueueHandle;
+
 void USART2_DMA_Init(void)
 {
-    usart2_dmatxSemaphore = xSemaphoreCreateBinary();
+    if (usart2_dmatxSemaphore == NULL) {
+        usart2_dmatxSemaphore = xSemaphoreCreateBinary();
+    }
     if (usart2_dmatxSemaphore != NULL) {
         xSemaphoreGive(usart2_dmatxSemaphore);
     }
     huart2_dma.activeBuffer = 0;
 }
 
-void USART2_DMA_Send(uint8_t *data, uint16_t length)
+static void ScreenTx_SendDma(uint8_t *data, uint16_t length)
 {
     if (xSemaphoreTake(usart2_dmatxSemaphore, portMAX_DELAY) == pdTRUE) {
         memcpy(huart2_dma.txBuffer[huart2_dma.activeBuffer], data, length);
         HAL_UART_Transmit_DMA(&huart2, huart2_dma.txBuffer[huart2_dma.activeBuffer], length);
         huart2_dma.activeBuffer ^= 1;
+    }
+}
+
+void ScreenTx_Init(void)
+{
+    if (screenTxQueueHandle == NULL) {
+        screenTxQueueHandle = xQueueCreate(SCREEN_TX_QUEUE_LENGTH, sizeof(ScreenTxFrame_t));
+    }
+    configASSERT(screenTxQueueHandle != NULL);
+}
+
+HAL_StatusTypeDef ScreenTx_Post(const uint8_t *data, uint16_t length, TickType_t timeout)
+{
+    ScreenTxFrame_t frame;
+
+    if ((data == NULL) || (length == 0U) || (length > USART2_TX_BUFFER_SIZE)) {
+        return HAL_ERROR;
+    }
+
+    if (screenTxQueueHandle == NULL) {
+        return HAL_ERROR;
+    }
+
+    frame.length = length;
+    memcpy(frame.data, data, length);
+    if (xQueueSend(screenTxQueueHandle, &frame, timeout) != pdTRUE) {
+        return HAL_TIMEOUT;
+    }
+
+    return HAL_OK;
+}
+
+void ScreenTxTask(void *argument)
+{
+    ScreenTxFrame_t frame;
+
+    (void)argument;
+
+    for (;;) {
+        if (xQueueReceive(screenTxQueueHandle, &frame, portMAX_DELAY) == pdTRUE) {
+            ScreenTx_SendDma(frame.data, frame.length);
+        }
     }
 }

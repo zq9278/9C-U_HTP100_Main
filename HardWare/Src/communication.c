@@ -595,7 +595,7 @@ void ScreenUpdateForce(float value) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff;
     pData.end_low = 0xff;
-    USART2_DMA_Send((uint8_t *) &pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *) &pData, sizeof(pData), pdMS_TO_TICKS(20));
 
 }
 
@@ -622,7 +622,7 @@ void ScreenUpdateTemperature(float value) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff;
     pData.end_low = 0xff;
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 
 }
 
@@ -643,7 +643,7 @@ void ScreenUpdateHeatPower(float value) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff;
     pData.end_low = 0xff;
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 }
 
 
@@ -663,7 +663,7 @@ void ScreenUpdateHeatLoadStatus(float value) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff;
     pData.end_low = 0xff;
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 }
 
 
@@ -683,7 +683,7 @@ void ScreenUpdateSOC(float value) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff;
     pData.end_low = 0xff;
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 
 }
 
@@ -728,7 +728,7 @@ void ScreenSendSoftwareVersion(void)
     pData.crc = Calculate_CRC((uint8_t *)&pData, sizeof(pData) - 4);
     pData.end_high = 0xff;
     pData.end_low = 0xff;
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 }
 
 
@@ -747,7 +747,7 @@ void ScreenWorkModeQuit(void) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff;
     pData.end_low = 0xff;
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 
 }
 
@@ -768,7 +768,7 @@ void EYE_checkout(float data) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff;
     pData.end_low = 0xff;
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 
 }
 
@@ -793,7 +793,7 @@ void ScreenTimerStart(void) {
 
 
 if(factory_mode !=1){
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 }
 
 }
@@ -817,7 +817,7 @@ void ScreenTimerStop(void) {
 
 
 
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 }
 
 void NEW_EYE(void) {
@@ -839,7 +839,7 @@ void NEW_EYE(void) {
 
 
 
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 }
 
 void Eye_twitching_invalid(void) {
@@ -861,7 +861,7 @@ void Eye_twitching_invalid(void) {
 
 
 
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 }
 
 
@@ -877,7 +877,7 @@ void Eye_twitching_invalid_master(prepare_data_p myprepare_data) {
 
 
     vTaskDelay(10);
-    USART2_DMA_Send((uint8_t *) myprepare_data, sizeof(*myprepare_data));
+    ScreenTx_Post((uint8_t *) myprepare_data, sizeof(*myprepare_data), pdMS_TO_TICKS(20));
 
 }
 
@@ -898,7 +898,7 @@ void ScreenWorkMode_count(float count) {
     pData.crc = Calculate_CRC((uint8_t *) &pData, sizeof(pData) - 4);
     pData.end_high = 0xff;
     pData.end_low = 0xff;
-    USART2_DMA_Send((uint8_t *)&pData, sizeof(pData));
+    ScreenTx_Post((uint8_t *)&pData, sizeof(pData), pdMS_TO_TICKS(20));
 }
 
 

@@ -35,7 +35,7 @@ uint8_t i2c2_error_flag = 0;
 #define ENABLE_HEAT_SEGMENTED_PID 1
 #define ENABLE_HEAT_STARTUP_SOFT_LANDING 0
 
-TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle, i2c2_recovery_task_handle, pwrTaskHandle,bq25895_recovery_homeHandle;
+TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle, pwrTaskHandle,ScreenTxHandle;
 QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
 SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore, spi2RxDmaSemaphoreHandle, spi2TxDmaSemaphoreHandle;
 SemaphoreHandle_t xI2CMutex;
@@ -87,10 +87,6 @@ void Heat_Task(void *argument) {
 #endif
         heat_last_wake_tick = xTaskGetTickCount();
         while (1) {
-
-
-
-
             notify = ulTaskNotifyTake(pdTRUE, 0);
 
             if (notify > 0) {
@@ -127,11 +123,6 @@ void Heat_Task(void *argument) {
                         //ScreenUpdateTemperature(EyeTmp);
                     }
                 }
-
-
-
-
-
 #if ENABLE_HEAT_ADAPTIVE_LOAD
                 Heat_PWM = HeatAdaptivePIDComputeDt(&HeatPID, EyeTmp, (float)HEAT_PID_PERIOD_MS / 1000.0f);
 #elif ENABLE_HEAT_SEGMENTED_PID
@@ -252,10 +243,7 @@ void APP_task(void *argument) {
      * 3) 输出结果/更新状态并返回。
      */
     (void)argument;
-    //osDelay(500);
-
     for (;;) {
-
         osDelay(100);
        bq25895_reinitialize_if_vbus_inserted();
         UpdateChargeState_bq25895();
@@ -315,109 +303,6 @@ void Device_Check_Task(void *argument) {
         osDelay(100);
     }
 }
-extern I2C_HandleTypeDef hi2c2;
-extern DMA_HandleTypeDef hdma_i2c2_rx;
-extern DMA_HandleTypeDef hdma_i2c2_tx;
-
-void I2C2_RequestRecovery(void)
-{
-    if (i2c2_recovery_task_handle != NULL) {
-        xTaskNotifyGive(i2c2_recovery_task_handle);
-    }
-}
-
-/**
- * @brief I2C2_RecoveryTask 鍑芥暟瀹炵幇銆? * @param argument 鍙傛暟銆? */
-void I2C2_RecoveryTask(void *argument) {
-    /* 步骤说明：
-     * 1) 处理输入参数与前置条件。
-     * 2) 执行本函数核心业务逻辑。
-     * 3) 输出结果/更新状态并返回。
-     */
-    (void)argument;
-    for (;;) {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        i2c2_error_flag = 1;
-        uint32_t isr = hi2c2.Instance->ISR;
-        LOGE("[Task] I2C2 error ISR=0x%08lX\n", isr);
-        if (xSemaphoreTake(i2c2_mutex, portMAX_DELAY) == pdTRUE) {
-            __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_BERR);
-            __HAL_I2C_CLEAR_FLAG(&hi2c2, I2C_FLAG_ARLO);
-            __HAL_I2C_DISABLE(&hi2c2);
-            __HAL_RCC_I2C2_FORCE_RESET();
-            __HAL_RCC_I2C2_RELEASE_RESET();
-            HAL_I2C_DeInit(&hi2c2);
-            HAL_I2C_Init(&hi2c2);
-            HAL_DMA_DeInit(&hdma_i2c2_rx);
-            HAL_DMA_Init(&hdma_i2c2_rx);
-            HAL_DMA_DeInit(&hdma_i2c2_tx);
-            HAL_DMA_Init(&hdma_i2c2_tx);
-            xSemaphoreGive(i2c2_mutex);
-        }
-
-        LOGI("[Task] Event");
-
-
-
-        i2c2_error_flag = 0;
-    }
-}
-
-
-extern
-/**
- * @brief bq25895_recovery_task 鍑芥暟瀹炵幇銆? * @param argument 鍙傛暟銆? */
-void bq25895_recovery_task(void *argument) {
-    /* 步骤说明：
-     * 1) 处理输入参数与前置条件。
-     * 2) 执行本函数核心业务逻辑。
-     * 3) 输出结果/更新状态并返回。
-     */
-    (void)argument;
-    for (;;) {
-
-
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-
-
-
-
-    }
-}
-/**
- * @brief PowerOnDelayTask 鍑芥暟瀹炵幇銆? * @param argument 鍙傛暟銆? */
-void PowerOnDelayTask(void *argument) {
-    /* 步骤说明：
-     * 1) 处理输入参数与前置条件。
-     * 2) 执行本函数核心业务逻辑。
-     * 3) 输出结果/更新状态并返回。
-     */
-    (void)argument;
-
-
-
-
-}
-
-
-
-/**
- * @brief PowerReboot_Task 鍑芥暟瀹炵幇銆? * @param argument 鍙傛暟銆? */
-void PowerReboot_Task(void *argument) {
-    /* 步骤说明：
-     * 1) 处理输入参数与前置条件。
-     * 2) 执行本函数核心业务逻辑。
-     * 3) 输出结果/更新状态并返回。
-     */
-    (void)argument;
-
-
-
-
-
-
-}
 #define LOG_TASK_INOF_DEBUG
 void TaskMonitor_Task(void *argument)
 {
@@ -431,11 +316,7 @@ void TaskMonitor_Task(void *argument)
         UBaseType_t taskCount;
         uint32_t totalRunTime;
 
-
         taskCount = uxTaskGetSystemState(taskStatusArray, maxTasks, &totalRunTime);
-
-
-
 #endif
         vTaskDelay(1000);
     }
@@ -453,8 +334,6 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
     (void)xTask;
 
     LOGI("[Task] Stack overflow task=%s\n", pcTaskName);
-
-
     taskDISABLE_INTERRUPTS();
     for(;;) {
 
@@ -486,6 +365,7 @@ void Main(void) {
     BUTTON_SEMAPHOREHandle = xSemaphoreCreateBinary();
     usart2_dmatxSemaphore = xSemaphoreCreateBinary();
     USART2_DMA_Init();
+    ScreenTx_Init();
     SPI2_DMA_Semaphores_Init();
     I2C_Semaphore_Init();
     BQ25895_Init();
@@ -529,16 +409,15 @@ void Main(void) {
 
 
     xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 500, NULL, 10, &UART_RECEPTHandle);
+    xTaskCreate(ScreenTxTask, "ScreenTx", 256, NULL, 8, &ScreenTxHandle);
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 9, &Button_StateHandle);
     xTaskCreate(APP_task, "APP", 512, NULL, 6, &APPHandle);
     xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle);
-    xTaskCreate(bq25895_recovery_task, "bq25895_recovery", 128, NULL, 2, &bq25895_recovery_homeHandle);
      if (xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 7, &deviceCheckHandle) == pdPASS) {
          vTaskSuspend(deviceCheckHandle);
      };
      if (xTaskCreate(Press_Task, "Press", 256, NULL, 3, &PressHandle) == pdPASS) { vTaskSuspend(PressHandle); };
      if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) { vTaskSuspend(HeatHandle); };
-    xTaskCreate(I2C2_RecoveryTask, "I2C2Recover", 256, NULL, 11, &i2c2_recovery_task_handle);
 
 
 

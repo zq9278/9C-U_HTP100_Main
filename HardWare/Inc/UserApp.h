@@ -28,10 +28,11 @@ extern PID_TypeDef HeatPID;
 extern float Heat_PWM, EyeTmp;
 extern uint8_t flag_200ms;
 extern uint8_t tempature_flag_400ms, press_flag_400ms, battery_flag_400ms,is_charging_flag;
+extern uint8_t i2c2_error_flag;
 extern uart_data *frameData_uart;
 
 
-extern TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, AD24C01Handle,motor_homeHandle,deviceCheckHandle,i2c2_recovery_task_handle,pwrTaskHandle,bq25895_recovery_homeHandle;
+extern TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, AD24C01Handle,motor_homeHandle,deviceCheckHandle,pwrTaskHandle,ScreenTxHandle;
 extern QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
 extern SemaphoreHandle_t BUTTON_SEMAPHOREHandle,logSemaphore,usart2_dmatxSemaphore,spi2RxDmaSemaphoreHandle,spi2TxDmaSemaphoreHandle,xI2CMutex,xI2CCompleteSem,i2c2_mutex,I2C2_DMA_Sem;
 
@@ -48,4 +49,3 @@ void I2C2_RequestRecovery(void);
 
 void Main(void );
 #endif
-
