@@ -69,6 +69,7 @@ void Button_detection(void) {
         press_finish = 0;
         TMC_ENN(0);
         if (PressHandle != NULL) {
+            xTaskNotifyStateClear(PressHandle);
             vTaskResume(PressHandle);
         }
         ScreenTimerStart();
@@ -111,6 +112,7 @@ void Button_detection(void) {
         HeatPID.setpoint = 42.5f + TEMPERATURE_CONTROL_COMPENSATION;
         TMC_ENN(0);
         if (PressHandle != NULL) {
+            xTaskNotifyStateClear(PressHandle);
             vTaskResume(PressHandle);
         }
         ScreenTimerStart();

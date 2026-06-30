@@ -50,21 +50,14 @@ void SPI2_DMA_Semaphores_Init(void) {
 /**
  * @brief SPI2_Transmit_DMA 鍑芥暟瀹炵幇銆? * @param txData 鍙傛暟銆? * @param size 鍙傛暟銆? * @param timeout 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 HAL_StatusTypeDef SPI2_Transmit_DMA(uint8_t *txData, uint16_t size, uint32_t timeout) {
-    /* 步骤说明：
-     * 1) 处理输入参数与前置条件。
-     * 2) 执行本函数核心业务逻辑。
-     * 3) 输出结果/更新状态并返回。
+    /*
+     * ADS1220 每次通信只有 1~3 字节。这里保留旧函数名以减少调用点改动，
+     * 但实际使用阻塞 SPI，确保 CS 拉高前传输已经完成。
      */
-    if (xSemaphoreTake(spi2TxDmaSemaphoreHandle, pdMS_TO_TICKS(timeout)) != pdPASS) {
-        return HAL_BUSY;
+    if ((txData == NULL) || (size == 0U)) {
+        return HAL_ERROR;
     }
-    HAL_StatusTypeDef status = HAL_SPI_Transmit_DMA(&hspi2, txData, size);
-
-    if (status != HAL_OK) {
-        xSemaphoreGive(spi2TxDmaSemaphoreHandle);
-    }
-
-    return status;
+    return HAL_SPI_Transmit(&hspi2, txData, size, timeout);
 }
 
 
@@ -73,20 +66,20 @@ HAL_StatusTypeDef SPI2_Transmit_DMA(uint8_t *txData, uint16_t size, uint32_t tim
 /**
  * @brief SPI2_Receive_DMA 鍑芥暟瀹炵幇銆? * @param rxData 鍙傛暟銆? * @param size 鍙傛暟銆? * @param timeout 鍙傛暟銆? * @return 杩斿洖鍊艰鍑芥暟瀹炵幇銆? */
 HAL_StatusTypeDef SPI2_Receive_DMA(uint8_t *rxData, uint16_t size, uint32_t timeout) {
-    /* 步骤说明：
-     * 1) 处理输入参数与前置条件。
-     * 2) 执行本函数核心业务逻辑。
-     * 3) 输出结果/更新状态并返回。
-     */
+    if ((rxData == NULL) || (size == 0U)) {
+        return HAL_ERROR;
+    }
+    return HAL_SPI_Receive(&hspi2, rxData, size, timeout);
+}
 
-    if (xSemaphoreTake(spi2RxDmaSemaphoreHandle, pdMS_TO_TICKS(timeout)) != pdPASS) {
-        return HAL_BUSY;
+
+
+
+HAL_StatusTypeDef SPI2_TransmitReceive_DMA(uint8_t *txData, uint8_t *rxData, uint16_t size, uint32_t timeout) {
+    if ((txData == NULL) || (rxData == NULL) || (size == 0U)) {
+        return HAL_ERROR;
     }
-    HAL_StatusTypeDef status = HAL_SPI_Receive_DMA(&hspi2, rxData, size);
-    if (status != HAL_OK) {
-        xSemaphoreGive(spi2RxDmaSemaphoreHandle);
-    }
-    return status;
+    return HAL_SPI_TransmitReceive(&hspi2, txData, rxData, size, timeout);
 }
 
 
@@ -212,7 +205,7 @@ int32_t ADS1220_ReadData(void) {
                      ((int32_t)rx_buffer[1] << 8)  |
                      rx_buffer[2];
 
-    return (result & 0x800000) ? (result | 0xFF000000) : result;
+    return (result & 0x800000L) ? (result | (int32_t)0xFF000000L) : result;
 }
 
 
@@ -299,4 +292,3 @@ void Start_SPI_Task(void const *argument) {
         osDelay(500);
     }
 }
-

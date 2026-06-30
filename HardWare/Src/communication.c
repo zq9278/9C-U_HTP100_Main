@@ -144,7 +144,7 @@ void UART1_CMDHandler(recept_data_p msg) {
                 emergency_stop = 1;
                 LOGW("[Screen] Event\n");
             }
-            if (PressHandle != NULL) {
+            if (PressHandle != NULL && eTaskGetState(PressHandle) != eSuspended) {
                 xTaskNotifyGive(PressHandle);
                 LOGI("[Screen] Event\n");
             }

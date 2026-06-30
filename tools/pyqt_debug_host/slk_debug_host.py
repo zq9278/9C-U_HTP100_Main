@@ -54,6 +54,7 @@ WORK_COMMANDS: Dict[str, Tuple[int, str]] = {
     "auto_start": (0x1037, "自动开始"),
     "auto_stop": (0x1038, "自动停止"),
     "soft_button": (0x1040, "软按键"),
+    "soft_button_1006": (0x1006, "软按键(0x1006)"),
     "screen_alive": (0x1051, "屏幕存在/心跳"),
     "screen_power_on": (0x1050, "屏幕开机"),
     "screen_ack": (0x1052, "屏幕应答"),
@@ -477,7 +478,7 @@ class MainWindow(QMainWindow):
         custom_layout.addWidget(self.custom_work_value)
         custom_layout.addWidget(self._button("发送", self.send_custom_work))
         layout.addWidget(custom_group)
-        stress_group = QGroupBox("命令暴力测试")
+        stress_group = QGroupBox("自动启停暴力测试")
         stress_layout = QGridLayout(stress_group)
         self.stress_interval = QSpinBox()
         self.stress_interval.setRange(20, 2000)
@@ -485,15 +486,15 @@ class MainWindow(QMainWindow):
         self.stress_interval.setSuffix(" ms")
         self.stress_total = QSpinBox()
         self.stress_total.setRange(1, 100000)
-        self.stress_total.setValue(300)
-        self.stress_button = QPushButton("开始暴力测试")
+        self.stress_total.setValue(1000)
+        self.stress_button = QPushButton("开始自动启停测试")
         self.stress_button.clicked.connect(self.toggle_stress_test)
         self.stress_status_label = QLabel("未开始")
         self.stress_status_label.setObjectName("Hint")
         self.stress_status_label.setWordWrap(True)
         stress_layout.addWidget(QLabel("间隔"), 0, 0)
         stress_layout.addWidget(self.stress_interval, 0, 1)
-        stress_layout.addWidget(QLabel("总次数"), 1, 0)
+        stress_layout.addWidget(QLabel("总命令数"), 1, 0)
         stress_layout.addWidget(self.stress_total, 1, 1)
         stress_layout.addWidget(self.stress_button, 2, 0, 1, 2)
         stress_layout.addWidget(self.stress_status_label, 3, 0, 1, 2)
@@ -874,7 +875,7 @@ class MainWindow(QMainWindow):
             self.stop_stress_test("手动停止")
             return
         if self.connect_button.text() == "连接":
-            QMessageBox.warning(self, "命令暴力测试", "请先连接串口")
+            QMessageBox.warning(self, "自动启停暴力测试", "请先连接串口")
             return
         self.stress_sent_count = 0
         self.stress_rx_count = 0
@@ -882,17 +883,17 @@ class MainWindow(QMainWindow):
         self.stress_no_rx_count = 0
         self.stress_last_rx_count = 0
         self.stress_sequence_index = 0
-        self.stress_button.setText("停止暴力测试")
-        self.append_log("INFO", "命令暴力测试开始：默认发送心跳/应答/目标值/上报次数，不启动加热或挤压")
+        self.stress_button.setText("停止自动启停测试")
+        self.append_log("INFO", "自动启停暴力测试开始：0x1037 -> 0x1006 -> 0x1038 -> 0x1037 -> 0x1006 循环")
         self.update_stress_status()
         self.stress_timer.start(self.stress_interval.value())
         self.send_stress_command()
 
     def stop_stress_test(self, reason: str = "完成") -> None:
         self.stress_timer.stop()
-        self.stress_button.setText("开始暴力测试")
+        self.stress_button.setText("开始自动启停测试")
         self.update_stress_status(reason)
-        self.append_log("INFO", f"命令暴力测试停止：{reason}")
+        self.append_log("INFO", f"自动启停暴力测试停止：{reason}")
 
     def update_stress_status(self, reason: str = "") -> None:
         text = (
@@ -914,11 +915,11 @@ class MainWindow(QMainWindow):
         self.stress_last_rx_count = self.stress_rx_count
 
         sequence = (
-            ("screen_alive", 0.0),
-            ("screen_ack", 0.0),
-            ("set_temperature", self.temp_set.value()),
-            ("set_pressure", self.press_set.value()),
-            ("report_count", 0.0),
+            ("auto_start", self.press_set.value()),
+            ("soft_button_1006", 0.0),
+            ("auto_stop", 0.0),
+            ("auto_start", self.press_set.value()),
+            ("soft_button_1006", 0.0),
         )
         key, value = sequence[self.stress_sequence_index % len(sequence)]
         self.stress_sequence_index += 1
