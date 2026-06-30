@@ -165,6 +165,14 @@ void Press_Task(void *argument) {
     (void)argument;
 
     for (;;) {
+        uint32_t stale_notify_count = 0;
+        while (ulTaskNotifyTake(pdTRUE, 0) > 0) {
+            stale_notify_count++;
+        }
+        if (stale_notify_count > 0U) {
+            LOGW("[Task] Press_Task cleared stale notify=%lu\n", (unsigned long)stale_notify_count);
+        }
+
         ADS1220_StartConversion();
         osDelay(20);
         Discard_dirty_data();
@@ -323,17 +331,22 @@ void TaskMonitor_Task(void *argument)
 }
 
 
-#define configCHECK_FOR_STACK_OVERFLOW 2
-#define configUSE_MALLOC_FAILED_HOOK    1
-#define configASSERT(x) if( (x) == 0 ) vAssertCalled(__FILE__, __LINE__)
-
-
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
 
     (void)xTask;
 
     LOGI("[Task] Stack overflow task=%s\n", pcTaskName);
+    taskDISABLE_INTERRUPTS();
+    for(;;) {
+
+    }
+}
+
+void vApplicationMallocFailedHook(void)
+{
+    LOGE("[Task] Malloc failed\n");
+
     taskDISABLE_INTERRUPTS();
     for(;;) {
 

@@ -32,7 +32,7 @@ osThreadId_t freertos_mainHandle;
 const osThreadAttr_t freertos_main_attributes = {
   .name = "freertos_main",
   .priority = (osPriority_t) osPriorityHigh,
-  .stack_size = 1024 * 4
+  .stack_size = 1024 * 2
 };
 
 /* Private function prototypes -----------------------------------------------*/
