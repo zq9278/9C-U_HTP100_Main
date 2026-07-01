@@ -29,7 +29,7 @@ set(JLINK_DEVICE "STM32G070CB" CACHE STRING "SEGGER J-Link target device")
 set(JLINK_INTERFACE "SWD" CACHE STRING "SEGGER J-Link target interface")
 set(JLINK_SPEED_KHZ "4000" CACHE STRING "SEGGER J-Link speed in kHz")
 set(JLINK_GDB_PORT "2331" CACHE STRING "SEGGER J-Link GDB server port")
-set(PRODUCT_MODEL "9C-U-HTP100S" CACHE STRING "Target product model")#产品名称
+set(PRODUCT_MODEL "9C-U-HTP100" CACHE STRING "Target product model")#产品名称
 set_property(CACHE PRODUCT_MODEL PROPERTY STRINGS "9C-U-HTP100S" "9C-U-HTP100")
 set(DEFAULT_LANGUAGE_MODE "0" CACHE STRING "Default language mode: 0=Chinese, 1=English")
 # Manually maintain the software version here. YYYYMMDD format is recommended.

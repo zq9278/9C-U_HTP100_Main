@@ -224,7 +224,7 @@ void UART1_CMDHandler(recept_data_p msg) {
         SystemLanguage_Load();
         ScreenSendLanguageSetting();
         currentState = STATE_OFF;
-        vTaskResume(deviceCheckHandle);
+        DeviceCheck_Enable();
         LOGI("[Screen] Event\n");
         break;
 

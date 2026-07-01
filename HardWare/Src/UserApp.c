@@ -35,12 +35,108 @@ uint8_t i2c2_error_flag = 0;
 #define ENABLE_HEAT_SEGMENTED_PID 1
 #define ENABLE_HEAT_STARTUP_SOFT_LANDING 0
 
-TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, deviceCheckHandle, pwrTaskHandle,ScreenTxHandle;
+TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, motor_homeHandle, pwrTaskHandle,ScreenTxHandle;
 QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
 SemaphoreHandle_t BUTTON_SEMAPHOREHandle, logSemaphore, usart2_dmatxSemaphore, spi2RxDmaSemaphoreHandle, spi2TxDmaSemaphoreHandle;
 SemaphoreHandle_t xI2CMutex;
 SemaphoreHandle_t i2c2_mutex, I2C2_DMA_Sem;
 SemaphoreHandle_t xI2CCompleteSem;
+
+static volatile uint8_t device_check_enabled = 0U;
+static uint8_t device_check_initialized = 0U;
+static volatile uint8_t press_task_start_pending = 0U;
+static volatile uint8_t press_task_running = 0U;
+static TickType_t press_task_start_tick = 0;
+static uint8_t press_task_start_retry_count = 0U;
+
+#define PRESS_TASK_START_RETRY_DELAY_MS          300U
+#define PRESS_TASK_START_RETRY_LIMIT             1U
+
+void DeviceCheck_Enable(void)
+{
+    device_check_enabled = 1U;
+}
+
+void DeviceCheck_Disable(void)
+{
+    device_check_enabled = 0U;
+}
+
+static void DeviceCheck_InitOnce(void)
+{
+    if (device_check_initialized != 0U) {
+        return;
+    }
+
+    AD24C01_Factory_formatted();
+    EYE_checkout(1.0f);
+    xTimerStart(eye_is_existHandle, 0);
+    Device_Init();
+    device_check_initialized = 1U;
+}
+
+static void DeviceCheck_Process(void)
+{
+    if (device_check_enabled == 0U) {
+        return;
+    }
+
+    DeviceCheck_InitOnce();
+    DeviceStateMachine_Update();
+    Device_HandlePendingMarkRequest();
+    EYE_checkout(EYE_status);
+}
+
+void PressTask_RequestStart(void)
+{
+    if (PressHandle == NULL) {
+        LOGE("[Task] Press_Task start failed: handle null\n");
+        return;
+    }
+
+    press_task_running = 0U;
+    press_task_start_pending = 1U;
+    press_task_start_retry_count = 0U;
+    press_task_start_tick = xTaskGetTickCount();
+    xTaskNotifyStateClear(PressHandle);
+    vTaskResume(PressHandle);
+}
+
+static void PressTask_MonitorStart(void)
+{
+    if (press_task_start_pending == 0U) {
+        return;
+    }
+
+    if ((currentState != STATE_PRESS) && (currentState != STATE_AUTO)) {
+        press_task_start_pending = 0U;
+        return;
+    }
+
+    if (press_task_running != 0U) {
+        press_task_start_pending = 0U;
+        return;
+    }
+
+    TickType_t now_tick = xTaskGetTickCount();
+    if ((now_tick - press_task_start_tick) < pdMS_TO_TICKS(PRESS_TASK_START_RETRY_DELAY_MS)) {
+        return;
+    }
+
+    if (press_task_start_retry_count < PRESS_TASK_START_RETRY_LIMIT) {
+        press_task_start_retry_count++;
+        press_task_start_tick = now_tick;
+        if (PressHandle != NULL) {
+            xTaskNotifyStateClear(PressHandle);
+            vTaskResume(PressHandle);
+        }
+        LOGW("[Task] Press_Task start retry=%u\n", press_task_start_retry_count);
+        return;
+    }
+
+    press_task_start_pending = 0U;
+    LOGE("[Task] Press_Task start not confirmed\n");
+}
 
 
 
@@ -180,6 +276,8 @@ void Press_Task(void *argument) {
         PressureDisplayTargetFilterReset();
         PressureControlReset();
         press_pid_tick_flag = 0;
+        press_task_running = 1U;
+        press_task_start_pending = 0U;
         while (1) {
 
             if (ulTaskNotifyTake(pdTRUE, 0) > 0) {
@@ -200,6 +298,7 @@ void Press_Task(void *argument) {
             }
             osDelay(5);
         }
+        press_task_running = 0U;
         vTaskSuspend(NULL);
     }
 
@@ -269,6 +368,8 @@ void APP_task(void *argument) {
         UpdateLightState(ChargeState);
         STATE_POWER_5V_Update();
         FaultCode_Poll();
+        DeviceCheck_Process();
+        PressTask_MonitorStart();
 
     }
 }
@@ -290,27 +391,6 @@ void Motor_go_home_task(void *argument) {
     }
 }
 
-/**
- * @brief Device_Check_Task 鍑芥暟瀹炵幇銆? * @param argument 鍙傛暟銆? */
-void Device_Check_Task(void *argument) {
-    /* 步骤说明：
-     * 1) 处理输入参数与前置条件。
-     * 2) 执行本函数核心业务逻辑。
-     * 3) 输出结果/更新状态并返回。
-     */
-    (void)argument;
-    AD24C01_Factory_formatted();
-    EYE_checkout(1.0);
-    //vTaskDelay(5000);
-    xTimerStart(eye_is_existHandle, 0);
-    Device_Init();
-    for (;;) {
-        DeviceStateMachine_Update();
-        Device_HandlePendingMarkRequest();
-        EYE_checkout(EYE_status);
-        osDelay(100);
-    }
-}
 #define LOG_TASK_INOF_DEBUG
 void TaskMonitor_Task(void *argument)
 {
@@ -397,10 +477,20 @@ void Main(void) {
     motor_back_1sHandle = xTimerCreate("motor_back_1s", pdMS_TO_TICKS(1000), pdFALSE, NULL, motor_back_1sCallback);
     butttonHandle = xTimerCreate("buttton", pdMS_TO_TICKS(100), pdTRUE, NULL, buttton_Callback);
     tempareture_pidHandle = xTimerCreate("tempareture_pid", pdMS_TO_TICKS(400), pdTRUE, NULL, tempareture_pid_timer);
+    configASSERT(PRESS_PID_TIMER_PERIOD_MS > 0U);
     press_updateHandle = xTimerCreate("press_update", pdMS_TO_TICKS(PRESS_PID_TIMER_PERIOD_MS), pdTRUE, NULL, press_update_timer);
+    if (press_updateHandle == NULL) {
+        press_updateHandle = xTimerCreate("press_update", pdMS_TO_TICKS(PRESS_PID_TIMER_PERIOD_MS), pdTRUE, NULL, press_update_timer);
+    }
+    configASSERT(press_updateHandle != NULL);
     eye_is_existHandle = xTimerCreate("eye_is_exist_delay", pdMS_TO_TICKS(1000), pdTRUE, NULL, eye_is_exist_callback);
     xTimerStart(tempareture_pidHandle, 0);
-    xTimerStart(press_updateHandle, 0);
+    if (xTimerStart(press_updateHandle, 0) != pdPASS) {
+        if (xTimerStart(press_updateHandle, 0) != pdPASS) {
+            LOGE("[Timer] press_update start failed\n");
+            configASSERT(0);
+        }
+    }
     serialTimeoutTimerHandle = xTimerCreate("SerialTimeout",
                                             pdMS_TO_TICKS(2000),
                                             pdTRUE,
@@ -424,11 +514,8 @@ void Main(void) {
     xTaskCreate(UART_RECEPT_Task, "UART_RECEPT", 500, NULL, 10, &UART_RECEPTHandle);
     xTaskCreate(ScreenTxTask, "ScreenTx", 256, NULL, 8, &ScreenTxHandle);
     xTaskCreate(Button_State_Task, "Button_State", 256, NULL, 9, &Button_StateHandle);
-    xTaskCreate(APP_task, "APP", 512, NULL, 6, &APPHandle);
+    xTaskCreate(APP_task, "APP", 512, NULL, 7, &APPHandle);
     xTaskCreate(Motor_go_home_task, "Motor_go_home", 256, NULL, 2, &motor_homeHandle);
-     if (xTaskCreate(Device_Check_Task, "Device_Check", 256, NULL, 7, &deviceCheckHandle) == pdPASS) {
-         vTaskSuspend(deviceCheckHandle);
-     };
      if (xTaskCreate(Press_Task, "Press", 256, NULL, 3, &PressHandle) == pdPASS) { vTaskSuspend(PressHandle); };
      if (xTaskCreate(Heat_Task, "Heat", 256, NULL, 4, &HeatHandle) == pdPASS) { vTaskSuspend(HeatHandle); };
 

@@ -68,10 +68,7 @@ void Button_detection(void) {
         }
         press_finish = 0;
         TMC_ENN(0);
-        if (PressHandle != NULL) {
-            xTaskNotifyStateClear(PressHandle);
-            vTaskResume(PressHandle);
-        }
+        PressTask_RequestStart();
         ScreenTimerStart();
         LOGI("[Button] Event\r\n");
         break;
@@ -111,10 +108,7 @@ void Button_detection(void) {
         auto_finish = 0;
         HeatPID.setpoint = 42.5f + TEMPERATURE_CONTROL_COMPENSATION;
         TMC_ENN(0);
-        if (PressHandle != NULL) {
-            xTaskNotifyStateClear(PressHandle);
-            vTaskResume(PressHandle);
-        }
+        PressTask_RequestStart();
         ScreenTimerStart();
         LOGI("[Button] PRE_AUTO -> AUTO, setpoint=%.2f\r\n", HeatPID.setpoint);
         break;

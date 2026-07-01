@@ -202,7 +202,7 @@ void UpdateChargeState_bq25895(void) {
             if (!charge_action_done) {
                 HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
                 close_mianAPP();
-                vTaskSuspend(deviceCheckHandle);
+                DeviceCheck_Disable();
                 charge_action_done = 1;
             }
 
@@ -220,7 +220,7 @@ void UpdateChargeState_bq25895(void) {
             break;
         case 3:
             HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET);
-            vTaskSuspend(deviceCheckHandle);
+            DeviceCheck_Disable();
             fully_charged = 1;
             charging = 0;
             working = 0;
@@ -280,4 +280,3 @@ void bq25895_reinitialize_if_vbus_inserted(void) {
 
     last_vbus_status = vbus_status;
 }
-

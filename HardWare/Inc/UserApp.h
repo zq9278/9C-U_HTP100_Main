@@ -32,7 +32,7 @@ extern uint8_t i2c2_error_flag;
 extern uart_data *frameData_uart;
 
 
-extern TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, AD24C01Handle,motor_homeHandle,deviceCheckHandle,pwrTaskHandle,ScreenTxHandle;
+extern TaskHandle_t UART_RECEPTHandle, HeatHandle, PressHandle, Button_StateHandle, APPHandle, AD24C01Handle,motor_homeHandle,pwrTaskHandle,ScreenTxHandle;
 extern QueueHandle_t UART_DMA_IDLE_RECEPT_QUEUEHandle;
 extern SemaphoreHandle_t BUTTON_SEMAPHOREHandle,logSemaphore,usart2_dmatxSemaphore,spi2RxDmaSemaphoreHandle,spi2TxDmaSemaphoreHandle,xI2CMutex,xI2CCompleteSem,i2c2_mutex,I2C2_DMA_Sem;
 
@@ -44,6 +44,9 @@ void APP_task(void *argument);
 void Uart_send_task(void *argument);
 void AD24C01_WR(void *argument);
 void Motor_go_home_task(void *argument);
+void DeviceCheck_Enable(void);
+void DeviceCheck_Disable(void);
+void PressTask_RequestStart(void);
 void I2C2_RequestRecovery(void);
 
 
