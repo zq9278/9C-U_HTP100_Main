@@ -19,6 +19,7 @@
 #include "UserApp.h"
 #include "app_sys.h"
 #include "time_callback.h"
+#include "product_config.h"
 
 
 
@@ -30,14 +31,6 @@ extern prepare_data my_prepare_data;
 extern uint8_t soft_button;
 uint16_t save_prepare, set_prepare;
 uint8_t factory_mode = 0;
-
-#ifndef SOFTWARE_VERSION
-#define SOFTWARE_VERSION 0U
-#endif
-
-
-
-
 
 void UART1_CMDHandler(recept_data_p msg) {
     /* Step 1: validate input and preconditions. */

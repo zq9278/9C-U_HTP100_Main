@@ -10,6 +10,7 @@
 #include "Button.h"
 #include "tmp112.h"
 #include "fault_code.h"
+#include "product_config.h"
 
 DeviceContext_t device_ctx;
 extern I2C_HandleTypeDef hi2c2;
@@ -225,7 +226,11 @@ void Device_RequestMarkNormalEyeShield(void) {
      * 3) 输出结果/更新状态并返回。
      */
 
+#if PRODUCT_ENABLE_EYE_SHIELD_MARK
     g_pending_mark_normal_eye_shield = 1;
+#else
+    g_pending_mark_normal_eye_shield = 0;
+#endif
 }
 
 /**
