@@ -267,7 +267,7 @@ extern SPI_HandleTypeDef hspi1;
 
 /**
  * @brief TMC5130_Init 鍑芥暟瀹炵幇銆? */
-void TMC5130_Init(void) {
+static void TMC5130_WriteDefaultRegisters(void) {
     /* 步骤说明：
      * 1) 处理输入参数与前置条件。
      * 2) 执行本函数核心业务逻辑。
@@ -303,6 +303,15 @@ void TMC5130_Init(void) {
 
 
     TMC5130_Write(0xa0, 0x00000000);
+}
+
+void TMC5130_ReinitRegisters(void)
+{
+    TMC5130_WriteDefaultRegisters();
+}
+
+void TMC5130_Init(void) {
+    TMC5130_WriteDefaultRegisters();
     PID_Init(&MotorPID, 300, 0, 0, 5000, -5000, (float) (50000), (float) (-50000),
              0);
 }
@@ -455,8 +464,11 @@ uint8_t MotorChecking() {
      * 3) 输出结果/更新状态并返回。
      */
     uint8_t ReadData[4];
+    uint32_t start_tick = HAL_GetTick();
+    const uint32_t timeout_ms = 8000U;
 
     TMC_ENN(0);
+    TMC5130_ReinitRegisters();
     TMC5130_Write(0xa7, 0x10000);
     VelocityModeMove(Positive);
 
@@ -465,6 +477,12 @@ uint8_t MotorChecking() {
 
         if ((ReadData[3] & 0x02) == 0x02) {
             break;
+        }
+        if ((HAL_GetTick() - start_tick) >= timeout_ms) {
+            TMC5130_Write(0xa0, 0x00000000);
+            TMC_ENN(1);
+            LOGE("[TMC5130] MotorChecking timeout\n");
+            return 0;
         }
         vTaskDelay(100);
     }

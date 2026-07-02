@@ -15,6 +15,7 @@
 #endif
 
 void TMC5130_Init(void);
+void TMC5130_ReinitRegisters(void);
 void TMC5130_Read(uint8_t ReadAddr, uint8_t *pBuffer);
 void TMC5130_Write(uint8_t WriteAddr, uint32_t WriteData);
 void MotorCtrl(int32_t Step);

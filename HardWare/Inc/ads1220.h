@@ -41,6 +41,7 @@ extern SPI_HandleTypeDef hspi2;
 
 void ADS1220_WriteRegister(uint8_t reg, uint8_t value);
 void ADS1220_Init(void);
+void ADS1220_ReinitRegisters(void);
 void ADS1220_StartConversion(void);
 void ADS1220_StopConversion(void);
 int32_t ADS1220_ReadData(void);

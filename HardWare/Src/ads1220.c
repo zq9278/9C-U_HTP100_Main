@@ -101,6 +101,14 @@ void ADS1220_WriteRegister(uint8_t reg, uint8_t value) {
     ADS1220_CS_HIGH();
 }
 
+void ADS1220_ReinitRegisters(void)
+{
+    ADS1220_WriteRegister(ADS1220_REG_CONFIG0, 0x3E);
+    ADS1220_WriteRegister(ADS1220_REG_CONFIG1, 0x94);
+    ADS1220_WriteRegister(ADS1220_REG_CONFIG2, 0x98);
+    ADS1220_WriteRegister(ADS1220_REG_CONFIG3, 0x00);
+}
+
 
 
 
@@ -129,10 +137,7 @@ void ADS1220_Init(void) {
     osDelay(50);
 
 
-    ADS1220_WriteRegister(ADS1220_REG_CONFIG0, 0x3E);
-    ADS1220_WriteRegister(ADS1220_REG_CONFIG1, 0x94);
-    ADS1220_WriteRegister(ADS1220_REG_CONFIG2, 0x98);
-    ADS1220_WriteRegister(ADS1220_REG_CONFIG3, 0x00);
+    ADS1220_ReinitRegisters();
 }
 
 

@@ -269,6 +269,10 @@ void Press_Task(void *argument) {
             LOGW("[Task] Press_Task cleared stale notify=%lu\n", (unsigned long)stale_notify_count);
         }
 
+        TMC_ENN(1);
+        TMC5130_ReinitRegisters();
+        TMC_ENN(0);
+        ADS1220_ReinitRegisters();
         ADS1220_StartConversion();
         osDelay(20);
         Discard_dirty_data();
