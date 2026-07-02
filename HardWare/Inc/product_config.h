@@ -1,8 +1,8 @@
 #ifndef PRODUCT_CONFIG_H
 #define PRODUCT_CONFIG_H
 //定义产品型号
-#define PRODUCT_MODEL_IS_9C_U_HTP100S            1U
-#define PRODUCT_MODEL_IS_9C_U_HTP100             0U
+#define PRODUCT_MODEL_IS_9C_U_HTP100S            0U
+#define PRODUCT_MODEL_IS_9C_U_HTP100             1U
 
 #if (PRODUCT_MODEL_IS_9C_U_HTP100S + PRODUCT_MODEL_IS_9C_U_HTP100) != 1U
 #error "Select exactly one product model"

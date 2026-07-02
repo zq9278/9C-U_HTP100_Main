@@ -278,7 +278,9 @@ static void TMC5130_WriteDefaultRegisters(void) {
     TMC5130_Write(0xec, 0x000300c3);
 
 
-    TMC5130_Write(0x90, 0x00001006);
+    //TMC5130_Write(0x90, 0x00001006);
+    //TMC5130_Write(0x90, 0x00000E05);
+    TMC5130_Write(0x90, 0x00000C04);
 
     TMC5130_Write(
         0x91,
@@ -289,7 +291,6 @@ static void TMC5130_WriteDefaultRegisters(void) {
     TMC5130_Write(0x93, 0x000001f4);
 
     TMC5130_Write(0xf0, 0x000701c8);
-
 
     TMC5130_Write(0xa5, 0x00015000);
 
