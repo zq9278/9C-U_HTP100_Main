@@ -16,7 +16,7 @@
 #define PRODUCT_MODEL_NAME                       "9C-U-HTP100"
 #endif
 //定义产品编译日期
-#define SOFTWARE_VERSION                         20260614U
+#define SOFTWARE_VERSION                         20260702U
 //眼盾是否销毁
 #define PRODUCT_ENABLE_EYE_SHIELD_MARK           1U
 

@@ -13,6 +13,8 @@ extern DMA_HandleTypeDef hdma_tim16_ch1;
 extern TIM_HandleTypeDef htim17;
 extern uint8_t charging, working, fully_charged, emergency_stop,low_battery;
 
+#define WS2812_POWER_ON_DELAY_MS 300U
+
 
 /**
  * @brief PWM_WS2812B_Init 鍑芥暟瀹炵幇銆? */
@@ -28,8 +30,16 @@ void PWM_WS2812B_Init(void) {
   low_battery=0;
   emergency_stop=0;
 
+  HAL_GPIO_WritePin(WS2812_PW_GPIO_Port, WS2812_PW_Pin, GPIO_PIN_SET);
+  WS2812B_LOW;
+  osDelay(WS2812_POWER_ON_DELAY_MS);
+  HAL_GPIO_WritePin(WS2812_PW_GPIO_Port, WS2812_PW_Pin, GPIO_PIN_RESET);
+  osDelay(5);
+
   __HAL_TIM_ENABLE_DMA(&htim16, TIM_DMA_CC1);
   HAL_TIM_Base_Start_IT(&htim17);
+  PWM_WS2812B_Write_24Bits(LED_NUM, 0x000000);
+  PWM_WS2812B_Show(LED_NUM);
   osTimerStart(ws2812_white_delayHandle, 400);
     }
 
@@ -263,5 +273,4 @@ void UpdateLightState(ChargeState_t state)
             break;
     }
 }
-
 
