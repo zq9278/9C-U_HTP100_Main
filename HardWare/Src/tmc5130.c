@@ -31,8 +31,8 @@ typedef struct {
 static PressurePidProfile_t g_pid_150 = {200.0f, 0.0f, 0.0f};
 static PressurePidProfile_t g_pid_250 = {200.0f, 10.0f, 0.0f};
 static PressurePidProfile_t g_pid_350 = {200.0f, 10.0f, 0.0f};
-static PressurePidProfile_t g_pid_450 = {200.0f, 10.0f, 0.0f};
-static PressurePidProfile_t g_pid_550 = {200.0f, 10.0f, 0.0f};
+static PressurePidProfile_t g_pid_450 = {150.0f, 8.0f, 0.0f};
+static PressurePidProfile_t g_pid_550 = {160.0f, 1.0f, 0.0f};
 
 
 static PressurePidProfile_t *GetPressurePidProfile(float pressure_level_mmhg) {
